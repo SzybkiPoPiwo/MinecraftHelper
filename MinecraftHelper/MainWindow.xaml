@@ -1,0 +1,171 @@
+﻿<Window x:Class="MinecraftHelper.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Minecraft Helper" Height="800" Width="1000">
+    <DockPanel>
+        <TabControl Name="MainTabControl" DockPanel.Dock="Top">
+
+            <!-- ========== PVP (Macro) ========== -->
+            <TabItem Header="PVP">
+                <StackPanel Margin="20" VerticalAlignment="Top">
+                    <TextBlock Text="Ustawienia Makr" FontSize="14" FontWeight="Bold" Margin="0,0,0,15"/>
+
+                    <!-- Lewy przycisk -->
+                    <Border BorderBrush="LightGray" BorderThickness="1" Padding="15" Margin="0,0,0,15">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                <CheckBox Name="ChkMacroLeftEnabled"
+                                          VerticalAlignment="Center"
+                                          Checked="ChkMacroLeftEnabled_Checked"
+                                          Unchecked="ChkMacroLeftEnabled_Checked"/>
+                                <TextBlock Text="Lewy przycisk" FontSize="12" FontWeight="Bold" Margin="10,0,0,0"/>
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <TextBlock Text="Klawisz:" Width="100" VerticalAlignment="Center"/>
+                                <TextBox Name="TxtMacroLeftKey" Width="80" Margin="10,0" IsReadOnly="True"/>
+                                <Button Name="BtnMacroLeftCapture" Content="Zapisz klawisz" Width="120" Margin="10,0" Click="BtnMacroLeftCapture_Click"/>
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <TextBlock Text="Min CPS:" Width="100" VerticalAlignment="Center"/>
+                                <TextBox Name="TxtMacroLeftMinCps" Width="80" Text="10"/>
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Max CPS:" Width="100" VerticalAlignment="Center"/>
+                                <TextBox Name="TxtMacroLeftMaxCps" Width="80" Text="10"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Prawy przycisk -->
+                    <Border BorderBrush="LightGray" BorderThickness="1" Padding="15">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                <CheckBox Name="ChkMacroRightEnabled"
+                                          VerticalAlignment="Center"
+                                          Checked="ChkMacroRightEnabled_Checked"
+                                          Unchecked="ChkMacroRightEnabled_Checked"/>
+                                <TextBlock Text="Prawy przycisk" FontSize="12" FontWeight="Bold" Margin="10,0,0,0"/>
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <TextBlock Text="Klawisz:" Width="100" VerticalAlignment="Center"/>
+                                <TextBox Name="TxtMacroRightKey" Width="80" Margin="10,0" IsReadOnly="True"/>
+                                <Button Name="BtnMacroRightCapture" Content="Zapisz klawisz" Width="120" Margin="10,0" Click="BtnMacroRightCapture_Click"/>
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <TextBlock Text="Min CPS:" Width="100" VerticalAlignment="Center"/>
+                                <TextBox Name="TxtMacroRightMinCps" Width="80" Text="50"/>
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Max CPS:" Width="100" VerticalAlignment="Center"/>
+                                <TextBox Name="TxtMacroRightMaxCps" Width="80" Text="50"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <TextBlock Name="TxtMacroStatus" Text="" Foreground="Blue" Margin="0,20,0,0"/>
+                </StackPanel>
+            </TabItem>
+
+            <!-- ========== KOPACZ ========== -->
+            <TabItem Header="Kopacz">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="20">
+                        <TextBlock Text="Wybierz opcję kopania:" FontSize="14" FontWeight="Bold" Margin="0,0,0,15"/>
+
+                        <!-- Opcja 1: Kilof 5/3/3 -->
+                        <Border BorderBrush="LightGray" BorderThickness="1" Padding="15" Margin="0,0,0,20">
+                            <StackPanel>
+                                <CheckBox Name="ChkKopacz533Enabled"
+                                          Content="Kopanie Kilof 5/3/3"
+                                          FontSize="12" FontWeight="Bold" Margin="0,0,0,15"
+                                          Checked="ChkKopacz533Enabled_Changed"
+                                          Unchecked="ChkKopacz533Enabled_Changed"/>
+
+                                <TextBlock Text="Komendy:" FontSize="11" FontWeight="Bold" Margin="0,0,0,10"/>
+                                <StackPanel Name="PanelKopacz533Commands" Orientation="Vertical" Margin="0,0,0,15"/>
+
+                                <Button Name="BtnKopacz533AddCommand" Content="+ Dodaj komendę" Width="140" Margin="0,0,0,0" Click="BtnKopacz533AddCommand_Click"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Opcja 2: Kilof 6/3/3 -->
+                        <Border BorderBrush="LightGray" BorderThickness="1" Padding="15">
+                            <StackPanel>
+                                <CheckBox Name="ChkKopacz633Enabled"
+                                          Content="Kopanie Kilof 6/3/3"
+                                          FontSize="12" FontWeight="Bold" Margin="0,0,0,15"
+                                          Checked="ChkKopacz633Enabled_Changed"
+                                          Unchecked="ChkKopacz633Enabled_Changed"/>
+
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                                    <TextBlock Text="Kierunek:" Width="120" VerticalAlignment="Center"/>
+                                    <ComboBox Name="CbKopacz633Direction" Width="150" SelectionChanged="CbKopacz633Direction_SelectionChanged">
+                                        <ComboBoxItem IsSelected="True"></ComboBoxItem>
+                                        <ComboBoxItem>Na wprost</ComboBoxItem>
+                                        <ComboBoxItem>Do góry</ComboBoxItem>
+                                    </ComboBox>
+                                </StackPanel>
+
+                                <!-- Panel dla "Na wprost" -->
+                                <StackPanel Name="PanelKopaczNaWprost" Margin="0,0,0,15" Visibility="Collapsed">
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                                        <TextBlock Text="Szerokość (kratki):" Width="140" VerticalAlignment="Center"/>
+                                        <TextBox Name="TxtKopacz633Width" Width="80"/>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <!-- Panel dla "Do góry" -->
+                                <StackPanel Name="PanelKopaczDoGory" Margin="0,0,0,15" Visibility="Collapsed">
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                        <TextBlock Text="Szerokość (kratki):" Width="140" VerticalAlignment="Center"/>
+                                        <TextBox Name="TxtKopacz633WidthUp" Width="80"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                                        <TextBlock Text="Długość (kratki):" Width="140" VerticalAlignment="Center"/>
+                                        <TextBox Name="TxtKopacz633LengthUp" Width="80"/>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <TextBlock Text="Komendy:" FontSize="11" FontWeight="Bold" Margin="0,0,0,10"/>
+                                <StackPanel Name="PanelKopacz633Commands" Orientation="Vertical" Margin="0,0,0,15"/>
+
+                                <Button Name="BtnKopacz633AddCommand" Content="+ Dodaj komendę" Width="140" Margin="0,0,0,0" Click="BtnKopacz633AddCommand_Click"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ========== BINDY ========== -->
+            <TabItem Header="Bindy">
+                <StackPanel Margin="20" VerticalAlignment="Top">
+                    <TextBlock Text="Wkrótce" FontSize="16" FontWeight="Bold" />
+                    <TextBlock Text="Ta funkcja jest w trakcie tworzenia." Margin="0,5,0,0"/>
+                </StackPanel>
+            </TabItem>
+
+            <!-- ========== USTAWIENIA ========== -->
+            <TabItem Header="Ustawienia">
+                <StackPanel Margin="20" VerticalAlignment="Top">
+                    <TextBlock Text="Ogólne ustawienia" FontSize="14" FontWeight="Bold" Margin="0,0,0,15"/>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <TextBlock Text="Tytuł okna gry:" Width="140" VerticalAlignment="Center"/>
+                        <TextBox Name="TxtTargetWindowTitle" Width="250" Text="Minecraft 1.8.8"/>
+                    </StackPanel>
+                </StackPanel>
+            </TabItem>
+
+        </TabControl>
+
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,10">
+            <Button Name="BtnSaveAll" Content="Zapisz" Width="120" Height="35" Click="BtnSaveAll_Click" FontSize="12"/>
+        </StackPanel>
+    </DockPanel>
+</Window>
