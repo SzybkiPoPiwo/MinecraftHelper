@@ -7,34 +7,65 @@ namespace MinecraftHelper.Services
 {
     public class SettingsService
     {
-        private readonly string _settingsPath;
+        private const string SettingsFile = "settings.json";
 
-        public SettingsService()
+        public void Save(AppSettings settings)
         {
-            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            var dir = Path.Combine(appData, "MinecraftHelper");
-            if (!Directory.Exists(dir))
-                Directory.CreateDirectory(dir);
-
-            _settingsPath = Path.Combine(dir, "settings.json");
+            try
+            {
+                string json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(SettingsFile, json);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Błąd zapisu: {ex.Message}");
+            }
         }
 
         public AppSettings Load()
         {
-            if (!File.Exists(_settingsPath))
-                return new AppSettings();
-
-            var json = File.ReadAllText(_settingsPath);
-            return JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+            try
+            {
+                if (File.Exists(SettingsFile))
+                {
+                    string json = File.ReadAllText(SettingsFile);
+                    return JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Błąd odczytu: {ex.Message}");
+            }
+            return new AppSettings();
         }
 
-        public void Save(AppSettings settings)
+        public void ExportToFile(AppSettings settings, string filePath)
         {
-            var json = JsonSerializer.Serialize(settings, new JsonSerializerOptions
+            try
             {
-                WriteIndented = true
-            });
-            File.WriteAllText(_settingsPath, json);
+                string json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(filePath, json);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Błąd eksportu: {ex.Message}");
+            }
+        }
+
+        public AppSettings ImportFromFile(string filePath)
+        {
+            try
+            {
+                if (!File.Exists(filePath))
+                    throw new FileNotFoundException("Plik nie znaleziony");
+
+                string json = File.ReadAllText(filePath);
+                return JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Błąd importu: {ex.Message}");
+            }
         }
     }
 }
