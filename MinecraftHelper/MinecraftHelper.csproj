@@ -15,4 +15,11 @@
     <Page Remove="Nowy folder\**" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="Services\GameCommandService.cs" />
+    <Compile Remove="Services\GlobalKeyboardHook.cs" />
+    <Compile Remove="Services\GlobalMouseHook.cs" />
+    <Compile Remove="Services\MacroService.cs" />
+  </ItemGroup>
+
 </Project>
