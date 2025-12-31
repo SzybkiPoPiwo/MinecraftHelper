@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -20,6 +21,10 @@
     <Compile Remove="Services\GlobalKeyboardHook.cs" />
     <Compile Remove="Services\GlobalMouseHook.cs" />
     <Compile Remove="Services\MacroService.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Assets\app.ico" />
   </ItemGroup>
 
 </Project>

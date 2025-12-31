@@ -31,6 +31,8 @@ namespace MinecraftHelper.Models
         public int Kopacz633Width { get; set; }
         public int Kopacz633Length { get; set; }
         public List<MinerCommand> Kopacz633Commands { get; set; } = new List<MinerCommand>();
+        public bool JablkaZLisciEnabled { get; set; }
+        public string JablkaZLisciKey { get; set; } = "";
 
         public string TargetWindowTitle { get; set; } = "";
         public List<string> WindowTitleHistory { get; set; } = new List<string>();
