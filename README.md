@@ -1,9 +1,12 @@
 MinecraftHelper
 Prosty Minecraft Helper dla Windows, który ułatwia PVP oraz kopanie tuneli za pomocą konfigurowalnych makr i komend.
+
+<img width="1386" height="893" alt="image" src="https://github.com/user-attachments/assets/955366cf-c2d8-40d6-a7c3-87c7a58c00b7" />
+
+<img width="1386" height="893" alt="image" src="https://github.com/user-attachments/assets/5fc6c85f-90f3-4b18-a4d0-713ca2def305" />
+
+<img width="1386" height="893" alt="image" src="https://github.com/user-attachments/assets/a6a1a954-89fb-4578-9f11-302128646c4a" />
 ​
-
-Tutaj możesz wkleić 1–2 screeny z aplikacji (np. główne okno + zakładka Kopacz).
-
 Funkcje
 Czytelny GUI
 
