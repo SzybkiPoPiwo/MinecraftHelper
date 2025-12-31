@@ -33,7 +33,7 @@ namespace MinecraftHelper.Models
         public List<MinerCommand> Kopacz633Commands { get; set; } = new List<MinerCommand>();
         public bool JablkaZLisciEnabled { get; set; }
         public string JablkaZLisciKey { get; set; } = "";
-
+        public bool PauseWhenCursorVisible { get; set; } = true;
         public string TargetWindowTitle { get; set; } = "";
         public List<string> WindowTitleHistory { get; set; } = new List<string>();
     }
