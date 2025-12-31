@@ -147,6 +147,11 @@ namespace MinecraftHelper
             // JABŁKA Z LIŚCI
             ChkJablkaZLisciEnabled.IsChecked = _settings.JablkaZLisciEnabled;
             TxtJablkaZLisciKey.Text = _settings.JablkaZLisciKey;
+
+            // EQ
+            ChkPauseWhenCursorVisible.IsChecked = _settings.PauseWhenCursorVisible;
+
+
         }
 
         // NOWE: odświeżanie kafelków CPS u góry
@@ -584,7 +589,11 @@ namespace MinecraftHelper
             _settings.JablkaZLisciEnabled = ChkJablkaZLisciEnabled.IsChecked ?? false;
             _settings.JablkaZLisciKey = TxtJablkaZLisciKey.Text;
 
+            // EQ
+            _settings.PauseWhenCursorVisible = ChkPauseWhenCursorVisible.IsChecked ?? true;
+
             _settings.TargetWindowTitle = TxtTargetWindowTitle.Text;
+
         }
 
         private void UpdateStatusBar(string message, string colorName)
@@ -640,6 +649,11 @@ namespace MinecraftHelper
                 ChkMacroManualEnabled.IsChecked = false;
 
             UpdateEnabledStates();
+            MarkDirty();
+        }
+
+        private void ChkPauseWhenCursorVisible_Changed(object sender, RoutedEventArgs e)
+        {
             MarkDirty();
         }
 

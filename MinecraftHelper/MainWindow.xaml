@@ -310,7 +310,7 @@
                             <TextBlock Name="TxtKopacz633Status" Text="Wyłączony" Style="{StaticResource TileValue}"/>
                         </StackPanel>
                     </Border>
-                    
+
                     <Border Name="BorderJablkaZLisciStatus" Grid.Column="5" Style="{StaticResource TileStyle}" Margin="0">
                         <StackPanel>
                             <TextBlock Text="Jabłka z liści" Style="{StaticResource TileHeader}"/>
@@ -387,7 +387,7 @@
                                     <TextBlock Text="LPM + PPM HOLD" FontSize="14" FontWeight="Bold" Margin="10,0,0,0" Foreground="White"/>
                                 </StackPanel>
                             </Border>
-
+                            
                             <Border Style="{StaticResource SectionBorderStyle}">
                                 <StackPanel>
                                     <TextBlock Text="Lewy przycisk" FontSize="13" FontWeight="Bold" Margin="0,0,0,15" Foreground="#569CD6"/>
@@ -493,7 +493,7 @@
                                     </StackPanel>
                                 </StackPanel>
                             </Border>
-                            
+
                             <Border Style="{StaticResource SectionBorderStyle}">
                                 <StackPanel>
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
@@ -521,6 +521,26 @@
                                                 Width="80"
                                                 Click="BtnJablkaZLisciCapture_Click"/>
                                     </StackPanel>
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource SectionBorderStyle}">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                        <CheckBox Name="ChkPauseWhenCursorVisible"
+                      VerticalAlignment="Center"
+                      Checked="ChkPauseWhenCursorVisible_Changed"
+                      Unchecked="ChkPauseWhenCursorVisible_Changed"/>
+                                        <TextBlock Text="Pauza gdy kursor widoczny (ekwipunek/GUI)"
+                       FontSize="13"
+                       FontWeight="Bold"
+                       Margin="10,0,0,0"
+                       Foreground="White"/>
+                                    </StackPanel>
+
+                                    <TextBlock Text="Gdy w grze pojawia się kursor, makra nie klikają."
+                   FontSize="11"
+                   Foreground="#888888"
+                   TextWrapping="Wrap"/>
                                 </StackPanel>
                             </Border>
                         </StackPanel>
