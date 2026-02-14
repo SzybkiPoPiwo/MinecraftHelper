@@ -1,4 +1,4 @@
-﻿<Window x:Class="MinecraftHelper.MainWindow"
+<Window x:Class="MinecraftHelper.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -6,24 +6,24 @@
         xmlns:local="clr-namespace:MinecraftHelper"
         mc:Ignorable="d"
         Title="Minecraft Helper" Height="900" Width="1400"
-        Background="#1E1E1E" Foreground="#E0E0E0">
+        Background="#0F141D" Foreground="#E8EEF8">
 
     <Window.Resources>
         <!-- ========================================== -->
         <!-- KLUCZOWE ZASOBY DLA KODU C# (NIE USUWAĆ) -->
         <!-- ========================================== -->
-        <SolidColorBrush x:Key="TileBg" Color="#2D2D30"/>
-        <SolidColorBrush x:Key="TileBgActive" Color="#152C3D"/>
-        <SolidColorBrush x:Key="TileBorder" Color="#454545"/>
-        <SolidColorBrush x:Key="AccentBrush" Color="#007ACC"/>
+        <SolidColorBrush x:Key="TileBg" Color="#1E2A39"/>
+        <SolidColorBrush x:Key="TileBgActive" Color="#17324A"/>
+        <SolidColorBrush x:Key="TileBorder" Color="#3E536E"/>
+        <SolidColorBrush x:Key="AccentBrush" Color="#2EA8FF"/>
 
         <!-- ===== DARK COMBOBOX (działa + ciemny hover/selected) ===== -->
-        <SolidColorBrush x:Key="ComboBg" Color="#252526"/>
-        <SolidColorBrush x:Key="ComboBorder" Color="#555555"/>
-        <SolidColorBrush x:Key="ComboDropBg" Color="#1E1E1E"/>
-        <SolidColorBrush x:Key="ComboHoverBg" Color="#2D2D30"/>
-        <SolidColorBrush x:Key="ComboSelectedBg" Color="#3A3A3A"/>
-        <SolidColorBrush x:Key="ComboText" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="ComboBg" Color="#161F2B"/>
+        <SolidColorBrush x:Key="ComboBorder" Color="#4B6283"/>
+        <SolidColorBrush x:Key="ComboDropBg" Color="#0F141D"/>
+        <SolidColorBrush x:Key="ComboHoverBg" Color="#1E2A39"/>
+        <SolidColorBrush x:Key="ComboSelectedBg" Color="#2C3A4F"/>
+        <SolidColorBrush x:Key="ComboText" Color="#F8FBFF"/>
 
         <Style x:Key="DarkComboBoxItem" TargetType="ComboBoxItem">
             <Setter Property="Foreground" Value="{StaticResource ComboText}"/>
@@ -43,7 +43,7 @@
                                 <Setter TargetName="Bd" Property="Background" Value="{StaticResource ComboSelectedBg}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Foreground" Value="#777777"/>
+                                <Setter Property="Foreground" Value="#7085A3"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -72,6 +72,34 @@
                                           BorderThickness="{TemplateBinding BorderThickness}"
                                           Foreground="{StaticResource ComboText}"
                                           TextElement.Foreground="{StaticResource ComboText}">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border x:Name="ToggleBorder"
+                                                Background="{TemplateBinding Background}"
+                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                BorderThickness="{TemplateBinding BorderThickness}"
+                                                CornerRadius="3">
+                                            <ContentPresenter/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="ToggleBorder" Property="Background" Value="#1E2A39"/>
+                                                <Setter TargetName="ToggleBorder" Property="BorderBrush" Value="#7085A3"/>
+                                            </Trigger>
+                                            <Trigger Property="IsPressed" Value="True">
+                                                <Setter TargetName="ToggleBorder" Property="Background" Value="#2C3A4F"/>
+                                                <Setter TargetName="ToggleBorder" Property="BorderBrush" Value="#7F94B2"/>
+                                            </Trigger>
+                                            <Trigger Property="IsChecked" Value="True">
+                                                <Setter TargetName="ToggleBorder" Property="Background" Value="#1E2A39"/>
+                                                <Setter TargetName="ToggleBorder" Property="BorderBrush" Value="#7F94B2"/>
+                                            </Trigger>
+                                            <Trigger Property="IsEnabled" Value="False">
+                                                <Setter TargetName="ToggleBorder" Property="Opacity" Value="0.55"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
 
                                 <Grid>
                                     <Grid.ColumnDefinitions>
@@ -89,7 +117,7 @@
 
                                     <Path Grid.Column="1"
                                           Data="M 0 0 L 4 4 L 8 0 Z"
-                                          Fill="#CCCCCC"
+                                          Fill="#CFDBEB"
                                           HorizontalAlignment="Center"
                                           VerticalAlignment="Center"/>
                                 </Grid>
@@ -113,34 +141,6 @@
                                 </Border>
                             </Popup>
                         </Grid>
-
-                        <!-- POPRAWIONE: ciemny hover/pressed/open -->
-                        <ControlTemplate.Triggers>
-
-                            <!-- Hover na polu: CIEMNO -->
-                            <Trigger SourceName="ToggleButton" Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ToggleButton" Property="Background" Value="#2D2D30"/>
-                                <Setter TargetName="ToggleButton" Property="BorderBrush" Value="#777777"/>
-                            </Trigger>
-
-                            <!-- Kliknięcie: jeszcze ciemniej -->
-                            <Trigger SourceName="ToggleButton" Property="IsPressed" Value="True">
-                                <Setter TargetName="ToggleButton" Property="Background" Value="#3A3A3A"/>
-                                <Setter TargetName="ToggleButton" Property="BorderBrush" Value="#888888"/>
-                            </Trigger>
-
-                            <!-- Gdy lista otwarta: też ciemno -->
-                            <Trigger SourceName="ToggleButton" Property="IsChecked" Value="True">
-                                <Setter TargetName="ToggleButton" Property="Background" Value="#2D2D30"/>
-                                <Setter TargetName="ToggleButton" Property="BorderBrush" Value="#888888"/>
-                            </Trigger>
-
-                            <!-- Disabled -->
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="ToggleButton" Property="Opacity" Value="0.55"/>
-                            </Trigger>
-
-                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
@@ -148,10 +148,18 @@
 
         <!-- Styl dla TextBox -->
         <Style TargetType="TextBox">
-            <Setter Property="Background" Value="#333337"/>
+            <Setter Property="Background" Value="#243244"/>
             <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderBrush" Value="#555555"/>
+            <Setter Property="BorderBrush" Value="#4B6283"/>
             <Setter Property="Padding" Value="5"/>
+            <Style.Triggers>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Background" Value="#1A2432"/>
+                    <Setter Property="Foreground" Value="#92A6C1"/>
+                    <Setter Property="BorderBrush" Value="#34465E"/>
+                    <Setter Property="Opacity" Value="0.75"/>
+                </Trigger>
+            </Style.Triggers>
         </Style>
 
         <!-- Styl dla Button -->
@@ -171,31 +179,45 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Background" Value="#2B3C52"/>
+                    <Setter Property="Foreground" Value="#92A6C1"/>
+                    <Setter Property="Opacity" Value="0.6"/>
+                    <Setter Property="Cursor" Value="Arrow"/>
+                </Trigger>
+            </Style.Triggers>
         </Style>
 
         <!-- Styl dla CheckBox -->
         <Style TargetType="CheckBox">
-            <Setter Property="Foreground" Value="#E0E0E0"/>
+            <Setter Property="Foreground" Value="#E8EEF8"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
 
         <!-- Styl dla TextBlock -->
         <Style TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#CCCCCC"/>
+            <Setter Property="Foreground" Value="#CFDBEB"/>
         </Style>
 
         <!-- Styl dla ComboBox (bazowy) -->
         <Style TargetType="ComboBox">
-            <Setter Property="Background" Value="#333337"/>
+            <Setter Property="Background" Value="#243244"/>
             <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderBrush" Value="#555555"/>
+            <Setter Property="BorderBrush" Value="#4B6283"/>
+            <Style.Triggers>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.7"/>
+                    <Setter Property="Foreground" Value="#92A6C1"/>
+                </Trigger>
+            </Style.Triggers>
         </Style>
 
         <!-- Styl dla ramek sekcji -->
         <Style TargetType="Border" x:Key="SectionBorderStyle">
-            <Setter Property="Background" Value="#252526"/>
-            <Setter Property="BorderBrush" Value="#454545"/>
+            <Setter Property="Background" Value="#161F2B"/>
+            <Setter Property="BorderBrush" Value="#3E536E"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="15"/>
             <Setter Property="CornerRadius" Value="4"/>
@@ -206,17 +228,17 @@
     <DockPanel>
 
         <!-- STATUS BAR (GÓRA) -->
-        <Border DockPanel.Dock="Top" Background="#2D2D30" BorderBrush="#3F3F46" BorderThickness="0,0,0,1">
+        <Border DockPanel.Dock="Top" Background="#1E2A39" BorderBrush="#34465E" BorderThickness="0,0,0,1">
             <TextBlock Name="TxtStatusBar"
                        Text="Gotowy"
                        Margin="15,8"
                        FontSize="12"
                        FontWeight="SemiBold"
-                       Foreground="#4EC9B0"/>
+                       Foreground="#38D6B4"/>
         </Border>
 
         <!-- PANEL GŁÓWNY (NAZWA OKNA + STATUSY) -->
-        <Border DockPanel.Dock="Top" Background="#252526" BorderBrush="#3F3F46" BorderThickness="0,0,0,1" Padding="15,12">
+        <Border DockPanel.Dock="Top" Background="#161F2B" BorderBrush="#34465E" BorderThickness="0,0,0,1" Padding="15,12">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -231,14 +253,14 @@
                         <ColumnDefinition Width="1*"/>
                     </Grid.ColumnDefinitions>
 
-                    <TextBlock Grid.Column="0" Text="📌 NAZWA OKNA:" FontSize="12" FontWeight="Bold" Foreground="#AAAAAA" VerticalAlignment="Center" Margin="0,0,15,0"/>
+                    <TextBlock Grid.Column="0" Text="📌 NAZWA OKNA:" FontSize="12" FontWeight="Bold" Foreground="#A8BAD3" VerticalAlignment="Center" Margin="0,0,15,0"/>
 
-                    <Border Grid.Column="1" Background="#333337" BorderBrush="#555555" BorderThickness="1" Padding="8" CornerRadius="3">
+                    <Border Grid.Column="1" Background="#243244" BorderBrush="#4B6283" BorderThickness="1" Padding="8" CornerRadius="3">
                         <TextBlock Name="TxtCurrentWindowTitle"
                                    Text="Brak"
                                    FontSize="13"
                                    FontWeight="Bold"
-                                   Foreground="#569CD6"
+                                   Foreground="#7FC8FF"
                                    TextWrapping="Wrap"
                                    VerticalAlignment="Center"/>
                     </Border>
@@ -247,6 +269,7 @@
                 <!-- Wiersz 3: Kafelki Statusów -->
                 <Grid Grid.Row="2">
                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1*"/>
                         <ColumnDefinition Width="1*"/>
                         <ColumnDefinition Width="1*"/>
                         <ColumnDefinition Width="1*"/>
@@ -267,54 +290,91 @@
                         <Style TargetType="TextBlock" x:Key="TileHeader">
                             <Setter Property="FontWeight" Value="Bold"/>
                             <Setter Property="FontSize" Value="11"/>
-                            <Setter Property="Foreground" Value="#E0E0E0"/>
+                            <Setter Property="Foreground" Value="#E8EEF8"/>
                             <Setter Property="Margin" Value="0,0,0,4"/>
                         </Style>
                         <Style TargetType="TextBlock" x:Key="TileValue">
                             <Setter Property="FontSize" Value="10"/>
-                            <Setter Property="Foreground" Value="#999999"/>
+                            <Setter Property="Foreground" Value="#92A6C1"/>
                         </Style>
                     </Grid.Resources>
 
                     <Border Name="BorderManualStatus" Grid.Column="0" Style="{StaticResource TileStyle}">
                         <StackPanel>
                             <TextBlock Text="LPM + PPM" Style="{StaticResource TileHeader}"/>
-                            <TextBlock Name="TxtManualCps" Text="CPS: Wyłączony" Style="{StaticResource TileValue}"/>
+                            <TextBlock Name="TxtManualCps"
+                                       Text="CPS: Wyłączony"
+                                       Style="{StaticResource TileValue}"
+                                       TextWrapping="Wrap"
+                                       LineStackingStrategy="BlockLineHeight"
+                                       LineHeight="14"/>
                         </StackPanel>
                     </Border>
 
                     <Border Name="BorderAutoLeftStatus" Grid.Column="1" Style="{StaticResource TileStyle}">
                         <StackPanel>
                             <TextBlock Text="AUTO LPM" Style="{StaticResource TileHeader}"/>
-                            <TextBlock Name="TxtAutoLeftCps" Text="CPS: Wyłączony" Style="{StaticResource TileValue}"/>
+                            <TextBlock Name="TxtAutoLeftCps"
+                                       Text="CPS: Wyłączony"
+                                       Style="{StaticResource TileValue}"
+                                       TextWrapping="Wrap"
+                                       LineStackingStrategy="BlockLineHeight"
+                                       LineHeight="14"/>
                         </StackPanel>
                     </Border>
 
                     <Border Name="BorderAutoRightStatus" Grid.Column="2" Style="{StaticResource TileStyle}">
                         <StackPanel>
                             <TextBlock Text="AUTO PPM" Style="{StaticResource TileHeader}"/>
-                            <TextBlock Name="TxtAutoRightCps" Text="CPS: Wyłączony" Style="{StaticResource TileValue}"/>
+                            <TextBlock Name="TxtAutoRightCps"
+                                       Text="CPS: Wyłączony"
+                                       Style="{StaticResource TileValue}"
+                                       TextWrapping="Wrap"
+                                       LineStackingStrategy="BlockLineHeight"
+                                       LineHeight="14"/>
                         </StackPanel>
                     </Border>
 
                     <Border Name="BorderKopacz533Status" Grid.Column="3" Style="{StaticResource TileStyle}">
                         <StackPanel>
                             <TextBlock Text="KOPACZ 5/3/3" Style="{StaticResource TileHeader}"/>
-                            <TextBlock Name="TxtKopacz533Status" Text="Wyłączony" Style="{StaticResource TileValue}"/>
+                            <TextBlock Name="TxtKopacz533Status"
+                                       Text="Wyłączony"
+                                       Style="{StaticResource TileValue}"
+                                       TextWrapping="Wrap"
+                                       LineStackingStrategy="BlockLineHeight"
+                                       LineHeight="14"/>
                         </StackPanel>
                     </Border>
 
                     <Border Name="BorderKopacz633Status" Grid.Column="4" Style="{StaticResource TileStyle}" Margin="0">
                         <StackPanel>
                             <TextBlock Text="KOPACZ 6/3/3" Style="{StaticResource TileHeader}"/>
-                            <TextBlock Name="TxtKopacz633Status" Text="Wyłączony" Style="{StaticResource TileValue}"/>
+                            <TextBlock Name="TxtKopacz633Status"
+                                       Text="Wyłączony"
+                                       Style="{StaticResource TileValue}"
+                                       TextWrapping="Wrap"
+                                       LineStackingStrategy="BlockLineHeight"
+                                       LineHeight="14"/>
                         </StackPanel>
                     </Border>
 
-                    <Border Name="BorderJablkaZLisciStatus" Grid.Column="5" Style="{StaticResource TileStyle}" Margin="0">
+                    <Border Name="BorderJablkaZLisciStatus" Grid.Column="5" Style="{StaticResource TileStyle}">
                         <StackPanel>
                             <TextBlock Text="Jabłka z liści" Style="{StaticResource TileHeader}"/>
-                            <TextBlock Name="TxtJablkaZLisciStatus" Text="Wyłączony" Style="{StaticResource TileValue}"/>
+                            <TextBlock Name="TxtJablkaZLisciStatus"
+                                       Text="Wyłączony"
+                                       Style="{StaticResource TileValue}"
+                                       TextWrapping="Wrap"
+                                       LineStackingStrategy="BlockLineHeight"
+                                       LineHeight="14"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Name="BorderCursorPauseStatus" Grid.Column="6" Style="{StaticResource TileStyle}" Margin="0">
+                        <StackPanel>
+                            <TextBlock Text="Pauza ekwipunku" Style="{StaticResource TileHeader}"/>
+                            <TextBlock Name="TxtCursorPauseStatus" Text="Wyłączona" Style="{StaticResource TileValue}"/>
                         </StackPanel>
                     </Border>
                 </Grid>
@@ -322,18 +382,18 @@
         </Border>
 
         <!-- STATUS FOCUS/ZAPIS (Środkowy pasek) -->
-        <Border DockPanel.Dock="Top" Background="#1E1E1E" BorderBrush="#3F3F46" BorderThickness="0,0,0,1" Padding="15,8">
+        <Border DockPanel.Dock="Top" Background="#0F141D" BorderBrush="#34465E" BorderThickness="0,0,0,1" Padding="15,8">
             <StackPanel>
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                    <Ellipse Name="EllMinecraftFocus" Width="10" Height="10" Fill="#FF5555" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                    <TextBlock Text="Minecraft Focus:" Width="120" Foreground="#CCCCCC"/>
-                    <TextBlock Name="TxtMinecraftFocus" Text="✗ Nie" FontWeight="Bold" Foreground="#FF5555"/>
+                    <Ellipse Name="EllMinecraftFocus" Width="10" Height="10" Fill="#FF6B6B" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <TextBlock Text="Minecraft Focus:" Width="120" Foreground="#CFDBEB"/>
+                    <TextBlock Name="TxtMinecraftFocus" Text="✗ Nie" FontWeight="Bold" Foreground="#FF6B6B"/>
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal">
-                    <Ellipse Name="EllSettingsSaved" Width="10" Height="10" Fill="#4EC9B0" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                    <TextBlock Text="Settings Saved:" Width="120" Foreground="#CCCCCC"/>
-                    <TextBlock Name="TxtSettingsSaved" Text="✓ Tak" FontWeight="Bold" Foreground="#4EC9B0"/>
+                    <Ellipse Name="EllSettingsSaved" Width="10" Height="10" Fill="#38D6B4" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <TextBlock Text="Settings Saved:" Width="120" Foreground="#CFDBEB"/>
+                    <TextBlock Name="TxtSettingsSaved" Text="✓ Tak" FontWeight="Bold" Foreground="#38D6B4"/>
                 </StackPanel>
             </StackPanel>
         </Border>
@@ -345,19 +405,19 @@
                     <Setter Property="Template">
                         <Setter.Value>
                             <ControlTemplate TargetType="TabItem">
-                                <Border Name="Border" Background="#2D2D30" BorderBrush="#3F3F46" BorderThickness="1,1,1,0" Margin="0,0,4,0" Padding="20,10" CornerRadius="4,4,0,0">
+                                <Border Name="Border" Background="#1E2A39" BorderBrush="#34465E" BorderThickness="1,1,1,0" Margin="0,0,4,0" Padding="20,10" CornerRadius="4,4,0,0">
                                     <ContentPresenter x:Name="ContentSite" VerticalAlignment="Center" HorizontalAlignment="Center" ContentSource="Header" RecognizesAccessKey="True"/>
                                 </Border>
                                 <ControlTemplate.Triggers>
                                     <Trigger Property="IsSelected" Value="True">
-                                        <Setter TargetName="Border" Property="Background" Value="#1E1E1E"/>
+                                        <Setter TargetName="Border" Property="Background" Value="#0F141D"/>
                                         <Setter TargetName="Border" Property="BorderThickness" Value="1,2,1,0"/>
                                         <Setter TargetName="Border" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
                                         <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
                                         <Setter Property="FontWeight" Value="Bold"/>
                                     </Trigger>
                                     <Trigger Property="IsSelected" Value="False">
-                                        <Setter Property="Foreground" Value="#999999"/>
+                                        <Setter Property="Foreground" Value="#92A6C1"/>
                                     </Trigger>
                                 </ControlTemplate.Triggers>
                             </ControlTemplate>
@@ -378,7 +438,7 @@
 
                         <!-- LEWA KOLUMNA -->
                         <StackPanel Grid.Column="0">
-                            <Border Background="#252526" CornerRadius="4" Padding="10" Margin="0,0,0,15">
+                            <Border Background="#161F2B" CornerRadius="4" Padding="10" Margin="0,0,0,15">
                                 <StackPanel Orientation="Horizontal">
                                     <CheckBox Name="ChkMacroManualEnabled"
                                               VerticalAlignment="Center"
@@ -388,9 +448,9 @@
                                 </StackPanel>
                             </Border>
                             
-                            <Border Style="{StaticResource SectionBorderStyle}">
+                            <Border Name="BorderManualLeftSection" Style="{StaticResource SectionBorderStyle}">
                                 <StackPanel>
-                                    <TextBlock Text="Lewy przycisk" FontSize="13" FontWeight="Bold" Margin="0,0,0,15" Foreground="#569CD6"/>
+                                    <TextBlock Text="Lewy przycisk" FontSize="13" FontWeight="Bold" Margin="0,0,0,15" Foreground="#7FC8FF"/>
 
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                                         <TextBlock Text="Min CPS:" Width="100" VerticalAlignment="Center"/>
@@ -404,9 +464,9 @@
                                 </StackPanel>
                             </Border>
 
-                            <Border Style="{StaticResource SectionBorderStyle}">
+                            <Border Name="BorderManualRightSection" Style="{StaticResource SectionBorderStyle}">
                                 <StackPanel>
-                                    <TextBlock Text="Prawy przycisk" FontSize="13" FontWeight="Bold" Margin="0,0,0,15" Foreground="#569CD6"/>
+                                    <TextBlock Text="Prawy przycisk" FontSize="13" FontWeight="Bold" Margin="0,0,0,15" Foreground="#7FC8FF"/>
 
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                                         <TextBlock Text="Min CPS:" Width="100" VerticalAlignment="Center"/>
@@ -420,25 +480,32 @@
                                 </StackPanel>
                             </Border>
 
-                            <Border Style="{StaticResource SectionBorderStyle}">
+                            <Border Name="BorderManualBindSection" Style="{StaticResource SectionBorderStyle}">
                                 <StackPanel>
-                                    <TextBlock Text="Przypisz klawisz" FontSize="13" FontWeight="Bold" Margin="0,0,0,15" Foreground="#569CD6"/>
+                                    <TextBlock Text="Przypisz klawisz" FontSize="13" FontWeight="Bold" Margin="0,0,0,15" Foreground="#7FC8FF"/>
 
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                                         <TextBlock Text="Klawisz:" Width="100" VerticalAlignment="Center"/>
-                                        <TextBox Name="TxtMacroManualKey" Width="80" Margin="0,0,10,0" IsReadOnly="True" FontWeight="Bold" Foreground="#4EC9B0"/>
+                                        <TextBox Name="TxtMacroManualKey"
+                                                 Width="80"
+                                                 Margin="0,0,10,0"
+                                                 IsReadOnly="True"
+                                                 FontWeight="Bold"
+                                                 Foreground="#38D6B4"
+                                                 Tag="HoldToggle"
+                                                 PreviewMouseLeftButtonDown="BindKeyBox_PreviewMouseLeftButtonDown"/>
                                         <Button Name="BtnMacroManualCapture" Content="Zapisz" Width="80" Click="BtnMacroManualCapture_Click"/>
                                     </StackPanel>
 
-                                    <TextBlock Text="1 klawisz aktywuje LPM i PPM równocześnie!" FontSize="11" Foreground="#888888" Margin="0,5,0,0" FontStyle="Italic"/>
+                                    <TextBlock Text="1 klawisz aktywuje LPM i PPM równocześnie!" FontSize="11" Foreground="#7F94B2" Margin="0,5,0,0" FontStyle="Italic"/>
                                 </StackPanel>
                             </Border>
                         </StackPanel>
 
-                        <Border Grid.Column="1" Width="1" Background="#3F3F46" Margin="14,0"/>
+                        <Border Grid.Column="1" Width="1" Background="#34465E" Margin="14,0"/>
 
                         <StackPanel Grid.Column="2">
-                            <Border Style="{StaticResource SectionBorderStyle}">
+                            <Border Name="BorderAutoLeftSection" Style="{StaticResource SectionBorderStyle}">
                                 <StackPanel>
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
                                         <CheckBox Name="ChkAutoLeftEnabled"
@@ -450,7 +517,14 @@
 
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                                         <TextBlock Text="Klawisz:" Width="100" VerticalAlignment="Center"/>
-                                        <TextBox Name="TxtAutoLeftKey" Width="80" Margin="0,0,10,0" IsReadOnly="True" FontWeight="Bold" Foreground="#4EC9B0"/>
+                                        <TextBox Name="TxtAutoLeftKey"
+                                                 Width="80"
+                                                 Margin="0,0,10,0"
+                                                 IsReadOnly="True"
+                                                 FontWeight="Bold"
+                                                 Foreground="#38D6B4"
+                                                 Tag="AutoLeft"
+                                                 PreviewMouseLeftButtonDown="BindKeyBox_PreviewMouseLeftButtonDown"/>
                                         <Button Name="BtnAutoLeftCapture" Content="Zapisz" Width="80" Click="BtnAutoLeftCapture_Click"/>
                                     </StackPanel>
 
@@ -466,7 +540,7 @@
                                 </StackPanel>
                             </Border>
 
-                            <Border Style="{StaticResource SectionBorderStyle}">
+                            <Border Name="BorderAutoRightSection" Style="{StaticResource SectionBorderStyle}">
                                 <StackPanel>
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
                                         <CheckBox Name="ChkAutoRightEnabled"
@@ -478,7 +552,14 @@
 
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                                         <TextBlock Text="Klawisz:" Width="100" VerticalAlignment="Center"/>
-                                        <TextBox Name="TxtAutoRightKey" Width="80" Margin="0,0,10,0" IsReadOnly="True" FontWeight="Bold" Foreground="#4EC9B0"/>
+                                        <TextBox Name="TxtAutoRightKey"
+                                                 Width="80"
+                                                 Margin="0,0,10,0"
+                                                 IsReadOnly="True"
+                                                 FontWeight="Bold"
+                                                 Foreground="#38D6B4"
+                                                 Tag="AutoRight"
+                                                 PreviewMouseLeftButtonDown="BindKeyBox_PreviewMouseLeftButtonDown"/>
                                         <Button Name="BtnAutoRightCapture" Content="Zapisz" Width="80" Click="BtnAutoRightCapture_Click"/>
                                     </StackPanel>
 
@@ -494,7 +575,7 @@
                                 </StackPanel>
                             </Border>
 
-                            <Border Style="{StaticResource SectionBorderStyle}">
+                            <Border Name="BorderJablkaSection" Style="{StaticResource SectionBorderStyle}">
                                 <StackPanel>
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
                                         <CheckBox Name="ChkJablkaZLisciEnabled"
@@ -515,15 +596,34 @@
                                                  Margin="0,0,10,0"
                                                  IsReadOnly="True"
                                                  FontWeight="Bold"
-                                                 Foreground="#4EC9B0"/>
+                                                 Foreground="#38D6B4"
+                                                 Tag="JablkaZLisci"
+                                                 PreviewMouseLeftButtonDown="BindKeyBox_PreviewMouseLeftButtonDown"/>
                                         <Button Name="BtnJablkaZLisciCapture"
                                                 Content="Zapisz"
                                                 Width="80"
                                                 Click="BtnJablkaZLisciCapture_Click"/>
                                     </StackPanel>
+
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                        <TextBlock Text="Komenda:" Width="100" VerticalAlignment="Center"/>
+                                        <TextBox Name="TxtJablkaZLisciCommand"
+                                                 Width="260"
+                                                 Margin="0,0,10,0"
+                                                 TextChanged="TxtJablkaZLisciCommand_TextChanged"/>
+                                        <Button Name="BtnSaveJablkaZLisciCommand"
+                                                Content="Zapisz komendę"
+                                                Width="120"
+                                                Click="BtnSaveJablkaZLisciCommand_Click"/>
+                                    </StackPanel>
+
+                                    <TextBlock Text="Co 70 pełnych cykli (slot 1 + slot 2): wybiera slot 1, otwiera chat (T), wpisuje komendę i Enter."
+                                               FontSize="11"
+                                               Foreground="#7F94B2"
+                                               TextWrapping="Wrap"/>
                                 </StackPanel>
                             </Border>
-                            <Border Style="{StaticResource SectionBorderStyle}">
+                            <Border Name="BorderCursorPauseSection" Style="{StaticResource SectionBorderStyle}">
                                 <StackPanel>
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                                         <CheckBox Name="ChkPauseWhenCursorVisible"
@@ -539,7 +639,7 @@
 
                                     <TextBlock Text="Gdy w grze pojawia się kursor, makra nie klikają."
                    FontSize="11"
-                   Foreground="#888888"
+                   Foreground="#7F94B2"
                    TextWrapping="Wrap"/>
                                 </StackPanel>
                             </Border>
@@ -560,7 +660,7 @@
                         <StackPanel>
                             <TextBlock Text="Wybierz opcję kopania:" FontSize="14" FontWeight="Bold" Margin="0,0,0,15" Foreground="White"/>
 
-                            <Border Style="{StaticResource SectionBorderStyle}">
+                            <Border Name="BorderKopacz533Section" Style="{StaticResource SectionBorderStyle}">
                                 <StackPanel>
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
                                         <CheckBox Name="ChkKopacz533Enabled"
@@ -572,18 +672,25 @@
 
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
                                         <TextBlock Text="Klawisz:" Width="120" VerticalAlignment="Center"/>
-                                        <TextBox Name="TxtKopacz533Key" Width="80" Margin="0,0,10,0" IsReadOnly="True" FontWeight="Bold" Foreground="#4EC9B0"/>
+                                        <TextBox Name="TxtKopacz533Key"
+                                                 Width="80"
+                                                 Margin="0,0,10,0"
+                                                 IsReadOnly="True"
+                                                 FontWeight="Bold"
+                                                 Foreground="#38D6B4"
+                                                 Tag="Kopacz533"
+                                                 PreviewMouseLeftButtonDown="BindKeyBox_PreviewMouseLeftButtonDown"/>
                                         <Button Name="BtnKopacz533Capture" Content="Zapisz klawisz" Width="120" Click="BtnKopacz533Capture_Click"/>
                                     </StackPanel>
 
-                                    <TextBlock Text="Komendy:" FontSize="11" FontWeight="Bold" Margin="0,0,0,10" Foreground="#AAAAAA"/>
+                                    <TextBlock Text="Komendy:" FontSize="11" FontWeight="Bold" Margin="0,0,0,10" Foreground="#A8BAD3"/>
                                     <StackPanel Name="PanelKopacz533Commands" Orientation="Vertical" Margin="0,0,0,15"/>
 
-                                    <Button Name="BtnKopacz533AddCommand" Content="+ Dodaj komendę" Width="140" Click="BtnKopacz533AddCommand_Click" Background="#2D2D30" BorderBrush="#555" BorderThickness="1"/>
+                                    <Button Name="BtnKopacz533AddCommand" Content="+ Dodaj komendę" Width="140" Click="BtnKopacz533AddCommand_Click" Background="#1E2A39" BorderBrush="#4B6283" BorderThickness="1"/>
                                 </StackPanel>
                             </Border>
 
-                            <Border Style="{StaticResource SectionBorderStyle}">
+                            <Border Name="BorderKopacz633Section" Style="{StaticResource SectionBorderStyle}">
                                 <StackPanel>
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
                                         <CheckBox Name="ChkKopacz633Enabled"
@@ -595,7 +702,14 @@
 
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
                                         <TextBlock Text="Klawisz:" Width="120" VerticalAlignment="Center"/>
-                                        <TextBox Name="TxtKopacz633Key" Width="80" Margin="0,0,10,0" IsReadOnly="True" FontWeight="Bold" Foreground="#4EC9B0"/>
+                                        <TextBox Name="TxtKopacz633Key"
+                                                 Width="80"
+                                                 Margin="0,0,10,0"
+                                                 IsReadOnly="True"
+                                                 FontWeight="Bold"
+                                                 Foreground="#38D6B4"
+                                                 Tag="Kopacz633"
+                                                 PreviewMouseLeftButtonDown="BindKeyBox_PreviewMouseLeftButtonDown"/>
                                         <Button Name="BtnKopacz633Capture" Content="Zapisz klawisz" Width="120" Click="BtnKopacz633Capture_Click"/>
                                     </StackPanel>
 
@@ -632,44 +746,94 @@
                                         </StackPanel>
                                     </StackPanel>
 
-                                    <TextBlock Text="Komendy:" FontSize="11" FontWeight="Bold" Margin="0,0,0,10" Foreground="#AAAAAA"/>
+                                    <TextBlock Text="Komendy:" FontSize="11" FontWeight="Bold" Margin="0,0,0,10" Foreground="#A8BAD3"/>
                                     <StackPanel Name="PanelKopacz633Commands" Orientation="Vertical" Margin="0,0,0,15"/>
 
-                                    <Button Name="BtnKopacz633AddCommand" Content="+ Dodaj komendę" Width="140" Click="BtnKopacz633AddCommand_Click" Background="#2D2D30" BorderBrush="#555" BorderThickness="1"/>
+                                    <Button Name="BtnKopacz633AddCommand" Content="+ Dodaj komendę" Width="140" Click="BtnKopacz633AddCommand_Click" Background="#1E2A39" BorderBrush="#4B6283" BorderThickness="1"/>
                                 </StackPanel>
                             </Border>
                         </StackPanel>
                     </ScrollViewer>
 
-                    <Border Grid.Column="1" Background="#252526" BorderBrush="#555" BorderThickness="1" Padding="15" Margin="20,0,0,0" VerticalAlignment="Top" CornerRadius="4">
+                    <Border Grid.Column="1" Background="#161F2B" BorderBrush="#4B6283" BorderThickness="1" Padding="15" Margin="20,0,0,0" VerticalAlignment="Top" CornerRadius="4">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                         <StackPanel>
-                            <TextBlock Text="⏱️ PRZELICZNIK" FontSize="13" FontWeight="Bold" Margin="0,0,0,15" Foreground="#569CD6"/>
+                            <TextBlock Text="Informacje kopacza"
+                                       FontSize="13"
+                                       FontWeight="Bold"
+                                       Margin="0,0,0,14"
+                                       Foreground="#7FC8FF"/>
 
-                            <StackPanel Margin="0,0,0,12">
-                                <TextBlock Text="1 minuta" FontSize="11" FontWeight="Bold" Foreground="White"/>
-                                <TextBlock Text="= 60 sekund" FontSize="11" Foreground="#999"/>
+                            <TextBlock Text="Kilof 5/3/3 niszczy się po ok. 35 minutach. Optymalnie ustaw 30 minut (1800 sekund)."
+                                       TextWrapping="Wrap"
+                                       FontSize="11"
+                                       Foreground="#D8E2F0"
+                                       Margin="0,0,0,10"/>
+
+                            <TextBlock Text="Kilof 6/3/3 niszczy się po ok. 5 minutach. Optymalnie ustaw 3 minuty (180 sekund)."
+                                       TextWrapping="Wrap"
+                                       FontSize="11"
+                                       Foreground="#D8E2F0"
+                                       Margin="0,0,0,14"/>
+
+                            <StackPanel Name="PanelKopaczUpwardAfkInfo" Visibility="Collapsed">
+                                <Border BorderBrush="#34465E" BorderThickness="0,1,0,0" Margin="0,0,0,14"/>
+
+                                <TextBlock Text="AFK: ustawienie gracza (Kopacz 6/3/3 - Do góry)"
+                                           FontSize="12"
+                                           FontWeight="Bold"
+                                           Margin="0,0,0,8"
+                                           Foreground="White"/>
+
+                                <TextBlock Text="Przed startem ustaw kamerę zgodnie z F3 (Facing):"
+                                           TextWrapping="Wrap"
+                                           FontSize="11"
+                                           Foreground="#CFDBEB"
+                                           Margin="0,0,0,8"/>
+
+                                <TextBlock Text="Facing West: 90, -90"
+                                           FontSize="11"
+                                           Foreground="#D8E2F0"
+                                           Margin="0,0,0,4"/>
+                                <TextBlock Text="Facing East: -90, 90"
+                                           FontSize="11"
+                                           Foreground="#D8E2F0"
+                                           Margin="0,0,0,4"/>
+                                <TextBlock Text="Facing South: 0, -90"
+                                           FontSize="11"
+                                           Foreground="#D8E2F0"
+                                           Margin="0,0,0,4"/>
+                                <TextBlock Text="Facing North: 180, -90"
+                                           FontSize="11"
+                                           Foreground="#D8E2F0"
+                                           Margin="0,0,0,14"/>
+
+                                <Border BorderBrush="#34465E" BorderThickness="0,1,0,0" Margin="0,0,0,14"/>
                             </StackPanel>
 
-                            <StackPanel Margin="0,0,0,12">
-                                <TextBlock Text="10 minut" FontSize="11" FontWeight="Bold" Foreground="White"/>
-                                <TextBlock Text="= 600 sekund" FontSize="11" Foreground="#999"/>
-                            </StackPanel>
+                            <TextBlock Text="Konwerter minut na sekundy"
+                                       FontSize="12"
+                                       FontWeight="Bold"
+                                       Margin="0,0,0,8"
+                                       Foreground="White"/>
 
-                            <StackPanel Margin="0,0,0,12">
-                                <TextBlock Text="20 minut" FontSize="11" FontWeight="Bold" Foreground="White"/>
-                                <TextBlock Text="= 1200 sekund" FontSize="11" Foreground="#999"/>
-                            </StackPanel>
+                            <TextBlock Text="Minuty:"
+                                       FontSize="11"
+                                       Foreground="#CFDBEB"
+                                       Margin="0,0,0,6"/>
 
-                            <StackPanel Margin="0,0,0,12">
-                                <TextBlock Text="30 minut" FontSize="11" FontWeight="Bold" Foreground="White"/>
-                                <TextBlock Text="= 1800 sekund" FontSize="11" Foreground="#999"/>
-                            </StackPanel>
+                            <TextBox Name="TxtMinutesToSecondsInput"
+                                     Height="28"
+                                     TextChanged="TxtMinutesToSecondsInput_TextChanged"
+                                     Margin="0,0,0,8"/>
 
-                            <StackPanel>
-                                <TextBlock Text="40 minut" FontSize="11" FontWeight="Bold" Foreground="White"/>
-                                <TextBlock Text="= 2400 sekund" FontSize="11" Foreground="#999"/>
-                            </StackPanel>
+                            <TextBlock Name="TxtMinutesToSecondsOutput"
+                                       Text="Wpisz liczbę minut, aby przeliczyć na sekundy."
+                                       FontSize="11"
+                                       Foreground="#92A6C1"
+                                       TextWrapping="Wrap"/>
                         </StackPanel>
+                        </ScrollViewer>
                     </Border>
                 </Grid>
             </TabItem>
@@ -688,16 +852,21 @@
 
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,25">
                                 <TextBlock Text="Tytuł okna gry:" Width="140" VerticalAlignment="Center"/>
-                                <TextBox Name="TxtTargetWindowTitle" Width="300" TextChanged="AnyTextBox_TextChanged"/>
+                                <TextBox Name="TxtTargetWindowTitle" Width="300" TextChanged="TxtTargetWindowTitle_TextChanged"/>
+                                <Button Name="BtnSaveTargetWindowTitle"
+                                        Content="Zapisz okno"
+                                        Width="110"
+                                        Margin="10,0,0,0"
+                                        Click="BtnSaveTargetWindowTitle_Click"/>
                             </StackPanel>
 
-                            <TextBlock Text="Historia tytułów (max 5):" FontSize="12" FontWeight="Bold" Margin="0,0,0,10" Foreground="#569CD6"/>
+                            <TextBlock Text="Historia tytułów (max 5):" FontSize="12" FontWeight="Bold" Margin="0,0,0,10" Foreground="#7FC8FF"/>
                             <StackPanel Name="PanelWindowTitleHistory" Orientation="Vertical" Margin="0,0,0,20"/>
 
                             <TextBlock Text="Wskazówka: Każdy zapisany tytuł pojawia się na liście. Możesz kliknąć aby przypisać."
-                                       FontSize="11" Foreground="#888" TextWrapping="Wrap" Margin="0,0,0,30"/>
+                                       FontSize="11" Foreground="#7F94B2" TextWrapping="Wrap" Margin="0,0,0,30"/>
 
-                            <TextBlock Text="Import/Export ustawień" FontSize="12" FontWeight="Bold" Margin="0,0,0,15" Foreground="#569CD6"/>
+                            <TextBlock Text="Import/Export ustawień" FontSize="12" FontWeight="Bold" Margin="0,0,0,15" Foreground="#7FC8FF"/>
 
                             <StackPanel Orientation="Horizontal">
                                 <Button Name="BtnExportSettings" Content="💾 Exportuj" Width="120" Height="35" Click="BtnExportSettings_Click" Margin="0,0,15,0"/>
@@ -705,23 +874,23 @@
                             </StackPanel>
                         </StackPanel>
 
-                        <Border Grid.Column="1" Background="#252526" BorderBrush="#555" BorderThickness="1" Padding="20" CornerRadius="4" Margin="20,0,0,0" VerticalAlignment="Top">
+                        <Border Grid.Column="1" Background="#161F2B" BorderBrush="#4B6283" BorderThickness="1" Padding="20" CornerRadius="4" Margin="20,0,0,0" VerticalAlignment="Top">
                             <StackPanel>
-                                <TextBlock Text="👨‍💻 Autor" FontSize="13" FontWeight="Bold" Margin="0,0,0,15" Foreground="#569CD6"/>
+                                <TextBlock Text="👨‍💻 Autor" FontSize="13" FontWeight="Bold" Margin="0,0,0,15" Foreground="#7FC8FF"/>
 
                                 <TextBlock Text="SzybkiPoPiwo" FontSize="12" FontWeight="Bold" Foreground="White" Margin="0,0,0,10"/>
 
-                                <TextBlock Text="🔗 Github:" FontSize="11" FontWeight="Bold" Foreground="#CCC"/>
+                                <TextBlock Text="🔗 Github:" FontSize="11" FontWeight="Bold" Foreground="#CFDBEB"/>
                                 <TextBlock FontSize="11" Margin="0,0,0,10">
-                                    <Hyperlink NavigateUri="https://github.com/SzybkiPoPiwo" RequestNavigate="Github_RequestNavigate" Foreground="#007ACC">
+                                    <Hyperlink NavigateUri="https://github.com/SzybkiPoPiwo" RequestNavigate="Github_RequestNavigate" Foreground="#2EA8FF">
                                         https://github.com/SzybkiPoPiwo
                                     </Hyperlink>
                                 </TextBlock>
 
-                                <TextBlock Text="💬 Discord:" FontSize="11" FontWeight="Bold" Foreground="#CCC"/>
+                                <TextBlock Text="💬 Discord:" FontSize="11" FontWeight="Bold" Foreground="#CFDBEB"/>
                                 <TextBox Text="twojstaryricardo"
                          FontSize="11"
-                         Foreground="#7289DA"
+                         Foreground="#97AEFF"
                          IsReadOnly="True"
                          BorderThickness="0"
                          Background="Transparent"
@@ -735,3 +904,4 @@
         </TabControl>
     </DockPanel>
 </Window>
+

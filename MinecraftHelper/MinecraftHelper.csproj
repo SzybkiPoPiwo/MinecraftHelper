@@ -7,21 +7,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    <DefaultItemExcludes>$(DefaultItemExcludes);bin_codex\**;obj_codex\**</DefaultItemExcludes>
   </PropertyGroup>
-
-  <ItemGroup>
-    <Compile Remove="Nowy folder\**" />
-    <EmbeddedResource Remove="Nowy folder\**" />
-    <None Remove="Nowy folder\**" />
-    <Page Remove="Nowy folder\**" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Remove="Services\GameCommandService.cs" />
-    <Compile Remove="Services\GlobalKeyboardHook.cs" />
-    <Compile Remove="Services\GlobalMouseHook.cs" />
-    <Compile Remove="Services\MacroService.cs" />
-  </ItemGroup>
 
   <ItemGroup>
     <Content Include="Assets\app.ico" />

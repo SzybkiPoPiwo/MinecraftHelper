@@ -399,3 +399,8 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+# Local app/runtime files
+/settings.json
+MinecraftHelper/bin_codex/
+MinecraftHelper/obj_codex/

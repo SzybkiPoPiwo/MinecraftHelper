@@ -7,30 +7,40 @@ namespace MinecraftHelper.Services
 {
     public class SettingsService
     {
-        private const string SettingsFile = "settings.json";
+        private const string SettingsFolderName = "Minecraft Helper";
+        private const string SettingsFileName = "settings.json";
+
+        public string SettingsDirectoryPath =>
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), SettingsFolderName);
+
+        public string SettingsFilePath => Path.Combine(SettingsDirectoryPath, SettingsFileName);
+
+        private void EnsureSettingsDirectoryExists()
+        {
+            Directory.CreateDirectory(SettingsDirectoryPath);
+        }
 
         public void Save(AppSettings settings)
         {
-            try
-            {
-                string json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
-                File.WriteAllText(SettingsFile, json);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Błąd zapisu: {ex.Message}");
-            }
+            EnsureSettingsDirectoryExists();
+            string json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(SettingsFilePath, json);
         }
 
         public AppSettings Load()
         {
             try
             {
-                if (File.Exists(SettingsFile))
+                if (File.Exists(SettingsFilePath))
                 {
-                    string json = File.ReadAllText(SettingsFile);
+                    string json = File.ReadAllText(SettingsFilePath);
                     return JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
                 }
+
+                // First run: create a default settings file in AppData.
+                AppSettings defaults = new AppSettings();
+                Save(defaults);
+                return defaults;
             }
             catch (Exception ex)
             {
@@ -43,12 +53,16 @@ namespace MinecraftHelper.Services
         {
             try
             {
+                string? directory = Path.GetDirectoryName(filePath);
+                if (!string.IsNullOrWhiteSpace(directory))
+                    Directory.CreateDirectory(directory);
+
                 string json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(filePath, json);
             }
             catch (Exception ex)
             {
-                throw new Exception($"Błąd eksportu: {ex.Message}");
+                throw new InvalidOperationException("Błąd eksportu ustawień.", ex);
             }
         }
 
@@ -64,7 +78,7 @@ namespace MinecraftHelper.Services
             }
             catch (Exception ex)
             {
-                throw new Exception($"Błąd importu: {ex.Message}");
+                throw new InvalidOperationException("Błąd importu ustawień.", ex);
             }
         }
     }
