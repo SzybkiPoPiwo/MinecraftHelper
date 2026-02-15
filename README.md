@@ -70,6 +70,8 @@ Projekt jest open-source i rozwijany modułowo.
 
 #### PVP
 
+<img width="1584" height="1000" alt="image" src="https://github.com/user-attachments/assets/149a4656-dc0e-4d63-810c-8601da4e483e" />
+
 - `LPM + PPM HOLD`:
   - 1 bind do aktywacji modułu
   - osobne checkboxy: `Lewy przycisk (LPM)` i `Prawy przycisk (PPM)`
@@ -92,6 +94,8 @@ Projekt jest open-source i rozwijany modułowo.
 
 #### Kopacz
 
+<img width="1584" height="1000" alt="image" src="https://github.com/user-attachments/assets/aa8e0cd7-37f6-4a4c-afcc-225b3a0659d6" />
+
 - `Kopacz 5/3/3`:
   - checkbox włączający
   - bind
@@ -109,6 +113,8 @@ Projekt jest open-source i rozwijany modułowo.
 
 #### BINDY
 
+<img width="1584" height="1000" alt="image" src="https://github.com/user-attachments/assets/a8f238cc-d068-4a2a-8242-9b7b1d704c31" />
+
 - checkbox `Włącz moduł BINDY`
 - każdy wiersz ma:
   - `Enabled`
@@ -123,6 +129,8 @@ Projekt jest open-source i rozwijany modułowo.
 
 #### Experimental
 
+<img width="1584" height="1000" alt="image" src="https://github.com/user-attachments/assets/7dedebef-8485-4187-9f41-cec82212cebb" />
+
 - checkbox `Wykrywanie graczy (E)`
 - OCR oparty o linię F3 `E: x/x`
 - `Niestandardowy obszar OCR`:
@@ -133,6 +141,8 @@ Projekt jest open-source i rozwijany modułowo.
   - `Encje (E): x/x`
 
 #### Ustawienia
+
+<img width="1584" height="1000" alt="image" src="https://github.com/user-attachments/assets/96f6f217-5023-4761-ad70-a785f0935889" />
 
 - `Program gry`:
   - lista aktywnych procesów z oknem
