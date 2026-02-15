@@ -6,6 +6,7 @@
         xmlns:local="clr-namespace:MinecraftHelper"
         mc:Ignorable="d"
         Title="Minecraft Helper" Height="900" Width="1400"
+        Icon="Assets/app.ico"
         Background="#0F141D" Foreground="#E8EEF8">
 
     <Window.Resources>
@@ -450,7 +451,17 @@
                             
                             <Border Name="BorderManualLeftSection" Style="{StaticResource SectionBorderStyle}">
                                 <StackPanel>
-                                    <TextBlock Text="Lewy przycisk" FontSize="13" FontWeight="Bold" Margin="0,0,0,15" Foreground="#7FC8FF"/>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                                        <CheckBox Name="ChkHoldLeftEnabled"
+                                                  VerticalAlignment="Center"
+                                                  Checked="ChkHoldLeftEnabled_Changed"
+                                                  Unchecked="ChkHoldLeftEnabled_Changed"/>
+                                        <TextBlock Text="Lewy przycisk (LPM)"
+                                                   FontSize="13"
+                                                   FontWeight="Bold"
+                                                   Margin="10,0,0,0"
+                                                   Foreground="#7FC8FF"/>
+                                    </StackPanel>
 
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                                         <TextBlock Text="Min CPS:" Width="100" VerticalAlignment="Center"/>
@@ -466,7 +477,17 @@
 
                             <Border Name="BorderManualRightSection" Style="{StaticResource SectionBorderStyle}">
                                 <StackPanel>
-                                    <TextBlock Text="Prawy przycisk" FontSize="13" FontWeight="Bold" Margin="0,0,0,15" Foreground="#7FC8FF"/>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                                        <CheckBox Name="ChkHoldRightEnabled"
+                                                  VerticalAlignment="Center"
+                                                  Checked="ChkHoldRightEnabled_Changed"
+                                                  Unchecked="ChkHoldRightEnabled_Changed"/>
+                                        <TextBlock Text="Prawy przycisk (PPM)"
+                                                   FontSize="13"
+                                                   FontWeight="Bold"
+                                                   Margin="10,0,0,0"
+                                                   Foreground="#7FC8FF"/>
+                                    </StackPanel>
 
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                                         <TextBlock Text="Min CPS:" Width="100" VerticalAlignment="Center"/>
@@ -617,7 +638,7 @@
                                                 Click="BtnSaveJablkaZLisciCommand_Click"/>
                                     </StackPanel>
 
-                                    <TextBlock Text="Co 70 pełnych cykli (slot 1 + slot 2): wybiera slot 1, otwiera chat (T), wpisuje komendę i Enter."
+                                    <TextBlock Text="70 cykli: slot 1 nożyce, slot 2 liście. Wybiera chat (T) i zatwierdza ENTER komendę /repair."
                                                FontSize="11"
                                                Foreground="#7F94B2"
                                                TextWrapping="Wrap"/>
@@ -770,7 +791,7 @@
                                        Foreground="#D8E2F0"
                                        Margin="0,0,0,10"/>
 
-                            <TextBlock Text="Kilof 6/3/3 niszczy się po ok. 5 minutach. Optymalnie ustaw 3 minuty (180 sekund)."
+                            <TextBlock Text="Kopacz 6/3/3 (kilof) niszczy się po ok. 5 minutach. Optymalnie ustaw 3 minuty (180 sekund)."
                                        TextWrapping="Wrap"
                                        FontSize="11"
                                        Foreground="#D8E2F0"
@@ -780,6 +801,7 @@
                                 <Border BorderBrush="#34465E" BorderThickness="0,1,0,0" Margin="0,0,0,14"/>
 
                                 <TextBlock Text="AFK: ustawienie gracza (Kopacz 6/3/3 - Do góry)"
+                                           TextWrapping="Wrap"
                                            FontSize="12"
                                            FontWeight="Bold"
                                            Margin="0,0,0,8"
@@ -838,6 +860,164 @@
                 </Grid>
             </TabItem>
 
+            <!-- ========== BINDY ========== -->
+            <TabItem Header="BINDY">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Grid Margin="10,20">
+                        <StackPanel>
+                            <TextBlock Text="Bindowanie komend (jednorazowa pętla)"
+                                       FontSize="14"
+                                       FontWeight="Bold"
+                                       Margin="0,0,0,16"
+                                       Foreground="White"/>
+
+                            <Border Name="BorderBindySection" Style="{StaticResource SectionBorderStyle}">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                                        <CheckBox Name="ChkBindyEnabled"
+                                                  VerticalAlignment="Center"
+                                                  Checked="ChkBindyEnabled_Changed"
+                                                  Unchecked="ChkBindyEnabled_Changed"/>
+                                        <TextBlock Text="Włącz moduł BINDY"
+                                                   FontSize="13"
+                                                   FontWeight="Bold"
+                                                   Margin="10,0,0,0"
+                                                   Foreground="White"/>
+                                    </StackPanel>
+
+                                    <StackPanel Name="PanelBindyContent">
+                                        <TextBlock Text="Każdy wiersz ma własną nazwę, bind i komendę (1 bind = 1 komenda):"
+                                                   FontSize="11"
+                                                   FontWeight="Bold"
+                                                   Margin="0,0,0,10"
+                                                   Foreground="#A8BAD3"/>
+                                        <StackPanel Name="PanelBindyCommands" Orientation="Vertical" Margin="0,0,0,12"/>
+
+                                        <Button Name="BtnBindyAddCommand"
+                                                Content="+ Dodaj bind + komendę"
+                                                Width="180"
+                                                Click="BtnBindyAddCommand_Click"
+                                                Background="#1E2A39"
+                                                BorderBrush="#4B6283"
+                                                BorderThickness="1"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ========== EXPERIMENTAL ========== -->
+            <TabItem Header="Experimental">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Grid Margin="10,20">
+                        <StackPanel>
+                            <TextBlock Text="Uwaga: funkcje Experimental są jeszcze rozwijane. Działają, ale mogą wystąpić błędy."
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,12"
+                                       Foreground="#FBBF24"
+                                       TextWrapping="Wrap"/>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                <CheckBox Name="ChkTestEntitiesEnabled"
+                                          IsChecked="True"
+                                          VerticalAlignment="Center"
+                                          Checked="ChkTestEntitiesEnabled_Changed"
+                                          Unchecked="ChkTestEntitiesEnabled_Changed"/>
+                                <TextBlock Text="Wykrywanie graczy (E)"
+                                           FontSize="12"
+                                           FontWeight="Bold"
+                                           Margin="10,0,0,0"
+                                           Foreground="#7FC8FF"/>
+                            </StackPanel>
+
+                            <TextBlock Text="Wykrywanie graczy/mobów z F3 (test)"
+                                       FontSize="11"
+                                       Margin="0,0,0,12"
+                                       Foreground="#92A6C1"
+                                       TextWrapping="Wrap"/>
+
+                            <StackPanel Name="PanelTestEntitiesContent">
+                                <Border Style="{StaticResource SectionBorderStyle}">
+                                    <StackPanel>
+                                        <TextBlock Text="Automatyczny odczyt F3"
+                                                   FontSize="12"
+                                                   FontWeight="Bold"
+                                                   Margin="0,0,0,12"
+                                                   Foreground="#7FC8FF"/>
+
+                                        <Border Name="BorderTestCustomCaptureSection"
+                                                Background="#161F2B"
+                                                BorderBrush="#4B6283"
+                                                BorderThickness="1"
+                                                CornerRadius="4"
+                                                Padding="10"
+                                                Margin="0,0,0,12">
+                                            <StackPanel>
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                                    <CheckBox Name="ChkTestCustomCaptureEnabled"
+                                                              VerticalAlignment="Center"
+                                                              Checked="ChkTestCustomCaptureEnabled_Changed"
+                                                              Unchecked="ChkTestCustomCaptureEnabled_Changed"/>
+                                                    <TextBlock Text="Niestandardowy obszar OCR"
+                                                               FontSize="12"
+                                                               FontWeight="Bold"
+                                                               Margin="10,0,0,0"
+                                                               Foreground="White"/>
+                                                </StackPanel>
+
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                                    <TextBlock Text="Bind zaznaczania:" Width="170" VerticalAlignment="Center"/>
+                                                    <TextBox Name="TxtTestCustomCaptureBind"
+                                                             Width="100"
+                                                             Margin="0,0,10,0"
+                                                             IsReadOnly="True"
+                                                             FontWeight="Bold"
+                                                             Foreground="#38D6B4"
+                                                             Tag="TestCaptureArea"
+                                                             PreviewMouseLeftButtonDown="BindKeyBox_PreviewMouseLeftButtonDown"/>
+                                                    <Button Name="BtnTestCustomCaptureBind"
+                                                            Content="Zapisz"
+                                                            Width="80"
+                                                            Margin="0,0,10,0"
+                                                            Click="BtnTestCustomCaptureBind_Click"/>
+                                                    <Button Name="BtnTestSelectCaptureArea"
+                                                            Content="Zaznacz obszar"
+                                                            Width="120"
+                                                            Margin="0,0,10,0"
+                                                            Click="BtnTestSelectCaptureArea_Click"/>
+                                                    <Button Name="BtnTestResetCaptureData"
+                                                            Content="Resetuj dane"
+                                                            Width="120"
+                                                            Click="BtnTestResetCaptureData_Click"/>
+                                                </StackPanel>
+
+                                                <TextBlock Name="TxtTestCustomCaptureAreaInfo"
+                                                           Text="Tryb niestandardowy OFF."
+                                                           FontSize="11"
+                                                           Foreground="#92A6C1"
+                                                           TextWrapping="Wrap"/>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                            <TextBlock Text="Encje (E):" Width="170" VerticalAlignment="Center"/>
+                                            <TextBlock Name="TxtTestLiveEntities"
+                                                       Text="-"
+                                                       VerticalAlignment="Center"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="#7FC8FF"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+                </ScrollViewer>
+            </TabItem>
+
             <!-- ========== USTAWIENIA ========== -->
             <TabItem Header="Ustawienia">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -850,21 +1030,79 @@
                         <StackPanel Grid.Column="0">
                             <TextBlock Text="Ogólne ustawienia" FontSize="14" FontWeight="Bold" Margin="0,0,0,20" Foreground="White"/>
 
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,25">
-                                <TextBlock Text="Tytuł okna gry:" Width="140" VerticalAlignment="Center"/>
-                                <TextBox Name="TxtTargetWindowTitle" Width="300" TextChanged="TxtTargetWindowTitle_TextChanged"/>
-                                <Button Name="BtnSaveTargetWindowTitle"
-                                        Content="Zapisz okno"
-                                        Width="110"
-                                        Margin="10,0,0,0"
-                                        Click="BtnSaveTargetWindowTitle_Click"/>
+                            <StackPanel Margin="0,0,0,25">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Program gry:" Width="140" VerticalAlignment="Center"/>
+                                    <ComboBox Name="CbTargetProcessList"
+                                              Width="380"
+                                              Style="{StaticResource DarkComboBox}"
+                                              SelectionChanged="CbTargetProcessList_SelectionChanged"/>
+                                    <Button Name="BtnRefreshTargetProcessList"
+                                            Content="Odśwież"
+                                            Width="90"
+                                            Margin="10,0,0,0"
+                                            Click="BtnRefreshTargetProcessList_Click"/>
+                                    <Button Name="BtnSaveTargetWindowTitle"
+                                            Content="Zapisz program"
+                                            Width="130"
+                                            Margin="10,0,0,0"
+                                            Click="BtnSaveTargetWindowTitle_Click"/>
+                                </StackPanel>
+                                <TextBox Name="TxtTargetWindowTitle"
+                                         Width="300"
+                                         Visibility="Collapsed"/>
                             </StackPanel>
 
-                            <TextBlock Text="Historia tytułów (max 5):" FontSize="12" FontWeight="Bold" Margin="0,0,0,10" Foreground="#7FC8FF"/>
-                            <StackPanel Name="PanelWindowTitleHistory" Orientation="Vertical" Margin="0,0,0,20"/>
+                            <TextBlock Text="Ustawienia HUD (overlay)"
+                                       FontSize="12"
+                                       FontWeight="Bold"
+                                       Margin="0,0,0,12"
+                                       Foreground="#7FC8FF"/>
 
-                            <TextBlock Text="Wskazówka: Każdy zapisany tytuł pojawia się na liście. Możesz kliknąć aby przypisać."
-                                       FontSize="11" Foreground="#7F94B2" TextWrapping="Wrap" Margin="0,0,0,30"/>
+                            <Border Background="#161F2B" BorderBrush="#4B6283" BorderThickness="1" CornerRadius="4" Padding="12" Margin="0,0,0,24">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                        <CheckBox Name="ChkOverlayHudEnabled"
+                                                  VerticalAlignment="Center"
+                                                  Checked="ChkOverlaySettings_Changed"
+                                                  Unchecked="ChkOverlaySettings_Changed"/>
+                                        <TextBlock Text="Panel HUD (overlay)"
+                                                   Margin="10,0,0,0"
+                                                   VerticalAlignment="Center"/>
+                                    </StackPanel>
+
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                        <CheckBox Name="ChkOverlayAnimationsEnabled"
+                                                  VerticalAlignment="Center"
+                                                  Checked="ChkOverlaySettings_Changed"
+                                                  Unchecked="ChkOverlaySettings_Changed"/>
+                                        <TextBlock Text="Animacje HUD"
+                                                   Margin="10,0,0,0"
+                                                   VerticalAlignment="Center"/>
+                                    </StackPanel>
+
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                        <TextBlock Text="Monitor:" Width="140" VerticalAlignment="Center"/>
+                                        <ComboBox Name="CbOverlayMonitor"
+                                                  Width="300"
+                                                  Style="{StaticResource DarkComboBox}"
+                                                  SelectionChanged="CbOverlayMonitor_SelectionChanged"/>
+                                    </StackPanel>
+
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="Pozycja:" Width="140" VerticalAlignment="Center"/>
+                                        <ComboBox Name="CbOverlayCorner"
+                                                  Width="220"
+                                                  Style="{StaticResource DarkComboBox}"
+                                                  SelectionChanged="CbOverlayCorner_SelectionChanged">
+                                            <ComboBoxItem>Prawy dolny</ComboBoxItem>
+                                            <ComboBoxItem>Lewy dolny</ComboBoxItem>
+                                            <ComboBoxItem>Prawy górny</ComboBoxItem>
+                                            <ComboBoxItem>Lewy górny</ComboBoxItem>
+                                        </ComboBox>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
 
                             <TextBlock Text="Import/Export ustawień" FontSize="12" FontWeight="Bold" Margin="0,0,0,15" Foreground="#7FC8FF"/>
 
