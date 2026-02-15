@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:MinecraftHelper"
         mc:Ignorable="d"
-        Title="Minecraft Helper" Height="900" Width="1400"
+        Title="Minecraft Helper" Height="980" Width="1600"
         Icon="Assets/app.ico"
         Background="#0F141D" Foreground="#E8EEF8">
 
@@ -215,6 +215,157 @@
             </Style.Triggers>
         </Style>
 
+        <!-- Styl dla ScrollBar (ciemny motyw) -->
+        <SolidColorBrush x:Key="ScrollTrackBrush" Color="#141E2B"/>
+        <SolidColorBrush x:Key="ScrollTrackBorderBrush" Color="#2F425B"/>
+        <SolidColorBrush x:Key="ScrollThumbBrush" Color="#355171"/>
+        <SolidColorBrush x:Key="ScrollThumbHoverBrush" Color="#46658A"/>
+        <SolidColorBrush x:Key="ScrollThumbPressedBrush" Color="#5A7DA8"/>
+
+        <Style x:Key="DarkScrollRepeatButton" TargetType="RepeatButton">
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RepeatButton">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="0"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="DarkScrollThumbStyle" TargetType="Thumb">
+            <Setter Property="Background" Value="{StaticResource ScrollThumbBrush}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Thumb">
+                        <Border Background="{TemplateBinding Background}"
+                                CornerRadius="3"
+                                Margin="2"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{StaticResource ScrollThumbHoverBrush}"/>
+                </Trigger>
+                <Trigger Property="IsDragging" Value="True">
+                    <Setter Property="Background" Value="{StaticResource ScrollThumbPressedBrush}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style TargetType="ScrollBar">
+            <Setter Property="Width" Value="14"/>
+            <Setter Property="Height" Value="14"/>
+            <Setter Property="Background" Value="{StaticResource ScrollTrackBrush}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{StaticResource ScrollTrackBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="4">
+                            <Grid Margin="0">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="0"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="0"/>
+                                </Grid.RowDefinitions>
+
+                                <RepeatButton Grid.Row="0"
+                                              Visibility="Collapsed"
+                                              Style="{StaticResource DarkScrollRepeatButton}"
+                                              Command="ScrollBar.LineUpCommand"
+                                              CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"/>
+
+                                <Track x:Name="PART_Track" Grid.Row="1" IsDirectionReversed="True">
+                                    <Track.DecreaseRepeatButton>
+                                        <RepeatButton Style="{StaticResource DarkScrollRepeatButton}"
+                                                      Command="ScrollBar.PageUpCommand"
+                                                      CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"/>
+                                    </Track.DecreaseRepeatButton>
+                                    <Track.Thumb>
+                                        <Thumb Style="{StaticResource DarkScrollThumbStyle}"/>
+                                    </Track.Thumb>
+                                    <Track.IncreaseRepeatButton>
+                                        <RepeatButton Style="{StaticResource DarkScrollRepeatButton}"
+                                                      Command="ScrollBar.PageDownCommand"
+                                                      CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"/>
+                                    </Track.IncreaseRepeatButton>
+                                </Track>
+
+                                <RepeatButton Grid.Row="2"
+                                              Visibility="Collapsed"
+                                              Style="{StaticResource DarkScrollRepeatButton}"
+                                              Command="ScrollBar.LineDownCommand"
+                                              CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"/>
+                            </Grid>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="Orientation" Value="Horizontal">
+                    <Setter Property="Width" Value="Auto"/>
+                    <Setter Property="Height" Value="14"/>
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="ScrollBar">
+                                <Border Background="{TemplateBinding Background}"
+                                        BorderBrush="{StaticResource ScrollTrackBorderBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="4">
+                                    <Grid Margin="0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="0"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="0"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <RepeatButton Grid.Column="0"
+                                                      Visibility="Collapsed"
+                                                      Style="{StaticResource DarkScrollRepeatButton}"
+                                                      Command="ScrollBar.LineLeftCommand"
+                                                      CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"/>
+
+                                        <Track x:Name="PART_Track" Grid.Column="1" IsDirectionReversed="False">
+                                            <Track.DecreaseRepeatButton>
+                                                <RepeatButton Style="{StaticResource DarkScrollRepeatButton}"
+                                                              Command="ScrollBar.PageLeftCommand"
+                                                              CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"/>
+                                            </Track.DecreaseRepeatButton>
+                                            <Track.Thumb>
+                                                <Thumb Style="{StaticResource DarkScrollThumbStyle}"/>
+                                            </Track.Thumb>
+                                            <Track.IncreaseRepeatButton>
+                                                <RepeatButton Style="{StaticResource DarkScrollRepeatButton}"
+                                                              Command="ScrollBar.PageRightCommand"
+                                                              CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"/>
+                                            </Track.IncreaseRepeatButton>
+                                        </Track>
+
+                                        <RepeatButton Grid.Column="2"
+                                                      Visibility="Collapsed"
+                                                      Style="{StaticResource DarkScrollRepeatButton}"
+                                                      Command="ScrollBar.LineRightCommand"
+                                                      CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"/>
+                                    </Grid>
+                                </Border>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style TargetType="ScrollViewer">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+
         <!-- Styl dla ramek sekcji -->
         <Style TargetType="Border" x:Key="SectionBorderStyle">
             <Setter Property="Background" Value="#161F2B"/>
@@ -293,6 +444,7 @@
                             <Setter Property="FontSize" Value="11"/>
                             <Setter Property="Foreground" Value="#E8EEF8"/>
                             <Setter Property="Margin" Value="0,0,0,4"/>
+                            <Setter Property="TextWrapping" Value="Wrap"/>
                         </Style>
                         <Style TargetType="TextBlock" x:Key="TileValue">
                             <Setter Property="FontSize" Value="10"/>

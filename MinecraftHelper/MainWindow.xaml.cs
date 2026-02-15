@@ -115,6 +115,7 @@ namespace MinecraftHelper
         private Forms.NotifyIcon? _trayIcon;
         private bool _isExitRequested;
         private bool _isMinimizedToTray;
+        private bool _trayMinimizeBehaviorEnabled;
         private bool _isF3AnalysisInProgress;
         private bool _isTestCaptureSelectionInProgress;
         private readonly object _f3TesseractLock = new object();
@@ -334,7 +335,7 @@ namespace MinecraftHelper
         public MainWindow()
         {
             InitializeComponent();
-            Loaded += (_, __) => ApplyDarkTitleBar();
+            Loaded += MainWindow_Loaded;
             PreviewKeyDown += MainWindow_PreviewKeyDown;
             PreviewMouseDown += MainWindow_PreviewMouseDown;
             StateChanged += MainWindow_StateChanged;
@@ -395,6 +396,21 @@ namespace MinecraftHelper
             UpdateTestF3Estimator();
         }
 
+        private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            ApplyDarkTitleBar();
+
+            // If Windows launches the app minimized (e.g. shortcut setting),
+            // do not auto-hide it to tray on startup.
+            if (WindowState == WindowState.Minimized && !_isMinimizedToTray)
+            {
+                WindowState = WindowState.Normal;
+                Activate();
+            }
+
+            _trayMinimizeBehaviorEnabled = true;
+        }
+
         private void InitializeTrayIcon()
         {
             _trayIcon = new Forms.NotifyIcon
@@ -440,6 +456,9 @@ namespace MinecraftHelper
 
         private void MainWindow_StateChanged(object? sender, EventArgs e)
         {
+            if (!_trayMinimizeBehaviorEnabled)
+                return;
+
             if (WindowState == WindowState.Minimized)
                 MinimizeToTray();
         }
@@ -447,6 +466,9 @@ namespace MinecraftHelper
         private void MainWindow_Closing(object? sender, CancelEventArgs e)
         {
             if (_isExitRequested)
+                return;
+
+            if (!_trayMinimizeBehaviorEnabled)
                 return;
 
             e.Cancel = true;
