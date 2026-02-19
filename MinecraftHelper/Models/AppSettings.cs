@@ -67,6 +67,19 @@ namespace MinecraftHelper.Models
         public int TestCustomCaptureY { get; set; }
         public int TestCustomCaptureWidth { get; set; }
         public int TestCustomCaptureHeight { get; set; }
+        public bool TestFastUpExitEnabled { get; set; }
+        public string TestFastUpExitBind { get; set; } = "";
+        public int TestFastUpExitBlockSlot { get; set; } = 2;
+        public int TestFastUpExitPickaxeSlot { get; set; } = 1;
+        public string TestFastUpExitPickaxeType { get; set; } = "Diamentowy";
+        public int TestFastUpExitLookDurationMs { get; set; } = 70;
+        public bool TestFastUpExitLookDurationEnabled { get; set; } = true;
+        public Dictionary<string, int> TestFastUpExitLookDurationByPickaxe { get; set; } = new Dictionary<string, int>();
+        public int TestFastUpExitBreakDurationMs { get; set; } = 140;
+        public bool TestFastUpExitBreakDurationEnabled { get; set; } = true;
+        public Dictionary<string, int> TestFastUpExitBreakDurationByPickaxe { get; set; } = new Dictionary<string, int>();
+        public int TestFastUpExitPlaceAfterJumpMs { get; set; } = 45;
+        public bool TestFastUpExitPlaceAfterJumpEnabled { get; set; } = true;
         public bool OverlayHudEnabled { get; set; } = true;
         public bool OverlayAnimationsEnabled { get; set; } = true;
         public int OverlayMonitorIndex { get; set; }

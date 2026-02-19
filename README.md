@@ -37,6 +37,8 @@ Projekt jest open-source i rozwijany modułowo.
 - Experimental:
   - OCR F3 pod odczyt `E: x/x`
   - tryb niestandardowego obszaru OCR + bind zaznaczania + reset danych
+  - `Szybkie wyjście do góry` (bind, slot bloku, slot kilofa, typ kilofa, ms trzymania LPM)
+  - autozapis ustawień ms per typ kilofa + notatka sugerowanych wartości
 - Ustawienia:
   - wybór procesu gry z listy uruchomionych okien
   - konfiguracja HUD overlay (włącz, animacje, monitor, pozycja)
@@ -46,6 +48,9 @@ Projekt jest open-source i rozwijany modułowo.
   - kafelki statusu trybów
   - wskaźniki `Minecraft Focus` i `Settings Saved`
   - minimalizacja do traya
+  - tooltipy `?` z opisami działania przy sekcjach makr
+  - ciemny komunikat konfliktu bindów (zajęty klawisz)
+  - ekran startowy (splash) z paskiem ładowania
 
 ---
 
@@ -70,6 +75,8 @@ Projekt jest open-source i rozwijany modułowo.
 
 #### PVP
 
+<img width="1584" height="1000" alt="image" src="https://github.com/user-attachments/assets/149a4656-dc0e-4d63-810c-8601da4e483e" />
+
 - `LPM + PPM HOLD`:
   - 1 bind do aktywacji modułu
   - osobne checkboxy: `Lewy przycisk (LPM)` i `Prawy przycisk (PPM)`
@@ -92,6 +99,8 @@ Projekt jest open-source i rozwijany modułowo.
 
 #### Kopacz
 
+<img width="1584" height="1000" alt="image" src="https://github.com/user-attachments/assets/aa8e0cd7-37f6-4a4c-afcc-225b3a0659d6" />
+
 - `Kopacz 5/3/3`:
   - checkbox włączający
   - bind
@@ -109,6 +118,8 @@ Projekt jest open-source i rozwijany modułowo.
 
 #### BINDY
 
+<img width="1584" height="1000" alt="image" src="https://github.com/user-attachments/assets/a8f238cc-d068-4a2a-8242-9b7b1d704c31" />
+
 - checkbox `Włącz moduł BINDY`
 - każdy wiersz ma:
   - `Enabled`
@@ -123,6 +134,8 @@ Projekt jest open-source i rozwijany modułowo.
 
 #### Experimental
 
+<img width="1584" height="1000" alt="image" src="https://github.com/user-attachments/assets/7dedebef-8485-4187-9f41-cec82212cebb" />
+
 - checkbox `Wykrywanie graczy (E)`
 - OCR oparty o linię F3 `E: x/x`
 - `Niestandardowy obszar OCR`:
@@ -133,6 +146,8 @@ Projekt jest open-source i rozwijany modułowo.
   - `Encje (E): x/x`
 
 #### Ustawienia
+
+<img width="1584" height="1000" alt="image" src="https://github.com/user-attachments/assets/96f6f217-5023-4761-ad70-a785f0935889" />
 
 - `Program gry`:
   - lista aktywnych procesów z oknem
@@ -245,6 +260,19 @@ Uwagi:
   - przechodzi walidację spójności
   - odświeża GUI
   - zapisuje jako aktywne ustawienia lokalne
+
+---
+## 10. Co zostało ostatnio dodane
+
+- `Szybkie wyjście do góry` w `Experimental`:
+  - flow kopania do góry + stawianie bloku pod sobą
+  - osobne ustawienia ms per typ kilofa
+  - autozapis ustawień dla wybranego kilofa
+- nowy popup HUD dla aktywnego `Szybkiego wyjścia do góry` (status + konfiguracja)
+- duży, ciemny komunikat o konflikcie bindów z nazwą zajmującego modułu
+- ekran startowy aplikacji (splash) z paskiem ładowania
+- ikonki `?` z tooltipami opisującymi działanie modułów
+- poprawki układu i spójności sekcji `Experimental` i `Ustawienia`
 
 ---
 ## 11. Kontakt

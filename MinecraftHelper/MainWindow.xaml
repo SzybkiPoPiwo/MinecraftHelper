@@ -190,6 +190,71 @@
             </Style.Triggers>
         </Style>
 
+        <Style x:Key="MacroInfoButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="22"/>
+            <Setter Property="Height" Value="22"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="10,0,0,0"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Cursor" Value="Help"/>
+            <Setter Property="Background" Value="#1F3348"/>
+            <Setter Property="BorderBrush" Value="#4B6283"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Foreground" Value="#7FC8FF"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="InfoBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="11">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="InfoBorder" Property="Background" Value="#2A425D"/>
+                                <Setter TargetName="InfoBorder" Property="BorderBrush" Value="#7FC8FF"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="InfoBorder" Property="Background" Value="#172638"/>
+                                <Setter TargetName="InfoBorder" Property="BorderBrush" Value="#7FC8FF"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="MacroInfoToolTipStyle" TargetType="ToolTip">
+            <Setter Property="Background" Value="#101B2A"/>
+            <Setter Property="Foreground" Value="#DCE8F7"/>
+            <Setter Property="BorderBrush" Value="#4B6283"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="MaxWidth" Value="420"/>
+            <Setter Property="Placement" Value="Mouse"/>
+            <Setter Property="HorizontalOffset" Value="14"/>
+            <Setter Property="VerticalOffset" Value="14"/>
+            <Setter Property="ContentTemplate">
+                <Setter.Value>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding}" TextWrapping="Wrap"/>
+                    </DataTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- Styl dla CheckBox -->
         <Style TargetType="CheckBox">
             <Setter Property="Foreground" Value="#E8EEF8"/>
@@ -612,7 +677,18 @@
                                                    FontSize="13"
                                                    FontWeight="Bold"
                                                    Margin="10,0,0,0"
+                                                   VerticalAlignment="Center"
                                                    Foreground="#7FC8FF"/>
+                                        <Button Content="?"
+                                                Style="{StaticResource MacroInfoButtonStyle}"
+                                                Margin="8,0,0,0"
+                                                ToolTipService.InitialShowDelay="100"
+                                                ToolTipService.ShowDuration="120000">
+                                            <Button.ToolTip>
+                                                <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
+                                                         Content="Aktywacja makra działa na zasadzie pojedynczego kliknięcia LPM - makro aktywuje się i samo bije z ustawioną liczbą CPS. Aby wyłączyć makro, należy ponownie kliknąć LPM."/>
+                                            </Button.ToolTip>
+                                        </Button>
                                     </StackPanel>
 
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
@@ -638,7 +714,18 @@
                                                    FontSize="13"
                                                    FontWeight="Bold"
                                                    Margin="10,0,0,0"
+                                                   VerticalAlignment="Center"
                                                    Foreground="#7FC8FF"/>
+                                        <Button Content="?"
+                                                Style="{StaticResource MacroInfoButtonStyle}"
+                                                Margin="8,0,0,0"
+                                                ToolTipService.InitialShowDelay="100"
+                                                ToolTipService.ShowDuration="120000">
+                                            <Button.ToolTip>
+                                                <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
+                                                         Content="Aktywacja makra polega na trzymaniu PPM. Makro stawia bloki z ustawioną liczbą CPS. Wyłącza się po puszczeniu PPM."/>
+                                            </Button.ToolTip>
+                                        </Button>
                                     </StackPanel>
 
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
@@ -655,7 +742,23 @@
 
                             <Border Name="BorderManualBindSection" Style="{StaticResource SectionBorderStyle}">
                                 <StackPanel>
-                                    <TextBlock Text="Przypisz klawisz" FontSize="13" FontWeight="Bold" Margin="0,0,0,15" Foreground="#7FC8FF"/>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                                        <TextBlock Text="Przypisz klawisz"
+                                                   FontSize="13"
+                                                   FontWeight="Bold"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="#7FC8FF"/>
+                                        <Button Content="?"
+                                                Style="{StaticResource MacroInfoButtonStyle}"
+                                                Margin="8,0,0,0"
+                                                ToolTipService.InitialShowDelay="100"
+                                                ToolTipService.ShowDuration="120000">
+                                            <Button.ToolTip>
+                                                <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
+                                                         Content="Ten bind przełącza jednocześnie makro LPM i PPM HOLD pod jednym klawiszem."/>
+                                            </Button.ToolTip>
+                                        </Button>
+                                    </StackPanel>
 
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                                         <TextBlock Text="Klawisz:" Width="100" VerticalAlignment="Center"/>
@@ -685,7 +788,22 @@
                                                   VerticalAlignment="Center"
                                                   Checked="ChkAutoLeftEnabled_Changed"
                                                   Unchecked="ChkAutoLeftEnabled_Changed"/>
-                                        <TextBlock Text="AUTOMATYCZNY LPM" FontSize="13" FontWeight="Bold" Margin="10,0,0,0" Foreground="White"/>
+                                        <TextBlock Text="AUTOMATYCZNY LPM"
+                                                   FontSize="13"
+                                                   FontWeight="Bold"
+                                                   Margin="10,0,0,0"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="White"/>
+                                        <Button Content="?"
+                                                Style="{StaticResource MacroInfoButtonStyle}"
+                                                Margin="8,0,0,0"
+                                                ToolTipService.InitialShowDelay="100"
+                                                ToolTipService.ShowDuration="120000">
+                                            <Button.ToolTip>
+                                                <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
+                                                         Content="Klasyczne makro uruchamiane po kliknięciu bindu."/>
+                                            </Button.ToolTip>
+                                        </Button>
                                     </StackPanel>
 
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
@@ -720,7 +838,22 @@
                                                   VerticalAlignment="Center"
                                                   Checked="ChkAutoRightEnabled_Changed"
                                                   Unchecked="ChkAutoRightEnabled_Changed"/>
-                                        <TextBlock Text="AUTOMATYCZNY PPM" FontSize="13" FontWeight="Bold" Margin="10,0,0,0" Foreground="White"/>
+                                        <TextBlock Text="AUTOMATYCZNY PPM"
+                                                   FontSize="13"
+                                                   FontWeight="Bold"
+                                                   Margin="10,0,0,0"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="White"/>
+                                        <Button Content="?"
+                                                Style="{StaticResource MacroInfoButtonStyle}"
+                                                Margin="8,0,0,0"
+                                                ToolTipService.InitialShowDelay="100"
+                                                ToolTipService.ShowDuration="120000">
+                                            <Button.ToolTip>
+                                                <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
+                                                         Content="Klasyczne makro uruchamiane po kliknięciu bindu."/>
+                                            </Button.ToolTip>
+                                        </Button>
                                     </StackPanel>
 
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
@@ -759,7 +892,18 @@
                                                    FontSize="13"
                                                    FontWeight="Bold"
                                                    Margin="10,0,0,0"
+                                                   VerticalAlignment="Center"
                                                    Foreground="White"/>
+                                        <Button Content="?"
+                                                Style="{StaticResource MacroInfoButtonStyle}"
+                                                Margin="8,0,0,0"
+                                                ToolTipService.InitialShowDelay="100"
+                                                ToolTipService.ShowDuration="120000">
+                                            <Button.ToolTip>
+                                                <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
+                                                         Content="Aktywacja makra poprzez kliknięcie bindu. Ustaw: 1. slot: nożyce, 2. slot: liście. Ustaw komendę zaczynającą się od '/'. Komenda wpisuje się po kliknięciu przycisku T (czat)."/>
+                                            </Button.ToolTip>
+                                        </Button>
                                     </StackPanel>
 
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
@@ -800,14 +944,25 @@
                                 <StackPanel>
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                                         <CheckBox Name="ChkPauseWhenCursorVisible"
-                      VerticalAlignment="Center"
-                      Checked="ChkPauseWhenCursorVisible_Changed"
-                      Unchecked="ChkPauseWhenCursorVisible_Changed"/>
+                                                  VerticalAlignment="Center"
+                                                  Checked="ChkPauseWhenCursorVisible_Changed"
+                                                  Unchecked="ChkPauseWhenCursorVisible_Changed"/>
                                         <TextBlock Text="Pauza gdy kursor widoczny (ekwipunek/GUI)"
-                       FontSize="13"
-                       FontWeight="Bold"
-                       Margin="10,0,0,0"
-                       Foreground="White"/>
+                                                   FontSize="13"
+                                                   FontWeight="Bold"
+                                                   Margin="10,0,0,0"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="White"/>
+                                        <Button Content="?"
+                                                Style="{StaticResource MacroInfoButtonStyle}"
+                                                Margin="8,0,0,0"
+                                                ToolTipService.InitialShowDelay="100"
+                                                ToolTipService.ShowDuration="120000">
+                                            <Button.ToolTip>
+                                                <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
+                                                         Content="Opcja pauzuje makro, gdy system wykryje kursor (np. otwarcie EQ, wpisywanie komendy, menu itd.)."/>
+                                            </Button.ToolTip>
+                                        </Button>
                                     </StackPanel>
 
                                     <TextBlock Text="Gdy w grze pojawia się kursor, makra nie klikają."
@@ -838,9 +993,21 @@
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
                                         <CheckBox Name="ChkKopacz533Enabled"
                                                   Content="Kopacz 5/3/3"
-                                                  FontSize="13" FontWeight="Bold"
+                                                  FontSize="13"
+                                                  FontWeight="Bold"
+                                                  VerticalAlignment="Center"
                                                   Checked="ChkKopacz533Enabled_Changed"
                                                   Unchecked="ChkKopacz533Enabled_Changed"/>
+                                        <Button Content="?"
+                                                Style="{StaticResource MacroInfoButtonStyle}"
+                                                Margin="8,0,0,0"
+                                                ToolTipService.InitialShowDelay="100"
+                                                ToolTipService.ShowDuration="120000">
+                                            <Button.ToolTip>
+                                                <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
+                                                         Content="Aktywacja za pomocą bindu. Kopie w kierunku, w który patrzysz. Automatycznie włącza Shift. Ustaw komendę do naprawy kilofa (lub dowolną inną).&#10;&#10;UWAGA! Jeśli ustawiasz więcej niż jedną komendę, musisz podać poprawne czasy w sekundach. Przykład:&#10;/repair - 15 s&#10;/bloki - 20 s&#10;Sekundy są liczone od momentu włączenia makra. Nie resetują się po wykonaniu jednej komendy, więc przy kolejnej komendzie ustaw większą wartość sekund, aby uniknąć błędów. Po wykonaniu wszystkich komend makro uruchamia się ponownie."/>
+                                            </Button.ToolTip>
+                                        </Button>
                                     </StackPanel>
 
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
@@ -868,9 +1035,21 @@
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
                                         <CheckBox Name="ChkKopacz633Enabled"
                                                   Content="Kopacz 6/3/3"
-                                                  FontSize="13" FontWeight="Bold"
+                                                  FontSize="13"
+                                                  FontWeight="Bold"
+                                                  VerticalAlignment="Center"
                                                   Checked="ChkKopacz633Enabled_Changed"
                                                   Unchecked="ChkKopacz633Enabled_Changed"/>
+                                        <Button Content="?"
+                                                Style="{StaticResource MacroInfoButtonStyle}"
+                                                Margin="8,0,0,0"
+                                                ToolTipService.InitialShowDelay="100"
+                                                ToolTipService.ShowDuration="120000">
+                                            <Button.ToolTip>
+                                                <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
+                                                         Content="Aktywacja za pomocą bindu. Ustaw stronę kopania oraz liczbę bloków. Jeżeli bloki są ustawione do góry, patrz informacje po prawej stronie.&#10;&#10;Jeżeli nie widzisz Facing pod F3, włącz większą ilość danych w F3 (różne clienty mają opcję zmniejszenia ilości danych w F3).&#10;&#10;UWAGA! Jeśli ustawiasz więcej niż jedną komendę, musisz podać poprawne czasy w sekundach. Przykład:&#10;/repair - 15 s&#10;/bloki - 20 s&#10;Sekundy są liczone od momentu włączenia makra. Nie resetują się po wykonaniu jednej komendy, więc przy kolejnej komendzie ustaw większą wartość sekund, aby uniknąć błędów. Po wykonaniu wszystkich komend makro uruchamia się ponownie."/>
+                                            </Button.ToolTip>
+                                        </Button>
                                     </StackPanel>
 
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
@@ -1034,7 +1213,18 @@
                                                    FontSize="13"
                                                    FontWeight="Bold"
                                                    Margin="10,0,0,0"
+                                                   VerticalAlignment="Center"
                                                    Foreground="White"/>
+                                        <Button Content="?"
+                                                Style="{StaticResource MacroInfoButtonStyle}"
+                                                Margin="8,0,0,0"
+                                                ToolTipService.InitialShowDelay="100"
+                                                ToolTipService.ShowDuration="120000">
+                                            <Button.ToolTip>
+                                                <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
+                                                         Content="Aktywacja poprzez kliknięcie bindu. Makro wykonuje się raz."/>
+                                            </Button.ToolTip>
+                                        </Button>
                                     </StackPanel>
 
                                     <StackPanel Name="PanelBindyContent">
@@ -1082,7 +1272,18 @@
                                            FontSize="12"
                                            FontWeight="Bold"
                                            Margin="10,0,0,0"
+                                           VerticalAlignment="Center"
                                            Foreground="#7FC8FF"/>
+                                <Button Content="?"
+                                        Style="{StaticResource MacroInfoButtonStyle}"
+                                        Margin="8,0,0,0"
+                                        ToolTipService.InitialShowDelay="100"
+                                        ToolTipService.ShowDuration="120000">
+                                    <Button.ToolTip>
+                                        <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
+                                                 Content="Wykrywanie graczy (EXPERIMENTAL). Ustaw bind (najlepiej losowy klawisz, którego użyjesz tylko raz).&#10;&#10;Sposób użycia:&#10;1. Uruchom Minecrafta z włączonym F3.&#10;2. Otwórz czat za pomocą '/'.&#10;3. Kliknij wybrany bind.&#10;4. Zaznacz obszar z danymi z F3 (szukaj zakładki zaczynającej się na E). Dla lepszego działania ustaw mniej danych w F3. Zaznaczanie działa jak wycinanie fragmentu ekranu w narzędziu systemowym Windows."/>
+                                    </Button.ToolTip>
+                                </Button>
                             </StackPanel>
 
                             <TextBlock Text="Wykrywanie graczy/mobów z F3 (test)"
@@ -1108,17 +1309,11 @@
                                                 Padding="10"
                                                 Margin="0,0,0,12">
                                             <StackPanel>
-                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                                                    <CheckBox Name="ChkTestCustomCaptureEnabled"
-                                                              VerticalAlignment="Center"
-                                                              Checked="ChkTestCustomCaptureEnabled_Changed"
-                                                              Unchecked="ChkTestCustomCaptureEnabled_Changed"/>
-                                                    <TextBlock Text="Niestandardowy obszar OCR"
-                                                               FontSize="12"
-                                                               FontWeight="Bold"
-                                                               Margin="10,0,0,0"
-                                                               Foreground="White"/>
-                                                </StackPanel>
+                                                <TextBlock Text="Niestandardowy obszar OCR"
+                                                           FontSize="12"
+                                                           FontWeight="Bold"
+                                                           Margin="0,0,0,10"
+                                                           Foreground="White"/>
 
                                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                                                     <TextBlock Text="Bind zaznaczania:" Width="170" VerticalAlignment="Center"/>
@@ -1147,7 +1342,7 @@
                                                 </StackPanel>
 
                                                 <TextBlock Name="TxtTestCustomCaptureAreaInfo"
-                                                           Text="Tryb niestandardowy OFF."
+                                                           Text="Brak obszaru OCR."
                                                            FontSize="11"
                                                            Foreground="#92A6C1"
                                                            TextWrapping="Wrap"/>
@@ -1165,6 +1360,235 @@
                                     </StackPanel>
                                 </Border>
                             </StackPanel>
+
+                            <Border Name="BorderTestFastUpExitSection"
+                                    Background="Transparent"
+                                    BorderBrush="Transparent"
+                                    BorderThickness="0"
+                                    Padding="0"
+                                    MinHeight="0">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                        <CheckBox Name="ChkTestFastUpExitEnabled"
+                                                  VerticalAlignment="Center"
+                                                  Checked="ChkTestFastUpExitEnabled_Changed"
+                                                  Unchecked="ChkTestFastUpExitEnabled_Changed"/>
+                                        <TextBlock Text="Szybkie wyjście do góry"
+                                                   FontSize="12"
+                                                   FontWeight="Bold"
+                                                   Margin="10,0,0,0"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="#7FC8FF"/>
+                                        <Button Content="?"
+                                                Style="{StaticResource MacroInfoButtonStyle}"
+                                                Margin="8,0,0,0"
+                                                ToolTipService.InitialShowDelay="100"
+                                                ToolTipService.ShowDuration="120000">
+                                            <Button.ToolTip>
+                                                <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
+                                                         Content="Ustaw binda, przypisz miejsce, gdzie będzie blok oraz kilof. Wybierz, jaki kilof używasz (możesz też ustawić ręcznie liczbę ms trzymania LPM podczas kopania).&#10;&#10;Po prawej stronie znajduje się informacja i proponowana liczba ms dla danego kilofa. Ustawienia pod dany kilof zapisują się automatycznie."/>
+                                            </Button.ToolTip>
+                                        </Button>
+                                    </StackPanel>
+                                    <TextBlock Text="Wyjście z podziemi: automatyczne kopanie w górę i stawianie bloku pod sobą."
+                                               FontSize="11"
+                                               Margin="0,0,0,10"
+                                               Foreground="#92A6C1"
+                                               TextWrapping="Wrap"/>
+
+                                    <Border Name="BorderTestFastUpExitContent"
+                                            Background="#161F2B"
+                                            BorderBrush="#4B6283"
+                                            BorderThickness="1"
+                                            CornerRadius="4"
+                                            Padding="10"
+                                            Visibility="Collapsed">
+                                    <Grid Name="PanelTestFastUpExitContent">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="2.2*"/>
+                                            <ColumnDefinition Width="1*"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                                            <TextBlock Text="Opis: wyjście z podziemi."
+                                                       Margin="0,0,0,10"
+                                                       FontSize="11"
+                                                       Foreground="#92A6C1"
+                                                       TextWrapping="Wrap"/>
+
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                                <TextBlock Text="Bind:" Width="170" VerticalAlignment="Center"/>
+                                                <TextBox Name="TxtTestFastUpExitBind"
+                                                         Width="100"
+                                                         Margin="0,0,10,0"
+                                                         IsReadOnly="True"
+                                                         FontWeight="Bold"
+                                                         Foreground="#38D6B4"
+                                                         Tag="FastUpExit"
+                                                         PreviewMouseLeftButtonDown="BindKeyBox_PreviewMouseLeftButtonDown"/>
+                                                <Button Name="BtnTestFastUpExitBind"
+                                                        Content="Zapisz"
+                                                        Width="80"
+                                                        Click="BtnTestFastUpExitBind_Click"/>
+                                            </StackPanel>
+
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                                <TextBlock Text="Opcja blok (slot):" Width="170" VerticalAlignment="Center"/>
+                                                <ComboBox Name="CbTestFastUpExitBlockSlot"
+                                                          Width="170"
+                                                          Style="{StaticResource DarkComboBox}"
+                                                          SelectionChanged="CbTestFastUpExitConfig_SelectionChanged">
+                                                    <ComboBoxItem Content="slot 1"/>
+                                                    <ComboBoxItem Content="slot 2"/>
+                                                    <ComboBoxItem Content="slot 3"/>
+                                                    <ComboBoxItem Content="slot 4"/>
+                                                    <ComboBoxItem Content="slot 5"/>
+                                                    <ComboBoxItem Content="slot 6"/>
+                                                    <ComboBoxItem Content="slot 7"/>
+                                                    <ComboBoxItem Content="slot 8"/>
+                                                    <ComboBoxItem Content="slot 9"/>
+                                                </ComboBox>
+                                            </StackPanel>
+
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                                <TextBlock Text="Opcja kilof (slot):" Width="170" VerticalAlignment="Center"/>
+                                                <ComboBox Name="CbTestFastUpExitPickaxeSlot"
+                                                          Width="170"
+                                                          Style="{StaticResource DarkComboBox}"
+                                                          SelectionChanged="CbTestFastUpExitConfig_SelectionChanged">
+                                                    <ComboBoxItem Content="slot 1"/>
+                                                    <ComboBoxItem Content="slot 2"/>
+                                                    <ComboBoxItem Content="slot 3"/>
+                                                    <ComboBoxItem Content="slot 4"/>
+                                                    <ComboBoxItem Content="slot 5"/>
+                                                    <ComboBoxItem Content="slot 6"/>
+                                                    <ComboBoxItem Content="slot 7"/>
+                                                    <ComboBoxItem Content="slot 8"/>
+                                                    <ComboBoxItem Content="slot 9"/>
+                                                </ComboBox>
+                                            </StackPanel>
+
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                                <TextBlock Text="Typ kilofa:" Width="170" VerticalAlignment="Center"/>
+                                                <ComboBox Name="CbTestFastUpExitPickaxeType"
+                                                          Width="170"
+                                                          Style="{StaticResource DarkComboBox}"
+                                                          SelectionChanged="CbTestFastUpExitConfig_SelectionChanged">
+                                                    <ComboBoxItem Content="Kamienny"/>
+                                                    <ComboBoxItem Content="Żelazny"/>
+                                                    <ComboBoxItem Content="Diamentowy"/>
+                                                    <ComboBoxItem Content="Diamentowy 5/3/3"/>
+                                                </ComboBox>
+                                            </StackPanel>
+
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8" Visibility="Collapsed">
+                                                <TextBlock Text="Czas patrzenia góra/dół (ms):" Width="150" VerticalAlignment="Center"/>
+                                                <CheckBox Name="ChkTestFastUpExitLookMsEnabled"
+                                                          Content="Użyj"
+                                                          Width="60"
+                                                          VerticalAlignment="Center"
+                                                          Margin="0,0,8,0"
+                                                          Checked="ChkTestFastUpExitTimingEnabled_Changed"
+                                                          Unchecked="ChkTestFastUpExitTimingEnabled_Changed"/>
+                                                <Slider Name="SlTestFastUpExitLookMs"
+                                                        Width="160"
+                                                        Minimum="20"
+                                                        Maximum="600"
+                                                        TickFrequency="10"
+                                                        IsSnapToTickEnabled="True"
+                                                        ValueChanged="SlTestFastUpExitLookMs_ValueChanged"/>
+                                                <TextBlock Name="TxtTestFastUpExitLookMsValue"
+                                                           Width="70"
+                                                           Margin="10,0,0,0"
+                                                           VerticalAlignment="Center"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="#7FC8FF"
+                                                           Text="70 ms"/>
+                                            </StackPanel>
+
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                                <TextBlock Text="Czas trzymania LPM (ms):" Width="218" VerticalAlignment="Center"/>
+                                                <Slider Name="SlTestFastUpExitBreakMs"
+                                                        Width="160"
+                                                        Minimum="20"
+                                                        Maximum="1200"
+                                                        TickFrequency="10"
+                                                        IsSnapToTickEnabled="True"
+                                                        ValueChanged="SlTestFastUpExitBreakMs_ValueChanged"/>
+                                                <TextBlock Name="TxtTestFastUpExitBreakMsValue"
+                                                           Width="70"
+                                                           Margin="10,0,0,0"
+                                                           VerticalAlignment="Center"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="#7FC8FF"
+                                                           Text="140 ms"/>
+                                            </StackPanel>
+
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8" Visibility="Collapsed">
+                                                <TextBlock Text="Po podskoku postaw (ms):" Width="150" VerticalAlignment="Center"/>
+                                                <CheckBox Name="ChkTestFastUpExitPlaceMsEnabled"
+                                                          Content="Użyj"
+                                                          Width="60"
+                                                          VerticalAlignment="Center"
+                                                          Margin="0,0,8,0"
+                                                          Checked="ChkTestFastUpExitTimingEnabled_Changed"
+                                                          Unchecked="ChkTestFastUpExitTimingEnabled_Changed"/>
+                                                <Slider Name="SlTestFastUpExitPlaceMs"
+                                                        Width="160"
+                                                        Minimum="20"
+                                                        Maximum="400"
+                                                        TickFrequency="5"
+                                                        IsSnapToTickEnabled="True"
+                                                        ValueChanged="SlTestFastUpExitPlaceMs_ValueChanged"/>
+                                                <TextBlock Name="TxtTestFastUpExitPlaceMsValue"
+                                                           Width="70"
+                                                           Margin="10,0,0,0"
+                                                           VerticalAlignment="Center"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="#7FC8FF"
+                                                           Text="45 ms"/>
+                                            </StackPanel>
+
+                                            <TextBlock Text="Makro: patrzy max góra, kopie, potem slot bloku + dół + podskok i użycie slota."
+                                                       FontSize="11"
+                                                       Foreground="#92A6C1"
+                                                       TextWrapping="Wrap"/>
+                                        </StackPanel>
+
+                                        <Border Grid.Column="1"
+                                                Background="#161F2B"
+                                                BorderBrush="#4B6283"
+                                                BorderThickness="1"
+                                                CornerRadius="4"
+                                                Padding="10"
+                                                VerticalAlignment="Top">
+                                            <StackPanel>
+                                                <TextBlock Text="Notatka ms"
+                                                           FontSize="11"
+                                                           FontWeight="Bold"
+                                                           Foreground="#7FC8FF"/>
+                                                <TextBlock Text="Diamentowy: 750 ms"
+                                                           Margin="0,6,0,0"
+                                                           FontSize="11"
+                                                           Foreground="#F5C860"/>
+                                                <TextBlock Text="Diamentowy 5/3/3: 400 ms"
+                                                           Margin="0,2,0,0"
+                                                           FontSize="11"
+                                                           Foreground="#F5C860"/>
+                                                <TextBlock Text="Żelazny: 700 ms"
+                                                           Margin="0,2,0,0"
+                                                           FontSize="11"
+                                                           Foreground="#F5C860"/>
+                                                <TextBlock Text="Kamienny: 900 ms"
+                                                           Margin="0,2,0,0"
+                                                           FontSize="11"
+                                                           Foreground="#F5C860"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </Grid>
+                                    </Border>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </Grid>
                 </ScrollViewer>
@@ -1205,11 +1629,23 @@
                                          Visibility="Collapsed"/>
                             </StackPanel>
 
-                            <TextBlock Text="Ustawienia HUD (overlay)"
-                                       FontSize="12"
-                                       FontWeight="Bold"
-                                       Margin="0,0,0,12"
-                                       Foreground="#7FC8FF"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                <TextBlock Text="Ustawienia HUD (overlay)"
+                                           FontSize="12"
+                                           FontWeight="Bold"
+                                           VerticalAlignment="Center"
+                                           Foreground="#7FC8FF"/>
+                                <Button Content="?"
+                                        Style="{StaticResource MacroInfoButtonStyle}"
+                                        Margin="8,0,0,0"
+                                        ToolTipService.InitialShowDelay="100"
+                                        ToolTipService.ShowDuration="120000">
+                                    <Button.ToolTip>
+                                        <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
+                                                 Content="W tej sekcji ustawiasz podgląd (pop-up) informacyjny dotyczący danego makra/binda. Możesz wybrać monitor, na którym ma się wyświetlać, oraz jego pozycję. Można wyłączyć animacje lub cały HUD."/>
+                                    </Button.ToolTip>
+                                </Button>
+                            </StackPanel>
 
                             <Border Background="#161F2B" BorderBrush="#4B6283" BorderThickness="1" CornerRadius="4" Padding="12" Margin="0,0,0,24">
                                 <StackPanel>
@@ -1256,7 +1692,23 @@
                                 </StackPanel>
                             </Border>
 
-                            <TextBlock Text="Import/Export ustawień" FontSize="12" FontWeight="Bold" Margin="0,0,0,15" Foreground="#7FC8FF"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                                <TextBlock Text="Import/Export ustawień"
+                                           FontSize="12"
+                                           FontWeight="Bold"
+                                           VerticalAlignment="Center"
+                                           Foreground="#7FC8FF"/>
+                                <Button Content="?"
+                                        Style="{StaticResource MacroInfoButtonStyle}"
+                                        Margin="8,0,0,0"
+                                        ToolTipService.InitialShowDelay="100"
+                                        ToolTipService.ShowDuration="120000">
+                                    <Button.ToolTip>
+                                        <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
+                                                 Content="Ustawienia można przekazywać innym lub zapisywać na komputerze. Domyślnie są zapisywane w %appdata%, w folderze Minecraft Helper."/>
+                                    </Button.ToolTip>
+                                </Button>
+                            </StackPanel>
 
                             <StackPanel Orientation="Horizontal">
                                 <Button Name="BtnExportSettings" Content="💾 Exportuj" Width="120" Height="35" Click="BtnExportSettings_Click" Margin="0,0,15,0"/>

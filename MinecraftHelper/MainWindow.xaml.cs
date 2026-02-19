@@ -53,6 +53,7 @@ namespace MinecraftHelper
         private bool _jablkaRuntimeEnabled;
         private bool _kopacz533RuntimeEnabled;
         private bool _kopacz633RuntimeEnabled;
+        private bool _testFastUpExitRuntimeEnabled;
 
         private bool _holdBindWasDown;
         private bool _autoLeftBindWasDown;
@@ -61,6 +62,7 @@ namespace MinecraftHelper
         private bool _kopacz533BindWasDown;
         private bool _kopacz633BindWasDown;
         private bool _testCaptureBindWasDown;
+        private bool _testFastUpExitBindWasDown;
         private bool _suppressBindToggleUntilRelease;
 
         private DateTime _nextHoldLeftClickAtUtc = DateTime.UtcNow;
@@ -107,6 +109,19 @@ namespace MinecraftHelper
         private string _bindyPendingEntryName = string.Empty;
         private string _bindyLastExecutedName = string.Empty;
         private DateTime _bindyLastExecutedAtUtc = DateTime.MinValue;
+        private DateTime _nextTestFastUpExitActionAtUtc = DateTime.UtcNow;
+        private FastUpExitStage _testFastUpExitStage = FastUpExitStage.LookUp;
+        private DateTime _testFastUpExitBreakHoldUntilUtc = DateTime.UtcNow;
+        private bool _testFastUpExitBreakHoldActive;
+        private DateTime _testFastUpExitPlaceHoldUntilUtc = DateTime.UtcNow;
+        private bool _testFastUpExitPlaceHoldActive;
+        private DateTime _testFastUpExitPlacePulseAtUtc = DateTime.UtcNow;
+        private int _testFastUpExitLookSweepTicksRemaining;
+        private int _testFastUpExitLookSweepBurstsPerTick = FastUpLookSweepBurstsPerTick;
+        private int _testFastUpExitLookSweepDirectionY;
+        private FastUpExitStage _testFastUpExitLookSweepNextStage = FastUpExitStage.LookUp;
+        private DateTime _testFastUpExitJumpHoldUntilUtc = DateTime.UtcNow;
+        private bool _testFastUpExitJumpHoldActive;
         private readonly Dictionary<string, bool> _bindyBindWasDownById = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
         private BindyEntry? _bindyCaptureEntry;
         private TextBox? _bindyCaptureTextBox;
@@ -131,6 +146,14 @@ namespace MinecraftHelper
         private readonly Random _random = new Random();
         private static readonly Regex F3EntityOnlyLineRegex = new Regex(@"^\W*E\s*[:;.,]?\s*([0-9IlOo]{1,2})\s*[/\\|:;.,]\s*([0-9IlOo]{1,3})(?:\W.*)?$", RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
         private static readonly Regex F3EntityFromBlockRegex = new Regex(@"(?:^|[^A-Za-z0-9])E\s*[:;.,]?\s*([0-9IlOo]{1,2})\s*[/\\|:;.,]\s*([0-9IlOo]{1,3})(?=$|[^A-Za-z0-9])", RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+        private const string FastUpDefaultPickaxeType = "Diamentowy";
+        private static readonly string[] FastUpPickaxeTypes =
+        {
+            "Kamienny",
+            "Żelazny",
+            "Diamentowy",
+            "Diamentowy 5/3/3"
+        };
 
         private enum BindTarget
         {
@@ -141,6 +164,7 @@ namespace MinecraftHelper
             Kopacz533,
             Kopacz633,
             JablkaZLisci,
+            FastUpExit,
             TestCaptureArea
         }
 
@@ -174,6 +198,16 @@ namespace MinecraftHelper
             OpenChat,
             TypeCommand,
             SubmitCommand
+        }
+
+        private enum FastUpExitStage
+        {
+            LookUp,
+            SelectPickaxe,
+            BreakBlock,
+            SelectBlock,
+            LookDown,
+            PlaceBlock
         }
 
         private enum Kopacz633StrafeDirection
@@ -226,7 +260,7 @@ namespace MinecraftHelper
         private static extern short GetAsyncKeyState(int vKey);
 
         [DllImport("user32.dll", SetLastError = true)]
-        private static extern void mouse_event(uint dwFlags, uint dx, uint dy, uint dwData, UIntPtr dwExtraInfo);
+        private static extern void mouse_event(uint dwFlags, int dx, int dy, uint dwData, UIntPtr dwExtraInfo);
 
         [DllImport("user32.dll", SetLastError = true)]
         private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
@@ -259,6 +293,7 @@ namespace MinecraftHelper
         private const int VK_MBUTTON = 0x04;
         private const int VK_XBUTTON1 = 0x05;
         private const int VK_XBUTTON2 = 0x06;
+        private const uint MOUSEEVENTF_MOVE = 0x0001;
         private const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
         private const uint MOUSEEVENTF_LEFTUP = 0x0004;
         private const uint MOUSEEVENTF_RIGHTDOWN = 0x0008;
@@ -271,12 +306,30 @@ namespace MinecraftHelper
         private const int VK_D = 0x44;
         private const int VK_W = 0x57;
         private const int VK_S = 0x53;
+        private const int VK_SPACE = 0x20;
         private const int VK_T = 0x54;
         private const int VK_SHIFT = 0x10;
         private const int VK_CONTROL = 0x11;
         private const int VK_MENU = 0x12;
         private const int VK_RETURN = 0x0D;
         private const int VK_ESCAPE = 0x1B;
+        private const int FastUpVerticalStepDelta = 260;
+        private const int FastUpLookDurationMinMs = 20;
+        private const int FastUpLookDurationMaxMs = 600;
+        private const int FastUpBreakDurationDefaultMs = 140;
+        private const int FastUpBreakDurationMinMs = 20;
+        private const int FastUpBreakDurationMaxMs = 1200;
+        private const int FastUpPlaceAfterJumpDefaultMs = 45;
+        private const int FastUpPlaceAfterJumpMinMs = 20;
+        private const int FastUpPlaceAfterJumpMaxMs = 400;
+        private const int FastUpJumpHoldMs = 70;
+        private const int FastUpPlaceHoldMs = 120;
+        private const int FastUpPlacePulseIntervalMs = 22;
+        private const int FastUpSlotSwitchDelayMs = 35;
+        private const int FastUpPlaceDelayMs = 130;
+        private const int FastUpLookSweepTicks = 14;
+        private const int FastUpLookSweepBurstsPerTick = 6;
+        private const double FastUpLookDownDurationScale = 0.6;
         private const int JablkaCommandCycleThreshold = 70;
         private const int JablkaDelayAfterOpenChatMs = 180;
         private const int JablkaDelayAfterInsertCommandMs = 110;
@@ -628,6 +681,10 @@ namespace MinecraftHelper
             _settings.BindyEntries ??= new List<BindyEntry>();
             _settings.JablkaZLisciCommand ??= string.Empty;
             _settings.TestCustomCaptureBind ??= string.Empty;
+            _settings.TestFastUpExitBind ??= string.Empty;
+            _settings.TestFastUpExitPickaxeType ??= FastUpDefaultPickaxeType;
+            _settings.TestFastUpExitLookDurationByPickaxe ??= new Dictionary<string, int>();
+            _settings.TestFastUpExitBreakDurationByPickaxe ??= new Dictionary<string, int>();
             _settings.BindyKey ??= string.Empty;
             _settings.TargetProcessName ??= string.Empty;
             _settings.OverlayCorner ??= "RightBottom";
@@ -643,6 +700,59 @@ namespace MinecraftHelper
                 _settings.TestCustomCaptureWidth = 0;
             if (_settings.TestCustomCaptureHeight < 0)
                 _settings.TestCustomCaptureHeight = 0;
+            if (_settings.TestFastUpExitBlockSlot < 1 || _settings.TestFastUpExitBlockSlot > 9)
+                _settings.TestFastUpExitBlockSlot = 2;
+            if (_settings.TestFastUpExitPickaxeSlot < 1 || _settings.TestFastUpExitPickaxeSlot > 9)
+                _settings.TestFastUpExitPickaxeSlot = 1;
+
+            int legacyLookDurationMs = Math.Clamp(_settings.TestFastUpExitLookDurationMs, FastUpLookDurationMinMs, FastUpLookDurationMaxMs);
+            int legacyBreakDurationMs = NormalizeFastUpBreakDurationMs(_settings.TestFastUpExitBreakDurationMs);
+            var stalePickaxeDurationKeys = new List<string>();
+            foreach (string pickaxeKey in _settings.TestFastUpExitLookDurationByPickaxe.Keys)
+            {
+                if (!IsValidFastUpPickaxeType(pickaxeKey))
+                    stalePickaxeDurationKeys.Add(pickaxeKey);
+            }
+            for (int i = 0; i < stalePickaxeDurationKeys.Count; i++)
+                _settings.TestFastUpExitLookDurationByPickaxe.Remove(stalePickaxeDurationKeys[i]);
+
+            var stalePickaxeBreakDurationKeys = new List<string>();
+            foreach (string pickaxeKey in _settings.TestFastUpExitBreakDurationByPickaxe.Keys)
+            {
+                if (!IsValidFastUpPickaxeType(pickaxeKey))
+                    stalePickaxeBreakDurationKeys.Add(pickaxeKey);
+            }
+            for (int i = 0; i < stalePickaxeBreakDurationKeys.Count; i++)
+                _settings.TestFastUpExitBreakDurationByPickaxe.Remove(stalePickaxeBreakDurationKeys[i]);
+
+            for (int i = 0; i < FastUpPickaxeTypes.Length; i++)
+            {
+                string pickaxeType = FastUpPickaxeTypes[i];
+                if (!_settings.TestFastUpExitLookDurationByPickaxe.TryGetValue(pickaxeType, out int configuredMs))
+                    _settings.TestFastUpExitLookDurationByPickaxe[pickaxeType] = legacyLookDurationMs;
+                else
+                    _settings.TestFastUpExitLookDurationByPickaxe[pickaxeType] = Math.Clamp(configuredMs, FastUpLookDurationMinMs, FastUpLookDurationMaxMs);
+
+                if (!_settings.TestFastUpExitBreakDurationByPickaxe.TryGetValue(pickaxeType, out int configuredBreakMs))
+                    _settings.TestFastUpExitBreakDurationByPickaxe[pickaxeType] = legacyBreakDurationMs;
+                else
+                    _settings.TestFastUpExitBreakDurationByPickaxe[pickaxeType] = NormalizeFastUpBreakDurationMs(configuredBreakMs);
+            }
+
+            _settings.TestFastUpExitPickaxeType = NormalizeFastUpPickaxeType(_settings.TestFastUpExitPickaxeType);
+            if (!_settings.TestFastUpExitLookDurationByPickaxe.TryGetValue(_settings.TestFastUpExitPickaxeType, out int selectedPickaxeLookMs))
+            {
+                selectedPickaxeLookMs = legacyLookDurationMs;
+                _settings.TestFastUpExitLookDurationByPickaxe[_settings.TestFastUpExitPickaxeType] = selectedPickaxeLookMs;
+            }
+            if (!_settings.TestFastUpExitBreakDurationByPickaxe.TryGetValue(_settings.TestFastUpExitPickaxeType, out int selectedPickaxeBreakMs))
+            {
+                selectedPickaxeBreakMs = legacyBreakDurationMs;
+                _settings.TestFastUpExitBreakDurationByPickaxe[_settings.TestFastUpExitPickaxeType] = selectedPickaxeBreakMs;
+            }
+            _settings.TestFastUpExitLookDurationMs = Math.Clamp(selectedPickaxeLookMs, FastUpLookDurationMinMs, FastUpLookDurationMaxMs);
+            _settings.TestFastUpExitBreakDurationMs = NormalizeFastUpBreakDurationMs(selectedPickaxeBreakMs);
+            _settings.TestFastUpExitPlaceAfterJumpMs = NormalizeFastUpPlaceAfterJumpMs(_settings.TestFastUpExitPlaceAfterJumpMs);
             if (!_settings.HoldLeftEnabled && !_settings.HoldRightEnabled)
             {
                 _settings.HoldLeftEnabled = true;
@@ -927,9 +1037,11 @@ namespace MinecraftHelper
             _jablkaRuntimeEnabled = false;
             _kopacz533RuntimeEnabled = false;
             _kopacz633RuntimeEnabled = false;
+            _testFastUpExitRuntimeEnabled = false;
             ResetJablkaRuntimeState();
             ResetKopacz533RuntimeState();
             ResetKopacz633RuntimeState();
+            ResetTestFastUpExitRuntimeState();
             ResetBindyRuntimeState();
             SetKopacz533MiningHold(false);
             SetKopacz633AttackHold(false);
@@ -994,8 +1106,23 @@ namespace MinecraftHelper
 
             // TESTOWE OCR
             ChkTestEntitiesEnabled.IsChecked = _settings.TestEntitiesEnabled;
-            ChkTestCustomCaptureEnabled.IsChecked = _settings.TestCustomCaptureEnabled;
             TxtTestCustomCaptureBind.Text = _settings.TestCustomCaptureBind;
+            ChkTestFastUpExitEnabled.IsChecked = _settings.TestFastUpExitEnabled;
+            TxtTestFastUpExitBind.Text = _settings.TestFastUpExitBind;
+            CbTestFastUpExitBlockSlot.SelectedIndex = Math.Clamp(_settings.TestFastUpExitBlockSlot, 1, 9) - 1;
+            CbTestFastUpExitPickaxeSlot.SelectedIndex = Math.Clamp(_settings.TestFastUpExitPickaxeSlot, 1, 9) - 1;
+            string selectedPickaxeType = NormalizeFastUpPickaxeType(_settings.TestFastUpExitPickaxeType);
+            int selectedPickaxeIndex = Array.IndexOf(FastUpPickaxeTypes, selectedPickaxeType);
+            CbTestFastUpExitPickaxeType.SelectedIndex = selectedPickaxeIndex >= 0 ? selectedPickaxeIndex : Array.IndexOf(FastUpPickaxeTypes, FastUpDefaultPickaxeType);
+            if (ChkTestFastUpExitLookMsEnabled != null)
+                ChkTestFastUpExitLookMsEnabled.IsChecked = _settings.TestFastUpExitLookDurationEnabled;
+            if (ChkTestFastUpExitPlaceMsEnabled != null)
+                ChkTestFastUpExitPlaceMsEnabled.IsChecked = _settings.TestFastUpExitPlaceAfterJumpEnabled;
+            ApplyFastUpLookSliderForPickaxe(selectedPickaxeType);
+            ApplyFastUpBreakSliderForPickaxe(selectedPickaxeType);
+            if (SlTestFastUpExitPlaceMs != null)
+                SlTestFastUpExitPlaceMs.Value = NormalizeFastUpPlaceAfterJumpMs(_settings.TestFastUpExitPlaceAfterJumpMs);
+            UpdateTestFastUpExitPlaceDurationLabel(NormalizeFastUpPlaceAfterJumpMs(_settings.TestFastUpExitPlaceAfterJumpMs));
             UpdateTestCustomCaptureAreaInfo();
 
             // OVERLAY
@@ -1026,20 +1153,10 @@ namespace MinecraftHelper
             if (TxtTestCustomCaptureAreaInfo == null)
                 return;
 
-            bool customEnabled = ChkTestCustomCaptureEnabled?.IsChecked == true;
             bool hasArea = HasCustomCaptureAreaConfigured();
-
-            if (!customEnabled)
-            {
-                TxtTestCustomCaptureAreaInfo.Text = hasArea
-                    ? $"Tryb niestandardowy OFF. Zapisany obszar: x={_settings.TestCustomCaptureX}, y={_settings.TestCustomCaptureY}, {_settings.TestCustomCaptureWidth}x{_settings.TestCustomCaptureHeight}."
-                    : "Tryb niestandardowy OFF.";
-                return;
-            }
-
             TxtTestCustomCaptureAreaInfo.Text = hasArea
-                ? $"Tryb niestandardowy ON. Obszar: x={_settings.TestCustomCaptureX}, y={_settings.TestCustomCaptureY}, {_settings.TestCustomCaptureWidth}x{_settings.TestCustomCaptureHeight} (względem okna gry)."
-                : "Tryb niestandardowy ON, ale brak obszaru. Kliknij \"Zaznacz obszar\".";
+                ? $"Obszar OCR: x={_settings.TestCustomCaptureX}, y={_settings.TestCustomCaptureY}, {_settings.TestCustomCaptureWidth}x{_settings.TestCustomCaptureHeight} (względem okna gry)."
+                : "Brak obszaru OCR. Kliknij \"Zaznacz obszar\".";
         }
 
         private static string GetBindTargetLabel(BindTarget target)
@@ -1052,6 +1169,7 @@ namespace MinecraftHelper
                 BindTarget.Kopacz533 => "Kopacz 5/3/3",
                 BindTarget.Kopacz633 => "Kopacz 6/3/3",
                 BindTarget.JablkaZLisci => "Jabłka z liści",
+                BindTarget.FastUpExit => "Szybkie wyjście do góry",
                 BindTarget.TestCaptureArea => "Experimental OCR (obszar)",
                 _ => "bind"
             };
@@ -1072,6 +1190,7 @@ namespace MinecraftHelper
                 BindTarget.Kopacz533 => BtnKopacz533Capture,
                 BindTarget.Kopacz633 => BtnKopacz633Capture,
                 BindTarget.JablkaZLisci => BtnJablkaZLisciCapture,
+                BindTarget.FastUpExit => BtnTestFastUpExitBind,
                 BindTarget.TestCaptureArea => BtnTestCustomCaptureBind,
                 _ => null
             };
@@ -1087,6 +1206,7 @@ namespace MinecraftHelper
                 BindTarget.Kopacz533 => TxtKopacz533Key,
                 BindTarget.Kopacz633 => TxtKopacz633Key,
                 BindTarget.JablkaZLisci => TxtJablkaZLisciKey,
+                BindTarget.FastUpExit => TxtTestFastUpExitBind,
                 BindTarget.TestCaptureArea => TxtTestCustomCaptureBind,
                 _ => null
             };
@@ -1100,6 +1220,7 @@ namespace MinecraftHelper
             yield return BindTarget.Kopacz533;
             yield return BindTarget.Kopacz633;
             yield return BindTarget.JablkaZLisci;
+            yield return BindTarget.FastUpExit;
             yield return BindTarget.TestCaptureArea;
         }
 
@@ -1113,6 +1234,7 @@ namespace MinecraftHelper
                 BindTarget.Kopacz533 => "core:kopacz-533",
                 BindTarget.Kopacz633 => "core:kopacz-633",
                 BindTarget.JablkaZLisci => "core:jablka",
+                BindTarget.FastUpExit => "core:fast-up-exit",
                 BindTarget.TestCaptureArea => "core:test-capture",
                 _ => "core:unknown"
             };
@@ -1158,6 +1280,7 @@ namespace MinecraftHelper
                 BindTarget.Kopacz533,
                 BindTarget.Kopacz633,
                 BindTarget.JablkaZLisci,
+                BindTarget.FastUpExit,
                 BindTarget.TestCaptureArea
             };
 
@@ -1199,8 +1322,23 @@ namespace MinecraftHelper
 
         private void ShowBindConflict(string keyText, string conflictOwnerLabel, string requestedOwnerLabel)
         {
-            string message = $"Klawisz {keyText} jest już przypisany do: {conflictOwnerLabel}.";
-            UpdateStatusBar(message, "Orange");
+            string normalizedKey = string.IsNullOrWhiteSpace(keyText) ? "?" : keyText.Trim();
+            string conflictOwner = string.IsNullOrWhiteSpace(conflictOwnerLabel) ? "innej funkcji" : conflictOwnerLabel.Trim();
+            string requestedOwner = string.IsNullOrWhiteSpace(requestedOwnerLabel) ? "tej funkcji" : requestedOwnerLabel.Trim();
+
+            string shortMessage = $"Klawisz {normalizedKey} jest już przypisany do: {conflictOwner}.";
+            string fullMessage =
+                $"Nie można zapisać bindu dla: {requestedOwner}.\n\n" +
+                $"Klawisz: {normalizedKey}\n" +
+                $"Jest już zajęty przez: {conflictOwner}\n\n" +
+                "Wybierz inny klawisz i kliknij \"Zapisz\" ponownie.";
+
+            UpdateStatusBar(shortMessage, "Orange");
+            var dialog = new BindConflictDialogWindow(requestedOwner, normalizedKey, conflictOwner)
+            {
+                Owner = this
+            };
+            dialog.ShowDialog();
         }
 
         private void UpdateBindCaptureVisuals()
@@ -1238,6 +1376,7 @@ namespace MinecraftHelper
             RefreshBindSaveButton(BindTarget.Kopacz533);
             RefreshBindSaveButton(BindTarget.Kopacz633);
             RefreshBindSaveButton(BindTarget.JablkaZLisci);
+            RefreshBindSaveButton(BindTarget.FastUpExit);
             RefreshBindSaveButton(BindTarget.TestCaptureArea);
             UpdateBindCaptureVisuals();
         }
@@ -1621,6 +1760,7 @@ namespace MinecraftHelper
             bool kop533ModeSelected = ChkKopacz533Enabled.IsChecked == true;
             bool kop633ModeSelected = ChkKopacz633Enabled.IsChecked == true;
             bool testEntitiesModeSelected = ChkTestEntitiesEnabled.IsChecked == true;
+            bool fastUpModeSelected = ChkTestFastUpExitEnabled.IsChecked == true;
 
             if (_isPausedByCursorVisibility)
             {
@@ -1652,6 +1792,9 @@ namespace MinecraftHelper
             bool kop633Visible = kop633ModeSelected && (_kopacz633RuntimeEnabled || _kopacz633CommandStage != Kopacz633CommandStage.None || _kopacz633ResumeMiningPending);
             if (kop633Visible)
                 entries.Add(BuildKopacz633OverlayEntry(now));
+
+            if (fastUpModeSelected && _testFastUpExitRuntimeEnabled)
+                entries.Add(BuildFastUpExitOverlayEntry());
 
             if (testEntitiesModeSelected)
             {
@@ -1820,6 +1963,27 @@ namespace MinecraftHelper
                 commandLine;
 
             return new OverlayHudEntry("KOPACZ 6/3/3", body, OverlayHudTone.Active);
+        }
+
+        private OverlayHudEntry BuildFastUpExitOverlayEntry()
+        {
+            string bindLabel = GetConfiguredBindLabel(TxtTestFastUpExitBind.Text);
+            string runtimeState = GetRuntimeStateLabel(_testFastUpExitRuntimeEnabled);
+            int pickaxeSlot = GetSelectedTestFastUpSlot(CbTestFastUpExitPickaxeSlot, _settings.TestFastUpExitPickaxeSlot);
+            int blockSlot = GetSelectedTestFastUpSlot(CbTestFastUpExitBlockSlot, _settings.TestFastUpExitBlockSlot);
+            string pickaxeType = GetSelectedTestFastUpPickaxeType();
+            int breakMs = GetConfiguredFastUpBreakDurationMs();
+
+            string body =
+                $"Bind: {bindLabel}\n" +
+                $"Stan: {runtimeState}\n" +
+                $"Kilof: {pickaxeType} | Slot: {pickaxeSlot}\n" +
+                $"Blok: slot {blockSlot} | LPM: {breakMs} ms";
+
+            return new OverlayHudEntry(
+                "SZYBKIE WYJŚCIE DO GÓRY",
+                body,
+                _isPausedByCursorVisibility ? OverlayHudTone.Warning : OverlayHudTone.Active);
         }
 
         private string BuildKopacz533CommandOverlayLine(DateTime now)
@@ -2095,7 +2259,8 @@ namespace MinecraftHelper
 
             bool cursorPauseOn = ChkPauseWhenCursorVisible.IsChecked == true;
             bool testEntitiesOn = ChkTestEntitiesEnabled?.IsChecked == true;
-            bool testCustomOn = testEntitiesOn && ChkTestCustomCaptureEnabled?.IsChecked == true;
+            bool testCustomOn = testEntitiesOn;
+            bool testFastUpOn = ChkTestFastUpExitEnabled?.IsChecked == true;
             if (PanelTestEntitiesContent != null)
                 PanelTestEntitiesContent.Visibility = testEntitiesOn ? Visibility.Visible : Visibility.Collapsed;
             if (TxtTestCustomCaptureBind != null)
@@ -2106,6 +2271,44 @@ namespace MinecraftHelper
                 BtnTestSelectCaptureArea.IsEnabled = testCustomOn;
             if (BtnTestResetCaptureData != null)
                 BtnTestResetCaptureData.IsEnabled = testEntitiesOn;
+            if (BorderTestFastUpExitContent != null)
+                BorderTestFastUpExitContent.Visibility = testFastUpOn ? Visibility.Visible : Visibility.Collapsed;
+            if (PanelTestFastUpExitContent != null)
+                PanelTestFastUpExitContent.IsEnabled = testFastUpOn;
+            if (TxtTestFastUpExitBind != null)
+                TxtTestFastUpExitBind.IsEnabled = testFastUpOn;
+            if (BtnTestFastUpExitBind != null)
+                BtnTestFastUpExitBind.IsEnabled = testFastUpOn;
+            if (CbTestFastUpExitBlockSlot != null)
+                CbTestFastUpExitBlockSlot.IsEnabled = testFastUpOn;
+            if (CbTestFastUpExitPickaxeSlot != null)
+                CbTestFastUpExitPickaxeSlot.IsEnabled = testFastUpOn;
+            if (CbTestFastUpExitPickaxeType != null)
+                CbTestFastUpExitPickaxeType.IsEnabled = testFastUpOn;
+            if (ChkTestFastUpExitLookMsEnabled != null)
+                ChkTestFastUpExitLookMsEnabled.IsEnabled = testFastUpOn;
+            if (ChkTestFastUpExitPlaceMsEnabled != null)
+                ChkTestFastUpExitPlaceMsEnabled.IsEnabled = testFastUpOn;
+            bool lookMsEnabled = testFastUpOn && (ChkTestFastUpExitLookMsEnabled?.IsChecked == true);
+            bool breakMsEnabled = testFastUpOn;
+            bool placeMsEnabled = testFastUpOn && (ChkTestFastUpExitPlaceMsEnabled?.IsChecked == true);
+            if (SlTestFastUpExitLookMs != null)
+                SlTestFastUpExitLookMs.IsEnabled = lookMsEnabled;
+            if (SlTestFastUpExitBreakMs != null)
+                SlTestFastUpExitBreakMs.IsEnabled = breakMsEnabled;
+            if (SlTestFastUpExitPlaceMs != null)
+                SlTestFastUpExitPlaceMs.IsEnabled = placeMsEnabled;
+            if (TxtTestFastUpExitLookMsValue != null)
+                TxtTestFastUpExitLookMsValue.IsEnabled = lookMsEnabled;
+            if (TxtTestFastUpExitBreakMsValue != null)
+                TxtTestFastUpExitBreakMsValue.IsEnabled = breakMsEnabled;
+            if (TxtTestFastUpExitPlaceMsValue != null)
+                TxtTestFastUpExitPlaceMsValue.IsEnabled = placeMsEnabled;
+            if (!testFastUpOn)
+            {
+                _testFastUpExitRuntimeEnabled = false;
+                ResetTestFastUpExitRuntimeState();
+            }
 
             SetSectionVisualState(BorderManualLeftSection, holdLeftOn);
             SetSectionVisualState(BorderManualRightSection, holdRightOn);
@@ -2118,6 +2321,7 @@ namespace MinecraftHelper
             SetSectionVisualState(BorderKopacz633Section, kop633On);
             SetSectionVisualState(BorderBindySection, bindyOn);
             SetSectionVisualState(BorderTestCustomCaptureSection, testCustomOn);
+            SetSectionVisualState(BorderTestFastUpExitSection, true);
 
             Brush activeBg = (Brush)(TryFindResource("TileBgActive") ?? new SolidColorBrush(Color.FromRgb(23, 50, 74)));
             Brush inactiveBg = (Brush)(TryFindResource("TileBg") ?? new SolidColorBrush(Color.FromRgb(30, 42, 57)));
@@ -2666,6 +2870,11 @@ namespace MinecraftHelper
             ConfirmPendingBind(BindTarget.JablkaZLisci);
         }
 
+        private void BtnTestFastUpExitBind_Click(object sender, RoutedEventArgs e)
+        {
+            ConfirmPendingBind(BindTarget.FastUpExit);
+        }
+
         private void BtnTestCustomCaptureBind_Click(object sender, RoutedEventArgs e)
         {
             ConfirmPendingBind(BindTarget.TestCaptureArea);
@@ -2759,9 +2968,6 @@ namespace MinecraftHelper
                 _settings.TestCustomCaptureY = relativeY;
                 _settings.TestCustomCaptureWidth = relativeWidth;
                 _settings.TestCustomCaptureHeight = relativeHeight;
-
-                if (ChkTestCustomCaptureEnabled != null && ChkTestCustomCaptureEnabled.IsChecked != true)
-                    ChkTestCustomCaptureEnabled.IsChecked = true;
 
                 UpdateTestCustomCaptureAreaInfo();
 
@@ -3105,8 +3311,28 @@ namespace MinecraftHelper
             // EQ
             _settings.PauseWhenCursorVisible = ChkPauseWhenCursorVisible.IsChecked ?? true;
             _settings.TestEntitiesEnabled = ChkTestEntitiesEnabled.IsChecked ?? true;
-            _settings.TestCustomCaptureEnabled = ChkTestCustomCaptureEnabled.IsChecked ?? false;
+            _settings.TestCustomCaptureEnabled = _settings.TestEntitiesEnabled;
             _settings.TestCustomCaptureBind = TxtTestCustomCaptureBind.Text.Trim();
+            _settings.TestFastUpExitEnabled = ChkTestFastUpExitEnabled.IsChecked ?? false;
+            _settings.TestFastUpExitBind = TxtTestFastUpExitBind.Text.Trim();
+            _settings.TestFastUpExitBlockSlot = GetSelectedTestFastUpSlot(CbTestFastUpExitBlockSlot, 2);
+            _settings.TestFastUpExitPickaxeSlot = GetSelectedTestFastUpSlot(CbTestFastUpExitPickaxeSlot, 1);
+            string selectedPickaxeType = GetSelectedTestFastUpPickaxeType();
+            _settings.TestFastUpExitPickaxeType = selectedPickaxeType;
+            _settings.TestFastUpExitLookDurationEnabled = ChkTestFastUpExitLookMsEnabled?.IsChecked == true;
+            _settings.TestFastUpExitBreakDurationEnabled = true;
+            _settings.TestFastUpExitPlaceAfterJumpEnabled = ChkTestFastUpExitPlaceMsEnabled?.IsChecked == true;
+            int selectedLookDurationMs = SlTestFastUpExitLookMs == null
+                ? GetFastUpLookDurationForPickaxe(selectedPickaxeType)
+                : Math.Clamp((int)Math.Round(SlTestFastUpExitLookMs.Value), FastUpLookDurationMinMs, FastUpLookDurationMaxMs);
+            SetFastUpLookDurationForPickaxe(selectedPickaxeType, selectedLookDurationMs);
+            int selectedBreakDurationMs = SlTestFastUpExitBreakMs == null
+                ? GetFastUpBreakDurationForPickaxe(selectedPickaxeType)
+                : NormalizeFastUpBreakDurationMs((int)Math.Round(SlTestFastUpExitBreakMs.Value));
+            SetFastUpBreakDurationForPickaxe(selectedPickaxeType, selectedBreakDurationMs);
+            _settings.TestFastUpExitPlaceAfterJumpMs = SlTestFastUpExitPlaceMs == null
+                ? NormalizeFastUpPlaceAfterJumpMs(_settings.TestFastUpExitPlaceAfterJumpMs)
+                : NormalizeFastUpPlaceAfterJumpMs((int)Math.Round(SlTestFastUpExitPlaceMs.Value));
             _settings.OverlayHudEnabled = ChkOverlayHudEnabled.IsChecked ?? true;
             _settings.OverlayAnimationsEnabled = ChkOverlayAnimationsEnabled.IsChecked ?? true;
             _settings.OverlayMonitorIndex = Math.Max(0, CbOverlayMonitor?.SelectedIndex ?? 0);
@@ -3138,6 +3364,214 @@ namespace MinecraftHelper
             if (int.TryParse(value, out int parsed) && parsed >= 0)
                 return parsed;
             return 0;
+        }
+
+        private static int GetSelectedTestFastUpSlot(ComboBox? slotComboBox, int fallbackSlot)
+        {
+            if (slotComboBox == null)
+                return Math.Clamp(fallbackSlot, 1, 9);
+
+            int index = slotComboBox.SelectedIndex;
+            if (index < 0 || index > 8)
+                return Math.Clamp(fallbackSlot, 1, 9);
+
+            return index + 1;
+        }
+
+        private string GetSelectedTestFastUpPickaxeType()
+        {
+            if (CbTestFastUpExitPickaxeType?.SelectedItem is ComboBoxItem item && item.Content is string content)
+            {
+                return NormalizeFastUpPickaxeType(content);
+            }
+
+            return NormalizeFastUpPickaxeType(_settings.TestFastUpExitPickaxeType);
+        }
+
+        private bool IsFastUpLookDurationEnabled()
+        {
+            if (ChkTestFastUpExitLookMsEnabled != null)
+                return ChkTestFastUpExitLookMsEnabled.IsChecked == true;
+
+            return _settings.TestFastUpExitLookDurationEnabled;
+        }
+
+        private bool IsFastUpBreakDurationEnabled()
+        {
+            return true;
+        }
+
+        private bool IsFastUpPlaceDurationEnabled()
+        {
+            if (ChkTestFastUpExitPlaceMsEnabled != null)
+                return ChkTestFastUpExitPlaceMsEnabled.IsChecked == true;
+
+            return _settings.TestFastUpExitPlaceAfterJumpEnabled;
+        }
+
+        private int GetConfiguredFastUpLookDurationMs()
+        {
+            if (!IsFastUpLookDurationEnabled())
+                return FastUpLookDurationMinMs;
+
+            if (SlTestFastUpExitLookMs == null)
+                return GetFastUpLookDurationForPickaxe(GetSelectedTestFastUpPickaxeType());
+
+            int value = (int)Math.Round(SlTestFastUpExitLookMs.Value);
+            return Math.Clamp(value, FastUpLookDurationMinMs, FastUpLookDurationMaxMs);
+        }
+
+        private static int NormalizeFastUpBreakDurationMs(int valueMs)
+        {
+            if (valueMs <= 0)
+                return FastUpBreakDurationDefaultMs;
+
+            return Math.Clamp(valueMs, FastUpBreakDurationMinMs, FastUpBreakDurationMaxMs);
+        }
+
+        private static int NormalizeFastUpPlaceAfterJumpMs(int valueMs)
+        {
+            if (valueMs <= 0)
+                return FastUpPlaceAfterJumpDefaultMs;
+
+            return Math.Clamp(valueMs, FastUpPlaceAfterJumpMinMs, FastUpPlaceAfterJumpMaxMs);
+        }
+
+        private int GetConfiguredFastUpBreakDurationMs()
+        {
+            if (!IsFastUpBreakDurationEnabled())
+                return FastUpBreakDurationMinMs;
+
+            if (SlTestFastUpExitBreakMs == null)
+                return GetFastUpBreakDurationForPickaxe(GetSelectedTestFastUpPickaxeType());
+
+            int value = (int)Math.Round(SlTestFastUpExitBreakMs.Value);
+            return NormalizeFastUpBreakDurationMs(value);
+        }
+
+        private int GetConfiguredFastUpPlaceAfterJumpMs()
+        {
+            if (!IsFastUpPlaceDurationEnabled())
+                return FastUpPlaceAfterJumpMinMs;
+
+            if (SlTestFastUpExitPlaceMs == null)
+                return NormalizeFastUpPlaceAfterJumpMs(_settings.TestFastUpExitPlaceAfterJumpMs);
+
+            int value = (int)Math.Round(SlTestFastUpExitPlaceMs.Value);
+            return NormalizeFastUpPlaceAfterJumpMs(value);
+        }
+
+        private static bool IsValidFastUpPickaxeType(string? type)
+        {
+            if (string.IsNullOrWhiteSpace(type))
+                return false;
+
+            string trimmed = type.Trim();
+            for (int i = 0; i < FastUpPickaxeTypes.Length; i++)
+            {
+                if (string.Equals(FastUpPickaxeTypes[i], trimmed, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static string NormalizeFastUpPickaxeType(string? type)
+        {
+            if (string.IsNullOrWhiteSpace(type))
+                return FastUpDefaultPickaxeType;
+
+            string trimmed = type.Trim();
+            for (int i = 0; i < FastUpPickaxeTypes.Length; i++)
+            {
+                string candidate = FastUpPickaxeTypes[i];
+                if (string.Equals(candidate, trimmed, StringComparison.OrdinalIgnoreCase))
+                    return candidate;
+            }
+
+            return FastUpDefaultPickaxeType;
+        }
+
+        private int GetFastUpLookDurationForPickaxe(string pickaxeType)
+        {
+            string normalizedType = NormalizeFastUpPickaxeType(pickaxeType);
+            _settings.TestFastUpExitLookDurationByPickaxe ??= new Dictionary<string, int>();
+            if (_settings.TestFastUpExitLookDurationByPickaxe.TryGetValue(normalizedType, out int configuredMs))
+                return Math.Clamp(configuredMs, FastUpLookDurationMinMs, FastUpLookDurationMaxMs);
+
+            int fallbackMs = Math.Clamp(_settings.TestFastUpExitLookDurationMs, FastUpLookDurationMinMs, FastUpLookDurationMaxMs);
+            _settings.TestFastUpExitLookDurationByPickaxe[normalizedType] = fallbackMs;
+            return fallbackMs;
+        }
+
+        private void SetFastUpLookDurationForPickaxe(string pickaxeType, int durationMs)
+        {
+            string normalizedType = NormalizeFastUpPickaxeType(pickaxeType);
+            int clampedMs = Math.Clamp(durationMs, FastUpLookDurationMinMs, FastUpLookDurationMaxMs);
+            _settings.TestFastUpExitLookDurationByPickaxe ??= new Dictionary<string, int>();
+            _settings.TestFastUpExitLookDurationByPickaxe[normalizedType] = clampedMs;
+            _settings.TestFastUpExitLookDurationMs = clampedMs;
+        }
+
+        private int GetFastUpBreakDurationForPickaxe(string pickaxeType)
+        {
+            string normalizedType = NormalizeFastUpPickaxeType(pickaxeType);
+            _settings.TestFastUpExitBreakDurationByPickaxe ??= new Dictionary<string, int>();
+            if (_settings.TestFastUpExitBreakDurationByPickaxe.TryGetValue(normalizedType, out int configuredMs))
+                return NormalizeFastUpBreakDurationMs(configuredMs);
+
+            int fallbackMs = NormalizeFastUpBreakDurationMs(_settings.TestFastUpExitBreakDurationMs);
+            _settings.TestFastUpExitBreakDurationByPickaxe[normalizedType] = fallbackMs;
+            return fallbackMs;
+        }
+
+        private void SetFastUpBreakDurationForPickaxe(string pickaxeType, int durationMs)
+        {
+            string normalizedType = NormalizeFastUpPickaxeType(pickaxeType);
+            int normalizedMs = NormalizeFastUpBreakDurationMs(durationMs);
+            _settings.TestFastUpExitBreakDurationByPickaxe ??= new Dictionary<string, int>();
+            _settings.TestFastUpExitBreakDurationByPickaxe[normalizedType] = normalizedMs;
+            _settings.TestFastUpExitBreakDurationMs = normalizedMs;
+        }
+
+        private void ApplyFastUpLookSliderForPickaxe(string pickaxeType)
+        {
+            int lookDurationMs = GetFastUpLookDurationForPickaxe(pickaxeType);
+            if (SlTestFastUpExitLookMs != null)
+                SlTestFastUpExitLookMs.Value = lookDurationMs;
+            UpdateTestFastUpExitLookDurationLabel(lookDurationMs);
+        }
+
+        private void ApplyFastUpBreakSliderForPickaxe(string pickaxeType)
+        {
+            int breakDurationMs = GetFastUpBreakDurationForPickaxe(pickaxeType);
+            if (SlTestFastUpExitBreakMs != null)
+                SlTestFastUpExitBreakMs.Value = breakDurationMs;
+            UpdateTestFastUpExitBreakDurationLabel(breakDurationMs);
+        }
+
+        private void UpdateTestFastUpExitLookDurationLabel(int valueMs)
+        {
+            if (TxtTestFastUpExitLookMsValue == null)
+                return;
+
+            TxtTestFastUpExitLookMsValue.Text = $"{Math.Clamp(valueMs, FastUpLookDurationMinMs, FastUpLookDurationMaxMs)} ms";
+        }
+
+        private void UpdateTestFastUpExitBreakDurationLabel(int valueMs)
+        {
+            if (TxtTestFastUpExitBreakMsValue == null)
+                return;
+
+            TxtTestFastUpExitBreakMsValue.Text = $"{NormalizeFastUpBreakDurationMs(valueMs)} ms";
+        }
+
+        private void UpdateTestFastUpExitPlaceDurationLabel(int valueMs)
+        {
+            if (TxtTestFastUpExitPlaceMsValue == null)
+                return;
+
+            TxtTestFastUpExitPlaceMsValue.Text = $"{NormalizeFastUpPlaceAfterJumpMs(valueMs)} ms";
         }
 
         private void UpdateTestF3Estimator()
@@ -3217,10 +3651,7 @@ namespace MinecraftHelper
 
             if (!TryGetF3CaptureArea(_focusedGameWindowHandle, out Drawing.Rectangle captureArea))
             {
-                bool customEnabled = ChkTestCustomCaptureEnabled?.IsChecked == true;
-                UpdateTestF3Status(customEnabled
-                    ? "Brak obszaru OCR - zaznacz obszar"
-                    : "Nie mogę wyznaczyć obszaru F3", success: false);
+                UpdateTestF3Status("Nie mogę wyznaczyć obszaru F3", success: false);
                 RegisterF3ReadFailure(hardReset: true);
                 RefreshOverlayHud(DateTime.UtcNow);
                 return;
@@ -3260,15 +3691,8 @@ namespace MinecraftHelper
 
         private bool TryGetF3CaptureArea(IntPtr windowHandle, out Drawing.Rectangle captureArea)
         {
-            if (ChkTestCustomCaptureEnabled?.IsChecked == true)
-            {
-                if (TryGetCustomF3CaptureArea(windowHandle, out captureArea))
-                    return true;
-
-                captureArea = Drawing.Rectangle.Empty;
-                return false;
-            }
-
+            if (TryGetCustomF3CaptureArea(windowHandle, out captureArea))
+                return true;
             return TryGetDefaultF3CaptureArea(windowHandle, out captureArea);
         }
 
@@ -3985,6 +4409,7 @@ namespace MinecraftHelper
                 bool kop533Down = IsConfiguredBindKeyDown(TxtKopacz533Key.Text);
                 bool kop633Down = IsConfiguredBindKeyDown(TxtKopacz633Key.Text);
                 bool testCaptureDown = IsConfiguredBindKeyDown(TxtTestCustomCaptureBind.Text);
+                bool fastUpDown = IsConfiguredBindKeyDown(TxtTestFastUpExitBind.Text);
                 bool bindyDown = IsAnyBindyKeyDown();
 
                 _holdBindWasDown = holdDown;
@@ -3994,8 +4419,9 @@ namespace MinecraftHelper
                 _kopacz533BindWasDown = kop533Down;
                 _kopacz633BindWasDown = kop633Down;
                 _testCaptureBindWasDown = testCaptureDown;
+                _testFastUpExitBindWasDown = fastUpDown;
 
-                if (holdDown || autoLeftDown || autoRightDown || jablkaDown || kop533Down || kop633Down || testCaptureDown || bindyDown)
+                if (holdDown || autoLeftDown || autoRightDown || jablkaDown || kop533Down || kop633Down || testCaptureDown || fastUpDown || bindyDown)
                     return;
 
                 _suppressBindToggleUntilRelease = false;
@@ -4012,12 +4438,14 @@ namespace MinecraftHelper
                 _kopacz533BindWasDown = IsConfiguredBindKeyDown(TxtKopacz533Key.Text);
                 _kopacz633BindWasDown = IsConfiguredBindKeyDown(TxtKopacz633Key.Text);
                 _testCaptureBindWasDown = IsConfiguredBindKeyDown(TxtTestCustomCaptureBind.Text);
+                _testFastUpExitBindWasDown = IsConfiguredBindKeyDown(TxtTestFastUpExitBind.Text);
                 SyncBindyKeyStates();
 
                 SetCursorPauseState(false);
                 SetKopacz533MiningHold(false);
                 SetKopacz633AttackHold(false);
                 SetKopacz633StrafeDirection(Kopacz633StrafeDirection.None);
+                ResetTestFastUpExitRuntimeState();
                 ResetHoldLeftToggleState(clearToggleEnabled: false);
                 ResetBindyRuntimeState();
                 return;
@@ -4032,7 +4460,8 @@ namespace MinecraftHelper
             bool kop533ModeSelected = ChkKopacz533Enabled.IsChecked == true;
             bool kop633ModeSelected = ChkKopacz633Enabled.IsChecked == true;
             bool bindyModeSelected = ChkBindyEnabled.IsChecked == true;
-            bool testCaptureModeSelected = ChkTestEntitiesEnabled.IsChecked == true && ChkTestCustomCaptureEnabled.IsChecked == true;
+            bool testCaptureModeSelected = ChkTestEntitiesEnabled.IsChecked == true;
+            bool fastUpModeSelected = ChkTestFastUpExitEnabled.IsChecked == true;
             bool internalCommandTyping =
                 _jablkaCommandStage != JablkaCommandStage.None ||
                 _kopacz533CommandStage != Kopacz533CommandStage.None ||
@@ -4049,11 +4478,20 @@ namespace MinecraftHelper
                 _kopacz533BindWasDown = IsConfiguredBindKeyDown(TxtKopacz533Key.Text);
                 _kopacz633BindWasDown = IsConfiguredBindKeyDown(TxtKopacz633Key.Text);
                 _testCaptureBindWasDown = IsConfiguredBindKeyDown(TxtTestCustomCaptureBind.Text);
+                _testFastUpExitBindWasDown = IsConfiguredBindKeyDown(TxtTestFastUpExitBind.Text);
                 SyncBindyKeyStates();
             }
 
             if (!internalCommandTyping && testCaptureModeSelected && IsBindPressed(TxtTestCustomCaptureBind.Text, ref _testCaptureBindWasDown))
                 BeginTestCaptureAreaSelectionFromBind();
+
+            if (!internalCommandTyping && IsBindPressed(TxtTestFastUpExitBind.Text, ref _testFastUpExitBindWasDown) && fastUpModeSelected)
+            {
+                _testFastUpExitRuntimeEnabled = !_testFastUpExitRuntimeEnabled;
+                ResetTestFastUpExitRuntimeState(DateTime.UtcNow);
+                UpdateStatusBar(_testFastUpExitRuntimeEnabled ? "Szybkie wyjście do góry aktywowane" : "Szybkie wyjście do góry wyłączone", "Orange");
+                changed = true;
+            }
 
             if (!internalCommandTyping && IsBindPressed(TxtMacroManualKey.Text, ref _holdBindWasDown) && holdModeSelected)
             {
@@ -4177,6 +4615,12 @@ namespace MinecraftHelper
                 ResetKopacz633RuntimeState();
                 changed = true;
             }
+            if (!fastUpModeSelected && _testFastUpExitRuntimeEnabled)
+            {
+                _testFastUpExitRuntimeEnabled = false;
+                ResetTestFastUpExitRuntimeState();
+                changed = true;
+            }
             if (!bindyModeSelected)
             {
                 SyncBindyKeyStates();
@@ -4197,7 +4641,8 @@ namespace MinecraftHelper
                 (holdModeSelected && _holdMacroRuntimeEnabled) ||
                 (autoLeftModeSelected && _autoLeftRuntimeEnabled) ||
                 (autoRightModeSelected && _autoRightRuntimeEnabled) ||
-                (jablkaModeSelected && _jablkaRuntimeEnabled);
+                (jablkaModeSelected && _jablkaRuntimeEnabled) ||
+                (fastUpModeSelected && _testFastUpExitRuntimeEnabled);
 
             // Cursor-pause applies only to PVP/Jabłka modes (not Kopacz).
             // During internal command sequence (chat open -> type -> enter) ignore cursor pause.
@@ -4220,6 +4665,7 @@ namespace MinecraftHelper
                 SetKopacz633AttackHold(false);
                 SetKopacz633StrafeDirection(Kopacz633StrafeDirection.None);
                 ResetKopacz633RuntimeState(now);
+                ResetTestFastUpExitRuntimeState(now);
                 return;
             }
 
@@ -4317,7 +4763,144 @@ namespace MinecraftHelper
             else
                 ResetBindyRuntimeState(now);
 
+            if (fastUpModeSelected && _testFastUpExitRuntimeEnabled && !internalCommandTyping)
+                RunTestFastUpExitTick(now);
+            else
+                ResetTestFastUpExitRuntimeState(now);
+
             RefreshLiveTopTiles(now);
+        }
+
+        private void RunTestFastUpExitTick(DateTime now)
+        {
+            if (_testFastUpExitJumpHoldActive && now >= _testFastUpExitJumpHoldUntilUtc)
+                SetTestFastUpExitJumpHold(false);
+
+            if (_testFastUpExitPlaceHoldActive)
+            {
+                if (now < _testFastUpExitPlaceHoldUntilUtc)
+                {
+                    if (now >= _testFastUpExitPlacePulseAtUtc)
+                    {
+                        mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, UIntPtr.Zero);
+                        mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, UIntPtr.Zero);
+                        _testFastUpExitPlacePulseAtUtc = now.AddMilliseconds(FastUpPlacePulseIntervalMs);
+                    }
+
+                    return;
+                }
+
+                SetTestFastUpExitPlaceHold(false);
+                _testFastUpExitStage = FastUpExitStage.LookUp;
+                _nextTestFastUpExitActionAtUtc = now.AddMilliseconds(FastUpPlaceDelayMs);
+                return;
+            }
+
+            if (_testFastUpExitLookSweepTicksRemaining > 0)
+            {
+                for (int i = 0; i < _testFastUpExitLookSweepBurstsPerTick; i++)
+                    SendMouseMoveRelative(0, _testFastUpExitLookSweepDirectionY);
+
+                _testFastUpExitLookSweepTicksRemaining--;
+                if (_testFastUpExitLookSweepTicksRemaining > 0)
+                    return;
+
+                _testFastUpExitStage = _testFastUpExitLookSweepNextStage;
+                if (_testFastUpExitStage == FastUpExitStage.PlaceBlock)
+                {
+                    StartTestFastUpExitJumpPulse(now);
+                    int placeDelayAfterJumpMs = Math.Max(40, GetConfiguredFastUpPlaceAfterJumpMs());
+                    _nextTestFastUpExitActionAtUtc = now.AddMilliseconds(placeDelayAfterJumpMs);
+                }
+                else
+                {
+                    _nextTestFastUpExitActionAtUtc = now.AddMilliseconds(FastUpSlotSwitchDelayMs);
+                }
+                return;
+            }
+
+            if (_testFastUpExitBreakHoldActive)
+            {
+                if (now < _testFastUpExitBreakHoldUntilUtc)
+                    return;
+
+                SetTestFastUpExitBreakHold(false);
+                if (_testFastUpExitStage == FastUpExitStage.BreakBlock)
+                    _testFastUpExitStage = FastUpExitStage.SelectBlock;
+                _nextTestFastUpExitActionAtUtc = now;
+            }
+
+            if (now < _nextTestFastUpExitActionAtUtc)
+                return;
+
+            int pickaxeSlot = GetSelectedTestFastUpSlot(CbTestFastUpExitPickaxeSlot, _settings.TestFastUpExitPickaxeSlot);
+            int blockSlot = GetSelectedTestFastUpSlot(CbTestFastUpExitBlockSlot, _settings.TestFastUpExitBlockSlot);
+            switch (_testFastUpExitStage)
+            {
+                case FastUpExitStage.LookUp:
+                    StartFastUpLookSweep(maxUp: true, FastUpExitStage.SelectPickaxe);
+                    return;
+
+                case FastUpExitStage.SelectPickaxe:
+                    SendKeyTap(GetSlotVirtualKey(pickaxeSlot));
+                    _testFastUpExitStage = FastUpExitStage.BreakBlock;
+                    _nextTestFastUpExitActionAtUtc = now.AddMilliseconds(FastUpSlotSwitchDelayMs);
+                    return;
+
+                case FastUpExitStage.BreakBlock:
+                    SetTestFastUpExitBreakHold(true);
+                    _testFastUpExitBreakHoldUntilUtc = now.AddMilliseconds(GetConfiguredFastUpBreakDurationMs());
+                    _nextTestFastUpExitActionAtUtc = _testFastUpExitBreakHoldUntilUtc;
+                    return;
+
+                case FastUpExitStage.SelectBlock:
+                    SendKeyTap(GetSlotVirtualKey(blockSlot));
+                    _testFastUpExitStage = FastUpExitStage.LookDown;
+                    _nextTestFastUpExitActionAtUtc = now.AddMilliseconds(FastUpSlotSwitchDelayMs);
+                    return;
+
+                case FastUpExitStage.LookDown:
+                    StartFastUpLookSweep(maxUp: false, FastUpExitStage.PlaceBlock);
+                    return;
+
+                case FastUpExitStage.PlaceBlock:
+                    // Re-select block slot to avoid desync between hotbar switch and PPM place.
+                    SendKeyTap(GetSlotVirtualKey(blockSlot));
+                    SetTestFastUpExitPlaceHold(true);
+                    _testFastUpExitPlacePulseAtUtc = now;
+                    _testFastUpExitPlaceHoldUntilUtc = now.AddMilliseconds(FastUpPlaceHoldMs);
+                    _nextTestFastUpExitActionAtUtc = _testFastUpExitPlaceHoldUntilUtc;
+                    return;
+
+                default:
+                    _testFastUpExitStage = FastUpExitStage.LookUp;
+                    _nextTestFastUpExitActionAtUtc = now;
+                    return;
+            }
+        }
+
+        private static int GetSlotVirtualKey(int slot)
+        {
+            int normalizedSlot = Math.Clamp(slot, 1, 9);
+            return 0x30 + normalizedSlot;
+        }
+
+        private void StartFastUpLookSweep(bool maxUp, FastUpExitStage nextStage)
+        {
+            _testFastUpExitLookSweepDirectionY = maxUp ? -FastUpVerticalStepDelta : FastUpVerticalStepDelta;
+            int lookDurationMs = GetConfiguredFastUpLookDurationMs();
+            if (!maxUp)
+                lookDurationMs = Math.Max(FastUpLookDurationMinMs, (int)Math.Round(lookDurationMs * FastUpLookDownDurationScale));
+
+            double tickMs = _macroTimer.Interval.TotalMilliseconds;
+            if (tickMs < 1.0)
+                tickMs = 5.0;
+
+            int sweepTicks = Math.Max(1, (int)Math.Ceiling(lookDurationMs / tickMs));
+            int targetBursts = FastUpLookSweepTicks * FastUpLookSweepBurstsPerTick;
+            _testFastUpExitLookSweepBurstsPerTick = Math.Max(1, (int)Math.Ceiling(targetBursts / (double)sweepTicks));
+            _testFastUpExitLookSweepTicksRemaining = sweepTicks;
+            _testFastUpExitLookSweepNextStage = nextStage;
         }
 
         private void StartKopacz533Runtime(DateTime now)
@@ -4857,6 +5440,51 @@ namespace MinecraftHelper
             _kopacz633HoldingAttack = enabled;
         }
 
+        private void SetTestFastUpExitBreakHold(bool enabled)
+        {
+            if (_testFastUpExitBreakHoldActive == enabled)
+                return;
+
+            if (enabled)
+                mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, UIntPtr.Zero);
+            else
+                mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, UIntPtr.Zero);
+
+            _testFastUpExitBreakHoldActive = enabled;
+        }
+
+        private void SetTestFastUpExitPlaceHold(bool enabled)
+        {
+            if (_testFastUpExitPlaceHoldActive == enabled)
+                return;
+
+            if (enabled)
+                mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, UIntPtr.Zero);
+            else
+                mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, UIntPtr.Zero);
+
+            _testFastUpExitPlaceHoldActive = enabled;
+        }
+
+        private void SetTestFastUpExitJumpHold(bool enabled)
+        {
+            if (_testFastUpExitJumpHoldActive == enabled)
+                return;
+
+            if (enabled)
+                SendKeyDown(VK_SPACE);
+            else
+                SendKeyUp(VK_SPACE);
+
+            _testFastUpExitJumpHoldActive = enabled;
+        }
+
+        private void StartTestFastUpExitJumpPulse(DateTime now)
+        {
+            _testFastUpExitJumpHoldUntilUtc = now.AddMilliseconds(FastUpJumpHoldMs);
+            SetTestFastUpExitJumpHold(true);
+        }
+
         private void SetKopacz633StrafeDirection(Kopacz633StrafeDirection direction)
         {
             if (_kopacz633StrafeDirection == direction)
@@ -5060,6 +5688,28 @@ namespace MinecraftHelper
             return true;
         }
 
+        private void ResetTestFastUpExitRuntimeState()
+        {
+            ResetTestFastUpExitRuntimeState(DateTime.UtcNow);
+        }
+
+        private void ResetTestFastUpExitRuntimeState(DateTime now)
+        {
+            SetTestFastUpExitBreakHold(false);
+            SetTestFastUpExitPlaceHold(false);
+            SetTestFastUpExitJumpHold(false);
+            _nextTestFastUpExitActionAtUtc = now;
+            _testFastUpExitBreakHoldUntilUtc = now;
+            _testFastUpExitPlaceHoldUntilUtc = now;
+            _testFastUpExitPlacePulseAtUtc = now;
+            _testFastUpExitJumpHoldUntilUtc = now;
+            _testFastUpExitStage = FastUpExitStage.LookUp;
+            _testFastUpExitLookSweepTicksRemaining = 0;
+            _testFastUpExitLookSweepBurstsPerTick = FastUpLookSweepBurstsPerTick;
+            _testFastUpExitLookSweepDirectionY = 0;
+            _testFastUpExitLookSweepNextStage = FastUpExitStage.LookUp;
+        }
+
         private void ResetBindyRuntimeState()
         {
             ResetBindyRuntimeState(DateTime.UtcNow);
@@ -5151,6 +5801,14 @@ namespace MinecraftHelper
             minCps = min;
             maxCps = max;
             return true;
+        }
+
+        private static void SendMouseMoveRelative(int deltaX, int deltaY)
+        {
+            if (deltaX == 0 && deltaY == 0)
+                return;
+
+            mouse_event(MOUSEEVENTF_MOVE, deltaX, deltaY, 0, UIntPtr.Zero);
         }
 
         private static void SendMouseClick(bool leftButton, bool holdPulseMode)
@@ -5348,13 +6006,78 @@ namespace MinecraftHelper
             MarkDirty();
         }
 
-        private void ChkTestCustomCaptureEnabled_Changed(object sender, RoutedEventArgs e)
+        private void ChkTestFastUpExitEnabled_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_isLoadingUi)
+                return;
+
+            if (ChkTestFastUpExitEnabled.IsChecked != true)
+            {
+                _testFastUpExitRuntimeEnabled = false;
+                ResetTestFastUpExitRuntimeState();
+            }
+
+            UpdateEnabledStates();
+            MarkDirty();
+        }
+
+        private void CbTestFastUpExitConfig_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_isLoadingUi)
+                return;
+
+            if (ReferenceEquals(sender, CbTestFastUpExitPickaxeType))
+            {
+                string selectedType = GetSelectedTestFastUpPickaxeType();
+                ApplyFastUpLookSliderForPickaxe(selectedType);
+                ApplyFastUpBreakSliderForPickaxe(selectedType);
+            }
+
+            MarkDirty();
+        }
+
+        private void ChkTestFastUpExitTimingEnabled_Changed(object sender, RoutedEventArgs e)
         {
             if (_isLoadingUi)
                 return;
 
             UpdateEnabledStates();
-            UpdateTestCustomCaptureAreaInfo();
+            MarkDirty();
+        }
+
+        private void SlTestFastUpExitLookMs_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            int lookMs = Math.Clamp((int)Math.Round(e.NewValue), FastUpLookDurationMinMs, FastUpLookDurationMaxMs);
+            UpdateTestFastUpExitLookDurationLabel(lookMs);
+
+            if (_isLoadingUi)
+                return;
+
+            SetFastUpLookDurationForPickaxe(GetSelectedTestFastUpPickaxeType(), lookMs);
+            MarkDirty();
+        }
+
+        private void SlTestFastUpExitBreakMs_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            int breakMs = NormalizeFastUpBreakDurationMs((int)Math.Round(e.NewValue));
+            UpdateTestFastUpExitBreakDurationLabel(breakMs);
+
+            if (_isLoadingUi)
+                return;
+
+            SetFastUpBreakDurationForPickaxe(GetSelectedTestFastUpPickaxeType(), breakMs);
+            MarkDirty();
+        }
+
+        private void SlTestFastUpExitPlaceMs_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            int placeMs = NormalizeFastUpPlaceAfterJumpMs((int)Math.Round(e.NewValue));
+            UpdateTestFastUpExitPlaceDurationLabel(placeMs);
+
+            if (_isLoadingUi)
+                return;
+
+            _settings.TestFastUpExitPlaceAfterJumpMs = placeMs;
             MarkDirty();
         }
 
@@ -5545,6 +6268,8 @@ namespace MinecraftHelper
             SetKopacz533MiningHold(false);
             SetKopacz633AttackHold(false);
             SetKopacz633StrafeDirection(Kopacz633StrafeDirection.None);
+            _testFastUpExitRuntimeEnabled = false;
+            ResetTestFastUpExitRuntimeState();
             ResetBindyRuntimeState();
             base.OnClosed(e);
         }
