@@ -58,6 +58,10 @@ namespace MinecraftHelper
         private bool _holdBindWasDown;
         private bool _autoLeftBindWasDown;
         private bool _autoRightBindWasDown;
+        private bool _autoLeftComboTriggerWasDown;
+        private bool _autoLeftComboStopWasDown;
+        private bool _autoRightComboTriggerWasDown;
+        private bool _autoRightComboStopWasDown;
         private bool _jablkaBindWasDown;
         private bool _kopacz533BindWasDown;
         private bool _kopacz633BindWasDown;
@@ -133,6 +137,10 @@ namespace MinecraftHelper
         private bool _trayMinimizeBehaviorEnabled;
         private bool _isF3AnalysisInProgress;
         private bool _isTestCaptureSelectionInProgress;
+        private IntPtr _mouseHookHandle = IntPtr.Zero;
+        private LowLevelMouseProc? _mouseHookProc;
+        private volatile bool _physicalLeftButtonDown;
+        private volatile bool _physicalRightButtonDown;
         private readonly object _f3TesseractLock = new object();
         private TesseractEngine? _f3TesseractEngine;
         private int _f3ConsecutiveReadFailures;
@@ -265,6 +273,19 @@ namespace MinecraftHelper
         [DllImport("user32.dll", SetLastError = true)]
         private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
 
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern IntPtr SetWindowsHookEx(int idHook, LowLevelMouseProc lpfn, IntPtr hMod, uint dwThreadId);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool UnhookWindowsHookEx(IntPtr hhk);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern IntPtr GetModuleHandle(string lpModuleName);
+
         [DllImport("user32.dll", CharSet = CharSet.Unicode)]
         private static extern short VkKeyScan(char ch);
 
@@ -293,6 +314,12 @@ namespace MinecraftHelper
         private const int VK_MBUTTON = 0x04;
         private const int VK_XBUTTON1 = 0x05;
         private const int VK_XBUTTON2 = 0x06;
+        private const int WH_MOUSE_LL = 14;
+        private const int WM_LBUTTONDOWN = 0x0201;
+        private const int WM_LBUTTONUP = 0x0202;
+        private const int WM_RBUTTONDOWN = 0x0204;
+        private const int WM_RBUTTONUP = 0x0205;
+        private const int LLMHF_INJECTED = 0x00000001;
         private const uint MOUSEEVENTF_MOVE = 0x0001;
         private const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
         private const uint MOUSEEVENTF_LEFTUP = 0x0004;
@@ -371,6 +398,18 @@ namespace MinecraftHelper
             public IntPtr hCursor;
             public POINT ptScreenPos;
         }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct MSLLHOOKSTRUCT
+        {
+            public POINT pt;
+            public uint mouseData;
+            public uint flags;
+            public uint time;
+            public UIntPtr dwExtraInfo;
+        }
+
+        private delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
 
         private void ApplyDarkTitleBar()
         {
@@ -452,6 +491,7 @@ namespace MinecraftHelper
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
             ApplyDarkTitleBar();
+            StartMouseHook();
 
             // If Windows launches the app minimized (e.g. shortcut setting),
             // do not auto-hide it to tray on startup.
@@ -462,6 +502,53 @@ namespace MinecraftHelper
             }
 
             _trayMinimizeBehaviorEnabled = true;
+        }
+
+        private void StartMouseHook()
+        {
+            if (_mouseHookHandle != IntPtr.Zero)
+                return;
+
+            _physicalLeftButtonDown = IsVirtualKeyDown(VK_LBUTTON);
+            _physicalRightButtonDown = IsVirtualKeyDown(VK_RBUTTON);
+            _mouseHookProc = MouseHookCallback;
+
+            string moduleName = Process.GetCurrentProcess().MainModule?.ModuleName ?? string.Empty;
+            IntPtr moduleHandle = string.IsNullOrWhiteSpace(moduleName) ? IntPtr.Zero : GetModuleHandle(moduleName);
+            _mouseHookHandle = SetWindowsHookEx(WH_MOUSE_LL, _mouseHookProc, moduleHandle, 0);
+        }
+
+        private void StopMouseHook()
+        {
+            if (_mouseHookHandle == IntPtr.Zero)
+                return;
+
+            _ = UnhookWindowsHookEx(_mouseHookHandle);
+            _mouseHookHandle = IntPtr.Zero;
+            _mouseHookProc = null;
+        }
+
+        private IntPtr MouseHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
+        {
+            if (nCode >= 0)
+            {
+                int message = unchecked((int)(long)wParam);
+                MSLLHOOKSTRUCT hookData = Marshal.PtrToStructure<MSLLHOOKSTRUCT>(lParam);
+                bool injected = (hookData.flags & LLMHF_INJECTED) == LLMHF_INJECTED;
+                if (!injected)
+                {
+                    if (message == WM_LBUTTONDOWN)
+                        _physicalLeftButtonDown = true;
+                    else if (message == WM_LBUTTONUP)
+                        _physicalLeftButtonDown = false;
+                    else if (message == WM_RBUTTONDOWN)
+                        _physicalRightButtonDown = true;
+                    else if (message == WM_RBUTTONUP)
+                        _physicalRightButtonDown = false;
+                }
+            }
+
+            return CallNextHookEx(_mouseHookHandle, nCode, wParam, lParam);
         }
 
         private void InitializeTrayIcon()
@@ -1034,6 +1121,10 @@ namespace MinecraftHelper
             _holdMacroRuntimeEnabled = false;
             _autoLeftRuntimeEnabled = false;
             _autoRightRuntimeEnabled = false;
+            _autoLeftComboTriggerWasDown = false;
+            _autoLeftComboStopWasDown = false;
+            _autoRightComboTriggerWasDown = false;
+            _autoRightComboStopWasDown = false;
             _jablkaRuntimeEnabled = false;
             _kopacz533RuntimeEnabled = false;
             _kopacz633RuntimeEnabled = false;
@@ -1062,11 +1153,13 @@ namespace MinecraftHelper
             TxtAutoLeftKey.Text = _settings.AutoLeftButton.Key;
             TxtAutoLeftMinCps.Text = _settings.AutoLeftButton.MinCps.ToString();
             TxtAutoLeftMaxCps.Text = _settings.AutoLeftButton.MaxCps.ToString();
+            ChkAutoLeftComboMode.IsChecked = _settings.AutoLeftComboMode;
 
             ChkAutoRightEnabled.IsChecked = _settings.AutoRightButton.Enabled;
             TxtAutoRightKey.Text = _settings.AutoRightButton.Key;
             TxtAutoRightMinCps.Text = _settings.AutoRightButton.MinCps.ToString();
             TxtAutoRightMaxCps.Text = _settings.AutoRightButton.MaxCps.ToString();
+            ChkAutoRightComboMode.IsChecked = _settings.AutoRightComboMode;
 
             // KOPACZ
             ChkKopacz533Enabled.IsChecked = _settings.Kopacz533Enabled;
@@ -2161,6 +2254,7 @@ namespace MinecraftHelper
 
             TxtMacroManualKey.IsEnabled = manualOn;
             BtnMacroManualCapture.IsEnabled = manualOn;
+            BtnMacroManualClear.IsEnabled = manualOn;
             ChkHoldLeftEnabled.IsEnabled = manualOn;
             ChkHoldRightEnabled.IsEnabled = manualOn;
             TxtManualLeftMinCps.IsEnabled = holdLeftOn;
@@ -2170,13 +2264,17 @@ namespace MinecraftHelper
 
             TxtAutoLeftKey.IsEnabled = autoLeftOn;
             BtnAutoLeftCapture.IsEnabled = autoLeftOn;
+            BtnAutoLeftClear.IsEnabled = autoLeftOn;
             TxtAutoLeftMinCps.IsEnabled = autoLeftOn;
             TxtAutoLeftMaxCps.IsEnabled = autoLeftOn;
+            ChkAutoLeftComboMode.IsEnabled = autoLeftOn;
 
             TxtAutoRightKey.IsEnabled = autoRightOn;
             BtnAutoRightCapture.IsEnabled = autoRightOn;
+            BtnAutoRightClear.IsEnabled = autoRightOn;
             TxtAutoRightMinCps.IsEnabled = autoRightOn;
             TxtAutoRightMaxCps.IsEnabled = autoRightOn;
+            ChkAutoRightComboMode.IsEnabled = autoRightOn;
 
             if (!manualOn)
             {
@@ -2197,13 +2295,22 @@ namespace MinecraftHelper
                 mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, UIntPtr.Zero);
             }
             if (!autoLeftOn)
+            {
                 _autoLeftRuntimeEnabled = false;
+                _autoLeftComboTriggerWasDown = false;
+                _autoLeftComboStopWasDown = false;
+            }
             if (!autoRightOn)
+            {
                 _autoRightRuntimeEnabled = false;
+                _autoRightComboTriggerWasDown = false;
+                _autoRightComboStopWasDown = false;
+            }
 
             bool kop533On = ChkKopacz533Enabled.IsChecked ?? false;
             TxtKopacz533Key.IsEnabled = kop533On;
             BtnKopacz533Capture.IsEnabled = kop533On;
+            BtnKopacz533Clear.IsEnabled = kop533On;
             PanelKopacz533Commands.IsEnabled = kop533On;
             BtnKopacz533AddCommand.IsEnabled = kop533On;
             if (!kop533On)
@@ -2216,6 +2323,7 @@ namespace MinecraftHelper
             bool kop633On = ChkKopacz633Enabled.IsChecked ?? false;
             TxtKopacz633Key.IsEnabled = kop633On;
             BtnKopacz633Capture.IsEnabled = kop633On;
+            BtnKopacz633Clear.IsEnabled = kop633On;
             CbKopacz633Direction.IsHitTestVisible = kop633On; // blokuje myszkę gdy OFF
             CbKopacz633Direction.Focusable = kop633On;        // nie łapie focusa gdy OFF
             CbKopacz633Direction.Opacity = kop633On ? 1.0 : 0.85; // opcjonalnie lekko przygaś
@@ -2236,6 +2344,7 @@ namespace MinecraftHelper
             bool jablkaOn = ChkJablkaZLisciEnabled.IsChecked ?? false;
             TxtJablkaZLisciKey.IsEnabled = jablkaOn;
             BtnJablkaZLisciCapture.IsEnabled = jablkaOn;
+            BtnJablkaZLisciClear.IsEnabled = jablkaOn;
             TxtJablkaZLisciCommand.IsEnabled = jablkaOn;
             BtnSaveJablkaZLisciCommand.IsEnabled = jablkaOn;
             if (!jablkaOn)
@@ -2267,6 +2376,8 @@ namespace MinecraftHelper
                 TxtTestCustomCaptureBind.IsEnabled = testCustomOn;
             if (BtnTestCustomCaptureBind != null)
                 BtnTestCustomCaptureBind.IsEnabled = testCustomOn;
+            if (BtnTestCustomCaptureBindClear != null)
+                BtnTestCustomCaptureBindClear.IsEnabled = testCustomOn;
             if (BtnTestSelectCaptureArea != null)
                 BtnTestSelectCaptureArea.IsEnabled = testCustomOn;
             if (BtnTestResetCaptureData != null)
@@ -2279,6 +2390,8 @@ namespace MinecraftHelper
                 TxtTestFastUpExitBind.IsEnabled = testFastUpOn;
             if (BtnTestFastUpExitBind != null)
                 BtnTestFastUpExitBind.IsEnabled = testFastUpOn;
+            if (BtnTestFastUpExitBindClear != null)
+                BtnTestFastUpExitBindClear.IsEnabled = testFastUpOn;
             if (CbTestFastUpExitBlockSlot != null)
                 CbTestFastUpExitBlockSlot.IsEnabled = testFastUpOn;
             if (CbTestFastUpExitPickaxeSlot != null)
@@ -2473,6 +2586,35 @@ namespace MinecraftHelper
             UpdateStatusBar($"Zapisano klawisz {keyText} dla {GetBindyEntryLabel(entry)}", "Green");
         }
 
+        private void ClearBindyEntryBind(BindyEntry entry, TextBox keyTextBox)
+        {
+            string entryId = EnsureBindyEntryId(entry);
+            bool hadBind =
+                !string.IsNullOrWhiteSpace(entry.Key)
+                || !string.IsNullOrWhiteSpace(keyTextBox.Text)
+                || _pendingBindyBindValuesById.ContainsKey(entryId)
+                || (_bindyCaptureEntry != null && ReferenceEquals(_bindyCaptureEntry, entry));
+
+            if (_bindyCaptureEntry != null && ReferenceEquals(_bindyCaptureEntry, entry))
+                CancelBindyRowCapture(showStatus: false);
+
+            entry.Key = string.Empty;
+            keyTextBox.Text = string.Empty;
+            _pendingBindyBindValuesById.Remove(entryId);
+            _bindyBindWasDownById[entryId] = false;
+            RefreshBindySaveButton(entryId);
+
+            if (hadBind)
+            {
+                MarkDirty();
+                UpdateStatusBar($"Usunięto bind dla {GetBindyEntryLabel(entry)}", "Orange");
+            }
+            else
+            {
+                UpdateStatusBar($"{GetBindyEntryLabel(entry)}: bind jest już pusty", "Orange");
+            }
+        }
+
         private void AddBindyCommandRow(BindyEntry entry)
         {
             string entryId = EnsureBindyEntryId(entry);
@@ -2517,6 +2659,15 @@ namespace MinecraftHelper
                 Margin = new Thickness(0, 0, 12, 0)
             };
             saveBtn.Click += (_, __) => ConfirmPendingBindyEntry(entry, keyBox);
+
+            Button clearBindBtn = new Button
+            {
+                Content = "Usuń bind",
+                Width = 86,
+                Margin = new Thickness(0, 0, 12, 0)
+            };
+            clearBindBtn.Click += (_, __) => ClearBindyEntryBind(entry, keyBox);
+
             keyBox.PreviewMouseLeftButtonDown += (_, e) =>
             {
                 StartBindyRowCapture(entry, keyBox);
@@ -2575,6 +2726,7 @@ namespace MinecraftHelper
             row.Children.Add(keyLabel);
             row.Children.Add(keyBox);
             row.Children.Add(saveBtn);
+            row.Children.Add(clearBindBtn);
             row.Children.Add(commandLabel);
             row.Children.Add(commandBox);
             row.Children.Add(deleteBtn);
@@ -2838,6 +2990,105 @@ namespace MinecraftHelper
 
             MarkDirty();
             UpdateStatusBar($"Zapisano klawisz {keyText} dla {GetBindTargetLabel(target)}", "Green");
+        }
+
+        private void BtnClearBind_Click(object sender, RoutedEventArgs e)
+        {
+            if (_isLoadingUi)
+                return;
+
+            if (sender is not Button button)
+                return;
+            if (!Enum.TryParse(button.Tag?.ToString(), out BindTarget target) || target == BindTarget.None)
+                return;
+
+            ClearFixedBind(target);
+        }
+
+        private void ClearFixedBind(BindTarget target)
+        {
+            TextBox? textBox = GetBindTextBox(target);
+            if (textBox == null)
+                return;
+
+            bool hadBind = !string.IsNullOrWhiteSpace(textBox.Text) || _pendingBindValues.ContainsKey(target) || _bindCaptureTarget == target;
+            textBox.Text = string.Empty;
+            _pendingBindValues.Remove(target);
+
+            if (_bindCaptureTarget == target)
+            {
+                _bindCaptureTarget = BindTarget.None;
+                UpdateBindCaptureVisuals();
+            }
+
+            switch (target)
+            {
+                case BindTarget.HoldToggle:
+                    _holdBindWasDown = false;
+                    _holdMacroRuntimeEnabled = false;
+                    ResetHoldLeftToggleState(clearToggleEnabled: true);
+                    break;
+
+                case BindTarget.AutoLeft:
+                    _autoLeftBindWasDown = false;
+                    _autoLeftRuntimeEnabled = false;
+                    _autoLeftComboTriggerWasDown = false;
+                    _autoLeftComboStopWasDown = false;
+                    _nextAutoLeftClickAtUtc = DateTime.UtcNow;
+                    break;
+
+                case BindTarget.AutoRight:
+                    _autoRightBindWasDown = false;
+                    _autoRightRuntimeEnabled = false;
+                    _autoRightComboTriggerWasDown = false;
+                    _autoRightComboStopWasDown = false;
+                    _nextAutoRightClickAtUtc = DateTime.UtcNow;
+                    break;
+
+                case BindTarget.JablkaZLisci:
+                    _jablkaBindWasDown = false;
+                    _jablkaRuntimeEnabled = false;
+                    ResetJablkaRuntimeState();
+                    break;
+
+                case BindTarget.Kopacz533:
+                    _kopacz533BindWasDown = false;
+                    _kopacz533RuntimeEnabled = false;
+                    SetKopacz533MiningHold(false);
+                    ResetKopacz533RuntimeState();
+                    break;
+
+                case BindTarget.Kopacz633:
+                    _kopacz633BindWasDown = false;
+                    _kopacz633RuntimeEnabled = false;
+                    SetKopacz633AttackHold(false);
+                    SetKopacz633StrafeDirection(Kopacz633StrafeDirection.None);
+                    ResetKopacz633RuntimeState();
+                    break;
+
+                case BindTarget.FastUpExit:
+                    _testFastUpExitBindWasDown = false;
+                    _testFastUpExitRuntimeEnabled = false;
+                    ResetTestFastUpExitRuntimeState();
+                    break;
+
+                case BindTarget.TestCaptureArea:
+                    _testCaptureBindWasDown = false;
+                    break;
+            }
+
+            RefreshBindSaveButton(target);
+            RefreshTopTiles();
+
+            if (hadBind)
+            {
+                MarkDirty();
+                UpdateStatusBar($"Usunięto bind dla {GetBindTargetLabel(target)}", "Orange");
+            }
+            else
+            {
+                UpdateStatusBar($"{GetBindTargetLabel(target)}: bind jest już pusty", "Orange");
+            }
         }
 
         private void BtnMacroManualCapture_Click(object sender, RoutedEventArgs e)
@@ -3254,11 +3505,13 @@ namespace MinecraftHelper
             _settings.AutoLeftButton.Key = TxtAutoLeftKey.Text.Trim();
             _settings.AutoLeftButton.MinCps = ParseNonNegativeInt(TxtAutoLeftMinCps.Text);
             _settings.AutoLeftButton.MaxCps = ParseNonNegativeInt(TxtAutoLeftMaxCps.Text);
+            _settings.AutoLeftComboMode = ChkAutoLeftComboMode.IsChecked ?? false;
 
             _settings.AutoRightButton.Enabled = ChkAutoRightEnabled.IsChecked ?? false;
             _settings.AutoRightButton.Key = TxtAutoRightKey.Text.Trim();
             _settings.AutoRightButton.MinCps = ParseNonNegativeInt(TxtAutoRightMinCps.Text);
             _settings.AutoRightButton.MaxCps = ParseNonNegativeInt(TxtAutoRightMaxCps.Text);
+            _settings.AutoRightComboMode = ChkAutoRightComboMode.IsChecked ?? false;
 
             // Legacy mirror for older settings format compatibility
             _settings.MacroLeftButton.Enabled = _settings.HoldEnabled && _settings.HoldLeftEnabled;
@@ -4301,6 +4554,17 @@ namespace MinecraftHelper
             return TryGetVirtualKey(keyText, out int virtualKey) && IsVirtualKeyDown(virtualKey);
         }
 
+        private bool IsPhysicalMouseButtonDown(int mouseVirtualKey)
+        {
+            if (mouseVirtualKey == VK_LBUTTON)
+                return _mouseHookHandle != IntPtr.Zero ? _physicalLeftButtonDown : IsVirtualKeyDown(VK_LBUTTON);
+
+            if (mouseVirtualKey == VK_RBUTTON)
+                return _mouseHookHandle != IntPtr.Zero ? _physicalRightButtonDown : IsVirtualKeyDown(VK_RBUTTON);
+
+            return IsVirtualKeyDown(mouseVirtualKey);
+        }
+
         private static string EnsureBindyEntryId(BindyEntry entry)
         {
             if (!string.IsNullOrWhiteSpace(entry.Id))
@@ -4346,6 +4610,49 @@ namespace MinecraftHelper
             }
 
             return false;
+        }
+
+        private void SyncAutoComboState(string bindKeyText, int mouseVirtualKey, ref bool comboWasDown, ref bool stopWasDown)
+        {
+            bool bindDown = IsConfiguredBindKeyDown(bindKeyText);
+            bool mouseDown = IsPhysicalMouseButtonDown(mouseVirtualKey);
+            comboWasDown = bindDown && mouseDown;
+            stopWasDown = !mouseDown;
+        }
+
+        private void SyncAutoComboStates()
+        {
+            SyncAutoComboState(TxtAutoLeftKey.Text, VK_LBUTTON, ref _autoLeftComboTriggerWasDown, ref _autoLeftComboStopWasDown);
+            SyncAutoComboState(TxtAutoRightKey.Text, VK_RBUTTON, ref _autoRightComboTriggerWasDown, ref _autoRightComboStopWasDown);
+        }
+
+        private bool TryHandleAutoComboToggle(string bindKeyText, int mouseVirtualKey, ref bool comboWasDown, ref bool stopWasDown, ref bool runtimeEnabled, string enabledMessage, string disabledMessage)
+        {
+            bool bindDown = IsConfiguredBindKeyDown(bindKeyText);
+            bool mouseDown = IsPhysicalMouseButtonDown(mouseVirtualKey);
+            bool comboDown = bindDown && mouseDown;
+            bool stopDown = !mouseDown;
+            bool changed = false;
+
+            // Start on fresh combo press (bind + mouse).
+            if (comboDown && !comboWasDown && !runtimeEnabled)
+            {
+                runtimeEnabled = true;
+                UpdateStatusBar(enabledMessage, "Orange");
+                changed = true;
+            }
+
+            // Stop when mouse button is released.
+            if (stopDown && !stopWasDown && runtimeEnabled)
+            {
+                runtimeEnabled = false;
+                UpdateStatusBar(disabledMessage, "Orange");
+                changed = true;
+            }
+
+            comboWasDown = comboDown;
+            stopWasDown = stopDown;
+            return changed;
         }
 
         private bool TryToggleHoldLeftClicking(DateTime now)
@@ -4420,6 +4727,7 @@ namespace MinecraftHelper
                 _kopacz633BindWasDown = kop633Down;
                 _testCaptureBindWasDown = testCaptureDown;
                 _testFastUpExitBindWasDown = fastUpDown;
+                SyncAutoComboStates();
 
                 if (holdDown || autoLeftDown || autoRightDown || jablkaDown || kop533Down || kop633Down || testCaptureDown || fastUpDown || bindyDown)
                     return;
@@ -4440,6 +4748,7 @@ namespace MinecraftHelper
                 _testCaptureBindWasDown = IsConfiguredBindKeyDown(TxtTestCustomCaptureBind.Text);
                 _testFastUpExitBindWasDown = IsConfiguredBindKeyDown(TxtTestFastUpExitBind.Text);
                 SyncBindyKeyStates();
+                SyncAutoComboStates();
 
                 SetCursorPauseState(false);
                 SetKopacz533MiningHold(false);
@@ -4480,6 +4789,7 @@ namespace MinecraftHelper
                 _testCaptureBindWasDown = IsConfiguredBindKeyDown(TxtTestCustomCaptureBind.Text);
                 _testFastUpExitBindWasDown = IsConfiguredBindKeyDown(TxtTestFastUpExitBind.Text);
                 SyncBindyKeyStates();
+                SyncAutoComboStates();
             }
 
             if (!internalCommandTyping && testCaptureModeSelected && IsBindPressed(TxtTestCustomCaptureBind.Text, ref _testCaptureBindWasDown))
@@ -4501,18 +4811,58 @@ namespace MinecraftHelper
                 changed = true;
             }
 
-            if (!internalCommandTyping && IsBindPressed(TxtAutoLeftKey.Text, ref _autoLeftBindWasDown) && autoLeftModeSelected)
+            if (!internalCommandTyping && autoLeftModeSelected)
             {
-                _autoLeftRuntimeEnabled = !_autoLeftRuntimeEnabled;
-                UpdateStatusBar(_autoLeftRuntimeEnabled ? "AUTO LPM aktywowane" : "AUTO LPM wyłączone", "Orange");
-                changed = true;
+                bool autoLeftComboMode = ChkAutoLeftComboMode.IsChecked == true;
+                if (autoLeftComboMode)
+                {
+                    _autoLeftBindWasDown = IsConfiguredBindKeyDown(TxtAutoLeftKey.Text);
+                    if (TryHandleAutoComboToggle(TxtAutoLeftKey.Text, VK_LBUTTON, ref _autoLeftComboTriggerWasDown, ref _autoLeftComboStopWasDown, ref _autoLeftRuntimeEnabled, "AUTO LPM aktywowane (bind + LPM)", "AUTO LPM wyłączone (puszczono LPM)"))
+                        changed = true;
+                }
+                else
+                {
+                    _autoLeftComboTriggerWasDown = false;
+                    _autoLeftComboStopWasDown = false;
+                    if (IsBindPressed(TxtAutoLeftKey.Text, ref _autoLeftBindWasDown))
+                    {
+                        _autoLeftRuntimeEnabled = !_autoLeftRuntimeEnabled;
+                        UpdateStatusBar(_autoLeftRuntimeEnabled ? "AUTO LPM aktywowane" : "AUTO LPM wyłączone", "Orange");
+                        changed = true;
+                    }
+                }
+            }
+            else
+            {
+                _autoLeftComboTriggerWasDown = false;
+                _autoLeftComboStopWasDown = false;
             }
 
-            if (!internalCommandTyping && IsBindPressed(TxtAutoRightKey.Text, ref _autoRightBindWasDown) && autoRightModeSelected)
+            if (!internalCommandTyping && autoRightModeSelected)
             {
-                _autoRightRuntimeEnabled = !_autoRightRuntimeEnabled;
-                UpdateStatusBar(_autoRightRuntimeEnabled ? "AUTO PPM aktywowane" : "AUTO PPM wyłączone", "Orange");
-                changed = true;
+                bool autoRightComboMode = ChkAutoRightComboMode.IsChecked == true;
+                if (autoRightComboMode)
+                {
+                    _autoRightBindWasDown = IsConfiguredBindKeyDown(TxtAutoRightKey.Text);
+                    if (TryHandleAutoComboToggle(TxtAutoRightKey.Text, VK_RBUTTON, ref _autoRightComboTriggerWasDown, ref _autoRightComboStopWasDown, ref _autoRightRuntimeEnabled, "AUTO PPM aktywowane (bind + PPM)", "AUTO PPM wyłączone (puszczono PPM)"))
+                        changed = true;
+                }
+                else
+                {
+                    _autoRightComboTriggerWasDown = false;
+                    _autoRightComboStopWasDown = false;
+                    if (IsBindPressed(TxtAutoRightKey.Text, ref _autoRightBindWasDown))
+                    {
+                        _autoRightRuntimeEnabled = !_autoRightRuntimeEnabled;
+                        UpdateStatusBar(_autoRightRuntimeEnabled ? "AUTO PPM aktywowane" : "AUTO PPM wyłączone", "Orange");
+                        changed = true;
+                    }
+                }
+            }
+            else
+            {
+                _autoRightComboTriggerWasDown = false;
+                _autoRightComboStopWasDown = false;
             }
 
             if (!internalCommandTyping && IsBindPressed(TxtJablkaZLisciKey.Text, ref _jablkaBindWasDown) && jablkaModeSelected)
@@ -5981,6 +6331,32 @@ namespace MinecraftHelper
             MarkDirty();
         }
 
+        private void ChkAutoLeftComboMode_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_isLoadingUi)
+                return;
+
+            _autoLeftRuntimeEnabled = false;
+            _autoLeftComboTriggerWasDown = false;
+            _autoLeftComboStopWasDown = false;
+            _nextAutoLeftClickAtUtc = DateTime.UtcNow;
+            RefreshTopTiles();
+            MarkDirty();
+        }
+
+        private void ChkAutoRightComboMode_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_isLoadingUi)
+                return;
+
+            _autoRightRuntimeEnabled = false;
+            _autoRightComboTriggerWasDown = false;
+            _autoRightComboStopWasDown = false;
+            _nextAutoRightClickAtUtc = DateTime.UtcNow;
+            RefreshTopTiles();
+            MarkDirty();
+        }
+
         private void ChkJablkaZLisciEnabled_Changed(object sender, RoutedEventArgs e)
         {
             if (_isLoadingUi)
@@ -6255,6 +6631,7 @@ namespace MinecraftHelper
             _focusTimer.Stop();
             _macroTimer.Stop();
             _f3AnalysisTimer.Stop();
+            StopMouseHook();
             if (_overlayHud != null)
             {
                 _overlayHud.Close();

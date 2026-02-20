@@ -40,6 +40,8 @@ namespace MinecraftHelper.Models
 
         public MacroButton AutoLeftButton { get; set; } = new MacroButton();
         public MacroButton AutoRightButton { get; set; } = new MacroButton();
+        public bool AutoLeftComboMode { get; set; }
+        public bool AutoRightComboMode { get; set; }
 
         public bool Kopacz533Enabled { get; set; }
         public string Kopacz533Key { get; set; } = "";

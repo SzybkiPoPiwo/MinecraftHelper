@@ -771,6 +771,12 @@
                                                  Tag="HoldToggle"
                                                  PreviewMouseLeftButtonDown="BindKeyBox_PreviewMouseLeftButtonDown"/>
                                         <Button Name="BtnMacroManualCapture" Content="Zapisz" Width="80" Click="BtnMacroManualCapture_Click"/>
+                                        <Button Name="BtnMacroManualClear"
+                                                Content="Usuń bind"
+                                                Width="90"
+                                                Margin="10,0,0,0"
+                                                Tag="HoldToggle"
+                                                Click="BtnClearBind_Click"/>
                                     </StackPanel>
 
                                     <TextBlock Text="1 klawisz aktywuje LPM i PPM równocześnie!" FontSize="11" Foreground="#7F94B2" Margin="0,5,0,0" FontStyle="Italic"/>
@@ -817,7 +823,19 @@
                                                  Tag="AutoLeft"
                                                  PreviewMouseLeftButtonDown="BindKeyBox_PreviewMouseLeftButtonDown"/>
                                         <Button Name="BtnAutoLeftCapture" Content="Zapisz" Width="80" Click="BtnAutoLeftCapture_Click"/>
+                                        <Button Name="BtnAutoLeftClear"
+                                                Content="Usuń bind"
+                                                Width="90"
+                                                Margin="10,0,0,0"
+                                                Tag="AutoLeft"
+                                                Click="BtnClearBind_Click"/>
                                     </StackPanel>
+
+                                    <CheckBox Name="ChkAutoLeftComboMode"
+                                              Margin="0,0,0,10"
+                                              Content="Tryb kombinacji: aktywacja bind + LPM, działa tylko przy trzymaniu LPM"
+                                              Checked="ChkAutoLeftComboMode_Changed"
+                                              Unchecked="ChkAutoLeftComboMode_Changed"/>
 
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                                         <TextBlock Text="Min CPS:" Width="100" VerticalAlignment="Center"/>
@@ -867,7 +885,19 @@
                                                  Tag="AutoRight"
                                                  PreviewMouseLeftButtonDown="BindKeyBox_PreviewMouseLeftButtonDown"/>
                                         <Button Name="BtnAutoRightCapture" Content="Zapisz" Width="80" Click="BtnAutoRightCapture_Click"/>
+                                        <Button Name="BtnAutoRightClear"
+                                                Content="Usuń bind"
+                                                Width="90"
+                                                Margin="10,0,0,0"
+                                                Tag="AutoRight"
+                                                Click="BtnClearBind_Click"/>
                                     </StackPanel>
+
+                                    <CheckBox Name="ChkAutoRightComboMode"
+                                              Margin="0,0,0,10"
+                                              Content="Tryb kombinacji: aktywacja bind + PPM, działa tylko przy trzymaniu PPM"
+                                              Checked="ChkAutoRightComboMode_Changed"
+                                              Unchecked="ChkAutoRightComboMode_Changed"/>
 
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                                         <TextBlock Text="Min CPS:" Width="100" VerticalAlignment="Center"/>
@@ -920,6 +950,12 @@
                                                 Content="Zapisz"
                                                 Width="80"
                                                 Click="BtnJablkaZLisciCapture_Click"/>
+                                        <Button Name="BtnJablkaZLisciClear"
+                                                Content="Usuń bind"
+                                                Width="90"
+                                                Margin="10,0,0,0"
+                                                Tag="JablkaZLisci"
+                                                Click="BtnClearBind_Click"/>
                                     </StackPanel>
 
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
@@ -1021,6 +1057,12 @@
                                                  Tag="Kopacz533"
                                                  PreviewMouseLeftButtonDown="BindKeyBox_PreviewMouseLeftButtonDown"/>
                                         <Button Name="BtnKopacz533Capture" Content="Zapisz klawisz" Width="120" Click="BtnKopacz533Capture_Click"/>
+                                        <Button Name="BtnKopacz533Clear"
+                                                Content="Usuń bind"
+                                                Width="90"
+                                                Margin="10,0,0,0"
+                                                Tag="Kopacz533"
+                                                Click="BtnClearBind_Click"/>
                                     </StackPanel>
 
                                     <TextBlock Text="Komendy:" FontSize="11" FontWeight="Bold" Margin="0,0,0,10" Foreground="#A8BAD3"/>
@@ -1063,6 +1105,12 @@
                                                  Tag="Kopacz633"
                                                  PreviewMouseLeftButtonDown="BindKeyBox_PreviewMouseLeftButtonDown"/>
                                         <Button Name="BtnKopacz633Capture" Content="Zapisz klawisz" Width="120" Click="BtnKopacz633Capture_Click"/>
+                                        <Button Name="BtnKopacz633Clear"
+                                                Content="Usuń bind"
+                                                Width="90"
+                                                Margin="10,0,0,0"
+                                                Tag="Kopacz633"
+                                                Click="BtnClearBind_Click"/>
                                     </StackPanel>
 
                                     <!-- POPRAWIONY COMBOBOX (ciemny + brak niebieskiego + działa otwieranie) -->
@@ -1316,10 +1364,10 @@
                                                            Foreground="White"/>
 
                                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                                    <TextBlock Text="Bind zaznaczania:" Width="170" VerticalAlignment="Center"/>
-                                                    <TextBox Name="TxtTestCustomCaptureBind"
-                                                             Width="100"
-                                                             Margin="0,0,10,0"
+                                                <TextBlock Text="Bind zaznaczania:" Width="170" VerticalAlignment="Center"/>
+                                                <TextBox Name="TxtTestCustomCaptureBind"
+                                                         Width="100"
+                                                         Margin="0,0,10,0"
                                                              IsReadOnly="True"
                                                              FontWeight="Bold"
                                                              Foreground="#38D6B4"
@@ -1330,6 +1378,12 @@
                                                             Width="80"
                                                             Margin="0,0,10,0"
                                                             Click="BtnTestCustomCaptureBind_Click"/>
+                                                    <Button Name="BtnTestCustomCaptureBindClear"
+                                                            Content="Usuń bind"
+                                                            Width="90"
+                                                            Margin="0,0,10,0"
+                                                            Tag="TestCaptureArea"
+                                                            Click="BtnClearBind_Click"/>
                                                     <Button Name="BtnTestSelectCaptureArea"
                                                             Content="Zaznacz obszar"
                                                             Width="120"
@@ -1430,6 +1484,12 @@
                                                         Content="Zapisz"
                                                         Width="80"
                                                         Click="BtnTestFastUpExitBind_Click"/>
+                                                <Button Name="BtnTestFastUpExitBindClear"
+                                                        Content="Usuń bind"
+                                                        Width="90"
+                                                        Margin="10,0,0,0"
+                                                        Tag="FastUpExit"
+                                                        Click="BtnClearBind_Click"/>
                                             </StackPanel>
 
                                             <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
