@@ -138,7 +138,7 @@ Projekt jest open-source i rozwijany modułowo.
 
 #### Experimental
 
-<img width="1584" height="1000" alt="image" src="https://github.com/user-attachments/assets/7dedebef-8485-4187-9f41-cec82212cebb" />
+<img width="1584" height="941" alt="image" src="https://github.com/user-attachments/assets/f8bebd58-d4b3-4071-ba97-2a66ad71668b" />
 
 - checkbox `Wykrywanie encji (E)`
 - OCR oparty o linię F3 `E: x/x`
