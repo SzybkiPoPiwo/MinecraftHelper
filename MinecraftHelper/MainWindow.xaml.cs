@@ -17,6 +17,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Navigation;
 using System.Windows.Threading;
+using System.Windows.Media.Imaging;
 using MinecraftHelper.Models;
 using MinecraftHelper.Services;
 using System.Windows.Interop;
@@ -44,16 +45,18 @@ namespace MinecraftHelper
         private readonly DispatcherTimer _f3AnalysisTimer;
 
         private bool _isMinecraftFocused;
-        private IntPtr _focusedGameWindowHandle = IntPtr.Zero;
+        private IntPtr _targetGameWindowHandle = IntPtr.Zero;
         private bool _isLoadingUi = true;
         private bool _isPausedByCursorVisibility;
         private bool _holdMacroRuntimeEnabled;
         private bool _autoLeftRuntimeEnabled;
+        private bool _autoLeftDabHolding;
         private bool _autoRightRuntimeEnabled;
         private bool _jablkaRuntimeEnabled;
         private bool _kopacz533RuntimeEnabled;
         private bool _kopacz633RuntimeEnabled;
         private bool _testFastUpExitRuntimeEnabled;
+        private bool _testAutoFishingRuntimeEnabled;
 
         private bool _holdBindWasDown;
         private bool _autoLeftBindWasDown;
@@ -67,6 +70,8 @@ namespace MinecraftHelper
         private bool _kopacz633BindWasDown;
         private bool _testCaptureBindWasDown;
         private bool _testFastUpExitBindWasDown;
+        private bool _testAutoFishingBindWasDown;
+        private bool _testAutoFishingCaptureBindWasDown;
         private bool _suppressBindToggleUntilRelease;
 
         private DateTime _nextHoldLeftClickAtUtc = DateTime.UtcNow;
@@ -77,6 +82,7 @@ namespace MinecraftHelper
         private bool _holdLeftToggleWasDown;
         private DateTime _holdLeftToggleDownStartedAtUtc = DateTime.MinValue;
         private bool _holdRightRuntimePressActive;
+        private bool _holdRightInjectedButtonDown;
         private DateTime _nextJablkaActionAtUtc = DateTime.UtcNow;
         private bool _jablkaUseSlotOneNext = true;
         private int _jablkaCompletedCycles;
@@ -126,6 +132,27 @@ namespace MinecraftHelper
         private FastUpExitStage _testFastUpExitLookSweepNextStage = FastUpExitStage.LookUp;
         private DateTime _testFastUpExitJumpHoldUntilUtc = DateTime.UtcNow;
         private bool _testFastUpExitJumpHoldActive;
+        private DateTime _nextTestAutoFishingScanAtUtc = DateTime.UtcNow;
+        private DateTime _nextTestAutoFishingActionAtUtc = DateTime.UtcNow;
+        private DateTime _nextTestAutoFishingRepairAtUtc = DateTime.MaxValue;
+        private DateTime _nextTestAutoFishingRepairStageAtUtc = DateTime.UtcNow;
+        private bool _testAutoFishingAwaitSecondClick;
+        private bool _testAutoFishingRecastAfterRepairPending;
+        private DateTime _testAutoFishingRecastAfterRepairAtUtc = DateTime.UtcNow;
+        private bool _testAutoFishingWaitingForCastRegistration;
+        private bool _testAutoFishingBaselineReady;
+        private DateTime _testAutoFishingBaselineArmedAtUtc = DateTime.UtcNow;
+        private DateTime _testAutoFishingNoBobberSinceAtUtc = DateTime.MinValue;
+        private DateTime _nextTestAutoFishingPreviewAtUtc = DateTime.UtcNow;
+        private double _testAutoFishingLastDetectedBobberX = double.NaN;
+        private double _testAutoFishingBaselineBobberY;
+        private double _testAutoFishingLastDetectedBobberY = double.NaN;
+        private int _testAutoFishingLastDetectedRedPixels;
+        private int _testAutoFishingMissedDetections;
+        private int _testAutoFishingBiteConfirmationFrames;
+        private int _testAutoFishingCaughtCount;
+        private DateTime _testAutoFishingLastCatchAtUtc = DateTime.MinValue;
+        private TestAutoFishingRepairStage _testAutoFishingRepairStage;
         private readonly Dictionary<string, bool> _bindyBindWasDownById = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
         private BindyEntry? _bindyCaptureEntry;
         private TextBox? _bindyCaptureTextBox;
@@ -150,6 +177,22 @@ namespace MinecraftHelper
         private const int F3CaptureHeight = 230;
         private const int F3CaptureMargin = 0;
         private const int F3ReadFailureTolerance = 3;
+        private const int MinimumCaptureSelectionSize = 24;
+        private const int TestAutoFishingScanIntervalMs = 45;
+        private const int TestAutoFishingPreviewIntervalMs = 220;
+        private const int TestAutoFishingSecondClickDelayMs = 95;
+        private const int TestAutoFishingCastRegistrationDelayMs = 2000;
+        private const int TestAutoFishingNoBobberRecastMs = 5000;
+        private const int TestAutoFishingBiteArmingDelayMs = 420;
+        private const int TestAutoFishingDropThresholdPx = 3;
+        private const int TestAutoFishingRequiredBiteFrames = 2;
+        private const int TestAutoFishingMinRedPixels = 3;
+        private const int TestAutoFishingMissTolerance = 6;
+        private const int TestAutoFishingLossTriggerMisses = 3;
+        private const int TestAutoFishingRepairDelayAfterOpenChatMs = 180;
+        private const int TestAutoFishingRepairDelayAfterTypeCommandMs = 110;
+        private const int TestAutoFishingRepairRecastDelayMs = 190;
+        private const int TestAutoFishingRepairIntervalMaxSeconds = 3600;
 
         private readonly Random _random = new Random();
         private static readonly Regex F3EntityOnlyLineRegex = new Regex(@"^\W*E\s*[:;.,]?\s*([0-9IlOo]{1,2})\s*[/\\|:;.,]\s*([0-9IlOo]{1,3})(?:\W.*)?$", RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
@@ -173,7 +216,9 @@ namespace MinecraftHelper
             Kopacz633,
             JablkaZLisci,
             FastUpExit,
-            TestCaptureArea
+            TestCaptureArea,
+            TestAutoFishing,
+            TestAutoFishingCaptureArea
         }
 
         private enum JablkaCommandStage
@@ -216,6 +261,14 @@ namespace MinecraftHelper
             SelectBlock,
             LookDown,
             PlaceBlock
+        }
+
+        private enum TestAutoFishingRepairStage
+        {
+            None,
+            OpenChat,
+            TypeCommand,
+            SubmitCommand
         }
 
         private enum Kopacz633StrafeDirection
@@ -307,6 +360,10 @@ namespace MinecraftHelper
         [DllImport("dwmapi.dll")]
         private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
 
+        [DllImport("gdi32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool DeleteObject(IntPtr hObject);
+
         private const int DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1 = 19;
         private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
         private const int VK_LBUTTON = 0x01;
@@ -333,6 +390,7 @@ namespace MinecraftHelper
         private const int VK_D = 0x44;
         private const int VK_W = 0x57;
         private const int VK_S = 0x53;
+        private const int VK_O = 0x4F;
         private const int VK_SPACE = 0x20;
         private const int VK_T = 0x54;
         private const int VK_SHIFT = 0x10;
@@ -453,7 +511,11 @@ namespace MinecraftHelper
             {
                 Interval = TimeSpan.FromMilliseconds(250)
             };
-            _focusTimer.Tick += (_, __) => _isMinecraftFocused = CheckGameFocus();
+            _focusTimer.Tick += (_, __) =>
+            {
+                _isMinecraftFocused = CheckGameFocus();
+                RefreshTestAutoFishingPreview(DateTime.UtcNow);
+            };
 
             _macroTimer = new DispatcherTimer
             {
@@ -769,6 +831,9 @@ namespace MinecraftHelper
             _settings.JablkaZLisciCommand ??= string.Empty;
             _settings.TestCustomCaptureBind ??= string.Empty;
             _settings.TestFastUpExitBind ??= string.Empty;
+            _settings.TestAutoFishingBind ??= string.Empty;
+            _settings.TestAutoFishingCaptureBind ??= string.Empty;
+            _settings.TestAutoFishingRepairCommand ??= string.Empty;
             _settings.TestFastUpExitPickaxeType ??= FastUpDefaultPickaxeType;
             _settings.TestFastUpExitLookDurationByPickaxe ??= new Dictionary<string, int>();
             _settings.TestFastUpExitBreakDurationByPickaxe ??= new Dictionary<string, int>();
@@ -787,6 +852,15 @@ namespace MinecraftHelper
                 _settings.TestCustomCaptureWidth = 0;
             if (_settings.TestCustomCaptureHeight < 0)
                 _settings.TestCustomCaptureHeight = 0;
+            if (_settings.TestAutoFishingCaptureX < 0)
+                _settings.TestAutoFishingCaptureX = 0;
+            if (_settings.TestAutoFishingCaptureY < 0)
+                _settings.TestAutoFishingCaptureY = 0;
+            if (_settings.TestAutoFishingCaptureWidth < 0)
+                _settings.TestAutoFishingCaptureWidth = 0;
+            if (_settings.TestAutoFishingCaptureHeight < 0)
+                _settings.TestAutoFishingCaptureHeight = 0;
+            _settings.TestAutoFishingRepairEverySeconds = Math.Clamp(_settings.TestAutoFishingRepairEverySeconds, 0, TestAutoFishingRepairIntervalMaxSeconds);
             if (_settings.TestFastUpExitBlockSlot < 1 || _settings.TestFastUpExitBlockSlot > 9)
                 _settings.TestFastUpExitBlockSlot = 2;
             if (_settings.TestFastUpExitPickaxeSlot < 1 || _settings.TestFastUpExitPickaxeSlot > 9)
@@ -840,12 +914,6 @@ namespace MinecraftHelper
             _settings.TestFastUpExitLookDurationMs = Math.Clamp(selectedPickaxeLookMs, FastUpLookDurationMinMs, FastUpLookDurationMaxMs);
             _settings.TestFastUpExitBreakDurationMs = NormalizeFastUpBreakDurationMs(selectedPickaxeBreakMs);
             _settings.TestFastUpExitPlaceAfterJumpMs = NormalizeFastUpPlaceAfterJumpMs(_settings.TestFastUpExitPlaceAfterJumpMs);
-            if (!_settings.HoldLeftEnabled && !_settings.HoldRightEnabled)
-            {
-                _settings.HoldLeftEnabled = true;
-                _settings.HoldRightEnabled = true;
-            }
-
             if (IsMacroButtonEmpty(_settings.HoldLeftButton) && !IsMacroButtonEmpty(_settings.MacroLeftButton))
                 CopyMacroButtonData(_settings.MacroLeftButton, _settings.HoldLeftButton);
             if (IsMacroButtonEmpty(_settings.HoldRightButton) && !IsMacroButtonEmpty(_settings.MacroRightButton))
@@ -982,6 +1050,12 @@ namespace MinecraftHelper
             return string.IsNullOrWhiteSpace(windowTitle) ? "Brak" : windowTitle;
         }
 
+        private static bool LooksLikeLauncherWindow(ProcessTargetOption option)
+        {
+            return option.ProcessName.Contains("launcher", StringComparison.OrdinalIgnoreCase)
+                || option.WindowTitle.Contains("launcher", StringComparison.OrdinalIgnoreCase);
+        }
+
         private void RefreshTargetProcessChoices()
         {
             if (CbTargetProcessList == null)
@@ -1033,6 +1107,87 @@ namespace MinecraftHelper
             finally
             {
                 _isLoadingUi = previousLoading;
+            }
+        }
+
+        private bool TryResolveTargetWindow(bool allowPendingSelection, out IntPtr windowHandle)
+        {
+            windowHandle = IntPtr.Zero;
+
+            int targetProcessId = _settings.TargetProcessId;
+            string targetProcessName = (_settings.TargetProcessName ?? string.Empty).Trim();
+            string targetWindowTitle = (_settings.TargetWindowTitle ?? string.Empty).Trim();
+
+            if (allowPendingSelection && GetSelectedTargetProcessOption() is ProcessTargetOption selectedProcess)
+            {
+                targetProcessId = selectedProcess.ProcessId;
+                targetProcessName = selectedProcess.ProcessName;
+                targetWindowTitle = selectedProcess.WindowTitle;
+            }
+
+            if (targetProcessId <= 0
+                && string.IsNullOrWhiteSpace(targetProcessName)
+                && string.IsNullOrWhiteSpace(targetWindowTitle))
+            {
+                return false;
+            }
+
+            if (targetProcessId > 0)
+            {
+                try
+                {
+                    using Process configuredProcess = Process.GetProcessById(targetProcessId);
+                    bool processNameMatches = string.IsNullOrWhiteSpace(targetProcessName)
+                        || string.Equals(configuredProcess.ProcessName, targetProcessName, StringComparison.OrdinalIgnoreCase);
+                    if (processNameMatches && configuredProcess.MainWindowHandle != IntPtr.Zero)
+                    {
+                        windowHandle = configuredProcess.MainWindowHandle;
+                        return true;
+                    }
+                }
+                catch
+                {
+                    // The saved PID may expire after the game is restarted; resolve by name/title below.
+                }
+            }
+
+            List<ProcessTargetOption> options = GetRunningWindowProcesses();
+            ProcessTargetOption? match = null;
+
+            if (match == null && !string.IsNullOrWhiteSpace(targetProcessName) && !string.IsNullOrWhiteSpace(targetWindowTitle))
+            {
+                match = options.FirstOrDefault(option =>
+                    string.Equals(option.ProcessName, targetProcessName, StringComparison.OrdinalIgnoreCase)
+                    && (option.WindowTitle.Contains(targetWindowTitle, StringComparison.OrdinalIgnoreCase)
+                        || targetWindowTitle.Contains(option.WindowTitle, StringComparison.OrdinalIgnoreCase)));
+            }
+
+            if (match == null && !string.IsNullOrWhiteSpace(targetProcessName))
+            {
+                match = options.FirstOrDefault(option =>
+                    string.Equals(option.ProcessName, targetProcessName, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (match == null && !string.IsNullOrWhiteSpace(targetWindowTitle))
+            {
+                match = options.FirstOrDefault(option =>
+                    option.WindowTitle.Contains(targetWindowTitle, StringComparison.OrdinalIgnoreCase)
+                    || targetWindowTitle.Contains(option.WindowTitle, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (match == null)
+                return false;
+
+            try
+            {
+                using Process process = Process.GetProcessById(match.ProcessId);
+                windowHandle = process.MainWindowHandle;
+                return windowHandle != IntPtr.Zero;
+            }
+            catch
+            {
+                windowHandle = IntPtr.Zero;
+                return false;
             }
         }
 
@@ -1101,7 +1256,14 @@ namespace MinecraftHelper
                 }
             }
 
-            _focusedGameWindowHandle = focusedWindow;
+            if (focusedWindow != IntPtr.Zero)
+            {
+                _targetGameWindowHandle = focusedWindow;
+            }
+            else if (!TryResolveTargetWindow(allowPendingSelection: false, out _targetGameWindowHandle))
+            {
+                _targetGameWindowHandle = IntPtr.Zero;
+            }
 
             TxtMinecraftFocus.Text = focused ? "✓ Tak" : "✗ Nie";
             TxtMinecraftFocus.Foreground = focused
@@ -1120,6 +1282,7 @@ namespace MinecraftHelper
 
             _holdMacroRuntimeEnabled = false;
             _autoLeftRuntimeEnabled = false;
+            SetAutoLeftDabHold(false);
             _autoRightRuntimeEnabled = false;
             _autoLeftComboTriggerWasDown = false;
             _autoLeftComboStopWasDown = false;
@@ -1129,10 +1292,12 @@ namespace MinecraftHelper
             _kopacz533RuntimeEnabled = false;
             _kopacz633RuntimeEnabled = false;
             _testFastUpExitRuntimeEnabled = false;
+            _testAutoFishingRuntimeEnabled = false;
             ResetJablkaRuntimeState();
             ResetKopacz533RuntimeState();
             ResetKopacz633RuntimeState();
             ResetTestFastUpExitRuntimeState();
+            ResetTestAutoFishingRuntimeState();
             ResetBindyRuntimeState();
             SetKopacz533MiningHold(false);
             SetKopacz633AttackHold(false);
@@ -1154,6 +1319,7 @@ namespace MinecraftHelper
             TxtAutoLeftMinCps.Text = _settings.AutoLeftButton.MinCps.ToString();
             TxtAutoLeftMaxCps.Text = _settings.AutoLeftButton.MaxCps.ToString();
             ChkAutoLeftComboMode.IsChecked = _settings.AutoLeftComboMode;
+            ChkAutoLeftDabMode.IsChecked = _settings.AutoLeftDabMode;
 
             ChkAutoRightEnabled.IsChecked = _settings.AutoRightButton.Enabled;
             TxtAutoRightKey.Text = _settings.AutoRightButton.Key;
@@ -1202,6 +1368,11 @@ namespace MinecraftHelper
             TxtTestCustomCaptureBind.Text = _settings.TestCustomCaptureBind;
             ChkTestFastUpExitEnabled.IsChecked = _settings.TestFastUpExitEnabled;
             TxtTestFastUpExitBind.Text = _settings.TestFastUpExitBind;
+            ChkTestAutoFishingEnabled.IsChecked = _settings.TestAutoFishingEnabled;
+            TxtTestAutoFishingBind.Text = _settings.TestAutoFishingBind;
+            TxtTestAutoFishingCaptureBind.Text = _settings.TestAutoFishingCaptureBind;
+            TxtTestAutoFishingRepairCommand.Text = _settings.TestAutoFishingRepairCommand;
+            TxtTestAutoFishingRepairEverySeconds.Text = _settings.TestAutoFishingRepairEverySeconds.ToString(CultureInfo.InvariantCulture);
             CbTestFastUpExitBlockSlot.SelectedIndex = Math.Clamp(_settings.TestFastUpExitBlockSlot, 1, 9) - 1;
             CbTestFastUpExitPickaxeSlot.SelectedIndex = Math.Clamp(_settings.TestFastUpExitPickaxeSlot, 1, 9) - 1;
             string selectedPickaxeType = NormalizeFastUpPickaxeType(_settings.TestFastUpExitPickaxeType);
@@ -1217,6 +1388,8 @@ namespace MinecraftHelper
                 SlTestFastUpExitPlaceMs.Value = NormalizeFastUpPlaceAfterJumpMs(_settings.TestFastUpExitPlaceAfterJumpMs);
             UpdateTestFastUpExitPlaceDurationLabel(NormalizeFastUpPlaceAfterJumpMs(_settings.TestFastUpExitPlaceAfterJumpMs));
             UpdateTestCustomCaptureAreaInfo();
+            UpdateTestAutoFishingAreaInfo();
+            UpdateTestAutoFishingStatusLabel();
 
             // OVERLAY
             ChkOverlayHudEnabled.IsChecked = _settings.OverlayHudEnabled;
@@ -1238,7 +1411,7 @@ namespace MinecraftHelper
 
         private bool HasCustomCaptureAreaConfigured()
         {
-            return _settings.TestCustomCaptureWidth >= 24 && _settings.TestCustomCaptureHeight >= 24;
+            return _settings.TestCustomCaptureWidth >= MinimumCaptureSelectionSize && _settings.TestCustomCaptureHeight >= MinimumCaptureSelectionSize;
         }
 
         private void UpdateTestCustomCaptureAreaInfo()
@@ -1250,6 +1423,191 @@ namespace MinecraftHelper
             TxtTestCustomCaptureAreaInfo.Text = hasArea
                 ? $"Obszar OCR: x={_settings.TestCustomCaptureX}, y={_settings.TestCustomCaptureY}, {_settings.TestCustomCaptureWidth}x{_settings.TestCustomCaptureHeight} (względem okna gry)."
                 : "Brak obszaru OCR. Kliknij \"Zaznacz obszar\".";
+        }
+
+        private bool HasTestAutoFishingAreaConfigured()
+        {
+            return _settings.TestAutoFishingCaptureWidth >= MinimumCaptureSelectionSize
+                && _settings.TestAutoFishingCaptureHeight >= MinimumCaptureSelectionSize;
+        }
+
+        private void UpdateTestAutoFishingAreaInfo()
+        {
+            if (TxtTestAutoFishingAreaInfo == null)
+                return;
+
+            TxtTestAutoFishingAreaInfo.Text = HasTestAutoFishingAreaConfigured()
+                ? $"Obszar spławika: x={_settings.TestAutoFishingCaptureX}, y={_settings.TestAutoFishingCaptureY}, {_settings.TestAutoFishingCaptureWidth}x{_settings.TestAutoFishingCaptureHeight} (względem okna gry)."
+                : "Brak obszaru monitoringu spławika. Kliknij \"Zaznacz obszar\".";
+            RefreshTestAutoFishingPreview(DateTime.UtcNow, force: true);
+        }
+
+        private void RefreshTestAutoFishingPreview(DateTime now, bool force = false)
+        {
+            if (ImgTestAutoFishingPreview == null || TxtTestAutoFishingPreviewInfo == null)
+                return;
+            if (!HasTestAutoFishingAreaConfigured())
+            {
+                ImgTestAutoFishingPreview.Source = null;
+                TxtTestAutoFishingPreviewInfo.Text = "Brak zaznaczonego obszaru.";
+                return;
+            }
+            if (_targetGameWindowHandle == IntPtr.Zero || !TryGetTestAutoFishingCaptureArea(_targetGameWindowHandle, out Drawing.Rectangle captureArea))
+            {
+                TxtTestAutoFishingPreviewInfo.Text = "Podgląd niedostępny. Uruchom i wybierz okno gry.";
+                return;
+            }
+            if (!force && now < _nextTestAutoFishingPreviewAtUtc)
+                return;
+
+            _nextTestAutoFishingPreviewAtUtc = now.AddMilliseconds(TestAutoFishingPreviewIntervalMs);
+            TxtTestAutoFishingPreviewInfo.Text = $"x={_settings.TestAutoFishingCaptureX}, y={_settings.TestAutoFishingCaptureY}, {_settings.TestAutoFishingCaptureWidth}x{_settings.TestAutoFishingCaptureHeight}";
+            if (TryCaptureScreenRectBitmapSource(captureArea, out BitmapSource? bitmapSource))
+                ImgTestAutoFishingPreview.Source = bitmapSource;
+        }
+
+        private static bool TryCaptureScreenRectBitmapSource(Drawing.Rectangle screenRect, out BitmapSource? bitmapSource)
+        {
+            bitmapSource = null;
+            if (screenRect.Width < 2 || screenRect.Height < 2)
+                return false;
+
+            try
+            {
+                using Drawing.Bitmap bitmap = new Drawing.Bitmap(screenRect.Width, screenRect.Height, DrawingImaging.PixelFormat.Format32bppArgb);
+                using (Drawing.Graphics graphics = Drawing.Graphics.FromImage(bitmap))
+                    graphics.CopyFromScreen(screenRect.Left, screenRect.Top, 0, 0, screenRect.Size, Drawing.CopyPixelOperation.SourceCopy);
+
+                IntPtr hbitmap = bitmap.GetHbitmap();
+                try
+                {
+                    BitmapSource source = Imaging.CreateBitmapSourceFromHBitmap(hbitmap, IntPtr.Zero, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
+                    source.Freeze();
+                    bitmapSource = source;
+                    return true;
+                }
+                finally
+                {
+                    DeleteObject(hbitmap);
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private void UpdateTestAutoFishingStatusLabel()
+        {
+            if (TxtTestAutoFishingState == null)
+                return;
+            if (!_testAutoFishingRuntimeEnabled)
+            {
+                TxtTestAutoFishingState.Text = "-";
+                return;
+            }
+            if (_isPausedByCursorVisibility)
+            {
+                TxtTestAutoFishingState.Text = "pauza kursora: skan i PPM zatrzymane";
+                return;
+            }
+            if (_testAutoFishingRepairStage != TestAutoFishingRepairStage.None)
+            {
+                TxtTestAutoFishingState.Text = "komenda: " + GetTestAutoFishingRepairStageLabel(_testAutoFishingRepairStage);
+                return;
+            }
+            if (_testAutoFishingRecastAfterRepairPending)
+            {
+                TxtTestAutoFishingState.Text = "komenda: ponowne zarzucenie...";
+                return;
+            }
+            if (_testAutoFishingAwaitSecondClick)
+            {
+                TxtTestAutoFishingState.Text = "PPM #2 (ponowne zarzucenie)";
+                return;
+            }
+            if (_testAutoFishingWaitingForCastRegistration)
+            {
+                int remainingMs = Math.Max(0, (int)Math.Ceiling((_nextTestAutoFishingActionAtUtc - DateTime.UtcNow).TotalMilliseconds));
+                TxtTestAutoFishingState.Text = $"po rzucie: rejestracja spławika za {remainingMs}ms";
+                return;
+            }
+            if (_testAutoFishingBaselineReady && DateTime.UtcNow < _testAutoFishingBaselineArmedAtUtc)
+            {
+                int remainingMs = Math.Max(0, (int)Math.Ceiling((_testAutoFishingBaselineArmedAtUtc - DateTime.UtcNow).TotalMilliseconds));
+                TxtTestAutoFishingState.Text = $"stabilizacja po rzucie... {remainingMs}ms";
+                return;
+            }
+            if (_testAutoFishingBaselineReady && !double.IsNaN(_testAutoFishingLastDetectedBobberY))
+            {
+                TxtTestAutoFishingState.Text = $"monitoring (Y={(int)Math.Round(_testAutoFishingLastDetectedBobberY)}, baza={(int)Math.Round(_testAutoFishingBaselineBobberY)})";
+                return;
+            }
+            if (_testAutoFishingMissedDetections > 0)
+            {
+                if (_testAutoFishingNoBobberSinceAtUtc != DateTime.MinValue)
+                {
+                    double remainingMs = TestAutoFishingNoBobberRecastMs - (DateTime.UtcNow - _testAutoFishingNoBobberSinceAtUtc).TotalMilliseconds;
+                    TxtTestAutoFishingState.Text = $"szukanie spławika... ({_testAutoFishingMissedDetections}) | PPM za {Math.Max(0, (int)Math.Ceiling(remainingMs / 1000.0))}s";
+                }
+                else
+                {
+                    TxtTestAutoFishingState.Text = $"szukanie spławika... ({_testAutoFishingMissedDetections})";
+                }
+                return;
+            }
+            if (_nextTestAutoFishingRepairAtUtc != DateTime.MaxValue)
+            {
+                int remainingSeconds = Math.Max(0, (int)Math.Ceiling((_nextTestAutoFishingRepairAtUtc - DateTime.UtcNow).TotalSeconds));
+                if (remainingSeconds > 0)
+                {
+                    TxtTestAutoFishingState.Text = $"szukanie spławika... | /repair za {remainingSeconds}s";
+                    return;
+                }
+            }
+            TxtTestAutoFishingState.Text = "szukanie spławika...";
+        }
+
+        private string GetConfiguredTestAutoFishingRepairCommand()
+        {
+            string command = TxtTestAutoFishingRepairCommand?.Text?.Trim() ?? string.Empty;
+            return !string.IsNullOrWhiteSpace(command) ? command : (_settings.TestAutoFishingRepairCommand ?? string.Empty).Trim();
+        }
+
+        private int GetConfiguredTestAutoFishingRepairIntervalSeconds()
+        {
+            if (TxtTestAutoFishingRepairEverySeconds != null)
+                return Math.Clamp(ParseNonNegativeInt(TxtTestAutoFishingRepairEverySeconds.Text), 0, TestAutoFishingRepairIntervalMaxSeconds);
+            return Math.Clamp(_settings.TestAutoFishingRepairEverySeconds, 0, TestAutoFishingRepairIntervalMaxSeconds);
+        }
+
+        private bool HasConfiguredTestAutoFishingRepair()
+        {
+            return GetConfiguredTestAutoFishingRepairIntervalSeconds() > 0
+                && !string.IsNullOrWhiteSpace(GetConfiguredTestAutoFishingRepairCommand());
+        }
+
+        private void ResetTestAutoFishingCatchStats()
+        {
+            _testAutoFishingCaughtCount = 0;
+            _testAutoFishingLastCatchAtUtc = DateTime.MinValue;
+        }
+
+        private void RegisterTestAutoFishingCatch(DateTime now)
+        {
+            _testAutoFishingCaughtCount++;
+            _testAutoFishingLastCatchAtUtc = now;
+        }
+
+        private static string GetTestAutoFishingRepairStageLabel(TestAutoFishingRepairStage stage)
+        {
+            return stage switch
+            {
+                TestAutoFishingRepairStage.OpenChat => "otwieranie chatu",
+                TestAutoFishingRepairStage.TypeCommand => "wpisywanie komendy",
+                TestAutoFishingRepairStage.SubmitCommand => "wysyłanie komendy",
+                _ => "oczekiwanie"
+            };
         }
 
         private static string GetBindTargetLabel(BindTarget target)
@@ -1264,6 +1622,8 @@ namespace MinecraftHelper
                 BindTarget.JablkaZLisci => "Jabłka z liści",
                 BindTarget.FastUpExit => "Szybkie wyjście do góry",
                 BindTarget.TestCaptureArea => "Experimental OCR (obszar)",
+                BindTarget.TestAutoFishing => "Auto łowienie wędką",
+                BindTarget.TestAutoFishingCaptureArea => "Auto łowienie (zaznaczanie obszaru)",
                 _ => "bind"
             };
         }
@@ -1285,6 +1645,8 @@ namespace MinecraftHelper
                 BindTarget.JablkaZLisci => BtnJablkaZLisciCapture,
                 BindTarget.FastUpExit => BtnTestFastUpExitBind,
                 BindTarget.TestCaptureArea => BtnTestCustomCaptureBind,
+                BindTarget.TestAutoFishing => BtnTestAutoFishingBind,
+                BindTarget.TestAutoFishingCaptureArea => BtnTestAutoFishingCaptureBind,
                 _ => null
             };
         }
@@ -1301,6 +1663,8 @@ namespace MinecraftHelper
                 BindTarget.JablkaZLisci => TxtJablkaZLisciKey,
                 BindTarget.FastUpExit => TxtTestFastUpExitBind,
                 BindTarget.TestCaptureArea => TxtTestCustomCaptureBind,
+                BindTarget.TestAutoFishing => TxtTestAutoFishingBind,
+                BindTarget.TestAutoFishingCaptureArea => TxtTestAutoFishingCaptureBind,
                 _ => null
             };
         }
@@ -1315,6 +1679,8 @@ namespace MinecraftHelper
             yield return BindTarget.JablkaZLisci;
             yield return BindTarget.FastUpExit;
             yield return BindTarget.TestCaptureArea;
+            yield return BindTarget.TestAutoFishing;
+            yield return BindTarget.TestAutoFishingCaptureArea;
         }
 
         private static string GetBindOwnerId(BindTarget target)
@@ -1329,6 +1695,8 @@ namespace MinecraftHelper
                 BindTarget.JablkaZLisci => "core:jablka",
                 BindTarget.FastUpExit => "core:fast-up-exit",
                 BindTarget.TestCaptureArea => "core:test-capture",
+                BindTarget.TestAutoFishing => "core:test-auto-fishing",
+                BindTarget.TestAutoFishingCaptureArea => "core:test-auto-fishing-capture",
                 _ => "core:unknown"
             };
         }
@@ -1374,7 +1742,9 @@ namespace MinecraftHelper
                 BindTarget.Kopacz633,
                 BindTarget.JablkaZLisci,
                 BindTarget.FastUpExit,
-                BindTarget.TestCaptureArea
+                BindTarget.TestCaptureArea,
+                BindTarget.TestAutoFishing,
+                BindTarget.TestAutoFishingCaptureArea
             };
 
             for (int i = 0; i < fixedTargets.Length; i++)
@@ -1471,6 +1841,8 @@ namespace MinecraftHelper
             RefreshBindSaveButton(BindTarget.JablkaZLisci);
             RefreshBindSaveButton(BindTarget.FastUpExit);
             RefreshBindSaveButton(BindTarget.TestCaptureArea);
+            RefreshBindSaveButton(BindTarget.TestAutoFishing);
+            RefreshBindSaveButton(BindTarget.TestAutoFishingCaptureArea);
             UpdateBindCaptureVisuals();
         }
 
@@ -1854,6 +2226,7 @@ namespace MinecraftHelper
             bool kop633ModeSelected = ChkKopacz633Enabled.IsChecked == true;
             bool testEntitiesModeSelected = ChkTestEntitiesEnabled.IsChecked == true;
             bool fastUpModeSelected = ChkTestFastUpExitEnabled.IsChecked == true;
+            bool autoFishingModeSelected = ChkTestAutoFishingEnabled.IsChecked == true;
 
             if (_isPausedByCursorVisibility)
             {
@@ -1889,6 +2262,9 @@ namespace MinecraftHelper
             if (fastUpModeSelected && _testFastUpExitRuntimeEnabled)
                 entries.Add(BuildFastUpExitOverlayEntry());
 
+            if (autoFishingModeSelected && _testAutoFishingRuntimeEnabled)
+                entries.Add(BuildTestAutoFishingOverlayEntry(now));
+
             if (testEntitiesModeSelected)
             {
                 OverlayHudEntry testEntry = BuildTestEntitiesOverlayEntry();
@@ -1907,10 +2283,10 @@ namespace MinecraftHelper
             string rawValue = TxtTestLiveEntities?.Text?.Trim() ?? string.Empty;
             bool hasValue = !string.IsNullOrWhiteSpace(rawValue) && !string.Equals(rawValue, "-", StringComparison.Ordinal);
             string value = hasValue ? rawValue : "Brak danych";
-            string body = $"Gracze: {value}";
+            string body = $"Encje (E): {value}";
 
             return new OverlayHudEntry(
-                "WYKRYWANIE GRACZY F3",
+                "WYKRYWANIE ENCJI F3",
                 body,
                 hasValue ? OverlayHudTone.Active : OverlayHudTone.Warning,
                 Emphasize: true);
@@ -1957,10 +2333,16 @@ namespace MinecraftHelper
             int max = ParseNonNegativeInt(TxtAutoLeftMaxCps.Text);
             string bindLabel = GetConfiguredBindLabel(TxtAutoLeftKey.Text);
             string runtimeState = GetRuntimeStateLabel(_autoLeftRuntimeEnabled);
+            string dabState = ChkAutoLeftDabMode.IsChecked != true
+                ? "OFF"
+                : _autoLeftDabHolding
+                    ? "ON (trzymane O)"
+                    : "PAUZA";
             string body =
                 $"Bind: {bindLabel}\n" +
                 $"Stan: {runtimeState}\n" +
-                $"CPS: {min}-{max}";
+                $"CPS: {min}-{max}\n" +
+                $"DAB (O): {dabState}";
 
             return new OverlayHudEntry("AUTO LPM", body, _isPausedByCursorVisibility ? OverlayHudTone.Warning : OverlayHudTone.Active);
         }
@@ -2077,6 +2459,39 @@ namespace MinecraftHelper
                 "SZYBKIE WYJŚCIE DO GÓRY",
                 body,
                 _isPausedByCursorVisibility ? OverlayHudTone.Warning : OverlayHudTone.Active);
+        }
+
+        private OverlayHudEntry BuildTestAutoFishingOverlayEntry(DateTime now)
+        {
+            string bindLabel = GetConfiguredBindLabel(TxtTestAutoFishingBind.Text);
+            string captureBindLabel = GetConfiguredBindLabel(TxtTestAutoFishingCaptureBind.Text);
+            string runtimeStateLabel = GetRuntimeStateLabel(_testAutoFishingRuntimeEnabled);
+            string detectionStateLabel = TxtTestAutoFishingState?.Text?.Trim() ?? "-";
+            string areaLine = HasTestAutoFishingAreaConfigured()
+                ? $"Obszar: x={_settings.TestAutoFishingCaptureX}, y={_settings.TestAutoFishingCaptureY}, {_settings.TestAutoFishingCaptureWidth}x{_settings.TestAutoFishingCaptureHeight}"
+                : "Obszar: brak";
+            string bobberLine = !double.IsNaN(_testAutoFishingLastDetectedBobberX) && !double.IsNaN(_testAutoFishingLastDetectedBobberY)
+                ? $"Spławik: x={_settings.TestAutoFishingCaptureX + (int)Math.Round(_testAutoFishingLastDetectedBobberX)}, y={_settings.TestAutoFishingCaptureY + (int)Math.Round(_testAutoFishingLastDetectedBobberY)} (okno gry) | czerwone px={_testAutoFishingLastDetectedRedPixels}"
+                : "Spławik: brak";
+            if (_testAutoFishingBaselineReady)
+                bobberLine += $" | baza y={_settings.TestAutoFishingCaptureY + (int)Math.Round(_testAutoFishingBaselineBobberY)}";
+            string catchLine = _testAutoFishingCaughtCount > 0 && _testAutoFishingLastCatchAtUtc != DateTime.MinValue
+                ? $"Złowione: {_testAutoFishingCaughtCount} | ostatnie {Math.Max(0, (int)Math.Floor((now - _testAutoFishingLastCatchAtUtc).TotalSeconds))}s temu"
+                : "Złowione: brak";
+
+            string command = GetConfiguredTestAutoFishingRepairCommand();
+            string commandLine;
+            if (string.IsNullOrWhiteSpace(command) || GetConfiguredTestAutoFishingRepairIntervalSeconds() <= 0)
+                commandLine = "Komenda: OFF";
+            else if (_testAutoFishingRepairStage != TestAutoFishingRepairStage.None)
+                commandLine = $"Komenda: {GetStatusCommandPreview(command)} ({GetTestAutoFishingRepairStageLabel(_testAutoFishingRepairStage)})";
+            else if (_testAutoFishingRecastAfterRepairPending)
+                commandLine = $"Komenda: ponowne zarzucenie za {Math.Max(0, (int)Math.Ceiling((_testAutoFishingRecastAfterRepairAtUtc - now).TotalMilliseconds))}ms";
+            else
+                commandLine = $"Komenda: {GetStatusCommandPreview(command)} za {(_nextTestAutoFishingRepairAtUtc == DateTime.MaxValue ? 0 : Math.Max(0, (int)Math.Ceiling((_nextTestAutoFishingRepairAtUtc - now).TotalSeconds)))}s";
+
+            string body = $"Bind: {bindLabel}\nZaznaczanie: {captureBindLabel}\nStan: {runtimeStateLabel}\nDetekcja: {detectionStateLabel}\n{areaLine}\n{bobberLine}\n{catchLine}\n{commandLine}";
+            return new OverlayHudEntry("AUTO ŁOWIENIE", body, _isPausedByCursorVisibility ? OverlayHudTone.Warning : OverlayHudTone.Active);
         }
 
         private string BuildKopacz533CommandOverlayLine(DateTime now)
@@ -2221,12 +2636,13 @@ namespace MinecraftHelper
 
         private void RefreshLiveTopTiles(DateTime now)
         {
-            bool kopaczRuntimeLive =
+            bool runtimeDataLive =
                 _kopacz533RuntimeEnabled ||
                 _kopacz533CommandStage != Kopacz533CommandStage.None ||
                 _kopacz633RuntimeEnabled ||
-                _kopacz633CommandStage != Kopacz633CommandStage.None;
-            if (!kopaczRuntimeLive)
+                _kopacz633CommandStage != Kopacz633CommandStage.None ||
+                _testAutoFishingRuntimeEnabled;
+            if (!runtimeDataLive)
                 return;
 
             if (now < _nextRuntimeTileRefreshAtUtc)
@@ -2247,8 +2663,8 @@ namespace MinecraftHelper
         private void UpdateEnabledStates(object? sender = null, RoutedEventArgs? e = null)
         {
             bool manualOn = ChkMacroManualEnabled.IsChecked ?? false;
-            bool holdLeftOn = manualOn && (ChkHoldLeftEnabled.IsChecked ?? true);
-            bool holdRightOn = manualOn && (ChkHoldRightEnabled.IsChecked ?? true);
+            bool holdLeftOn = manualOn && ChkHoldLeftEnabled.IsChecked == true;
+            bool holdRightOn = manualOn && ChkHoldRightEnabled.IsChecked == true;
             bool autoLeftOn = ChkAutoLeftEnabled.IsChecked ?? false;
             bool autoRightOn = ChkAutoRightEnabled.IsChecked ?? false;
 
@@ -2268,6 +2684,7 @@ namespace MinecraftHelper
             TxtAutoLeftMinCps.IsEnabled = autoLeftOn;
             TxtAutoLeftMaxCps.IsEnabled = autoLeftOn;
             ChkAutoLeftComboMode.IsEnabled = autoLeftOn;
+            ChkAutoLeftDabMode.IsEnabled = autoLeftOn;
 
             TxtAutoRightKey.IsEnabled = autoRightOn;
             BtnAutoRightCapture.IsEnabled = autoRightOn;
@@ -2290,13 +2707,14 @@ namespace MinecraftHelper
             }
             if (!holdRightOn)
             {
+                ReleaseHoldRightInjectedButton();
                 _holdRightRuntimePressActive = false;
                 _nextHoldRightClickAtUtc = DateTime.UtcNow;
-                mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, UIntPtr.Zero);
             }
             if (!autoLeftOn)
             {
                 _autoLeftRuntimeEnabled = false;
+                SetAutoLeftDabHold(false);
                 _autoLeftComboTriggerWasDown = false;
                 _autoLeftComboStopWasDown = false;
             }
@@ -2370,6 +2788,7 @@ namespace MinecraftHelper
             bool testEntitiesOn = ChkTestEntitiesEnabled?.IsChecked == true;
             bool testCustomOn = testEntitiesOn;
             bool testFastUpOn = ChkTestFastUpExitEnabled?.IsChecked == true;
+            bool testAutoFishingOn = ChkTestAutoFishingEnabled?.IsChecked == true;
             if (PanelTestEntitiesContent != null)
                 PanelTestEntitiesContent.Visibility = testEntitiesOn ? Visibility.Visible : Visibility.Collapsed;
             if (TxtTestCustomCaptureBind != null)
@@ -2422,6 +2841,36 @@ namespace MinecraftHelper
                 _testFastUpExitRuntimeEnabled = false;
                 ResetTestFastUpExitRuntimeState();
             }
+            if (BorderTestAutoFishingContent != null)
+                BorderTestAutoFishingContent.Visibility = testAutoFishingOn ? Visibility.Visible : Visibility.Collapsed;
+            if (PanelTestAutoFishingContent != null)
+                PanelTestAutoFishingContent.IsEnabled = testAutoFishingOn;
+            if (TxtTestAutoFishingBind != null)
+                TxtTestAutoFishingBind.IsEnabled = testAutoFishingOn;
+            if (BtnTestAutoFishingBind != null)
+                BtnTestAutoFishingBind.IsEnabled = testAutoFishingOn;
+            if (BtnTestAutoFishingBindClear != null)
+                BtnTestAutoFishingBindClear.IsEnabled = testAutoFishingOn;
+            if (TxtTestAutoFishingCaptureBind != null)
+                TxtTestAutoFishingCaptureBind.IsEnabled = testAutoFishingOn;
+            if (BtnTestAutoFishingCaptureBind != null)
+                BtnTestAutoFishingCaptureBind.IsEnabled = testAutoFishingOn;
+            if (BtnTestAutoFishingCaptureBindClear != null)
+                BtnTestAutoFishingCaptureBindClear.IsEnabled = testAutoFishingOn;
+            if (BtnTestAutoFishingSelectArea != null)
+                BtnTestAutoFishingSelectArea.IsEnabled = testAutoFishingOn;
+            if (BtnTestAutoFishingResetArea != null)
+                BtnTestAutoFishingResetArea.IsEnabled = testAutoFishingOn;
+            if (TxtTestAutoFishingRepairCommand != null)
+                TxtTestAutoFishingRepairCommand.IsEnabled = testAutoFishingOn;
+            if (TxtTestAutoFishingRepairEverySeconds != null)
+                TxtTestAutoFishingRepairEverySeconds.IsEnabled = testAutoFishingOn;
+            if (!testAutoFishingOn)
+            {
+                _testAutoFishingRuntimeEnabled = false;
+                ResetTestAutoFishingRuntimeState();
+            }
+            UpdateTestAutoFishingStatusLabel();
 
             SetSectionVisualState(BorderManualLeftSection, holdLeftOn);
             SetSectionVisualState(BorderManualRightSection, holdRightOn);
@@ -3032,6 +3481,7 @@ namespace MinecraftHelper
                 case BindTarget.AutoLeft:
                     _autoLeftBindWasDown = false;
                     _autoLeftRuntimeEnabled = false;
+                    SetAutoLeftDabHold(false);
                     _autoLeftComboTriggerWasDown = false;
                     _autoLeftComboStopWasDown = false;
                     _nextAutoLeftClickAtUtc = DateTime.UtcNow;
@@ -3074,6 +3524,15 @@ namespace MinecraftHelper
 
                 case BindTarget.TestCaptureArea:
                     _testCaptureBindWasDown = false;
+                    break;
+                case BindTarget.TestAutoFishing:
+                    _testAutoFishingBindWasDown = false;
+                    _testAutoFishingRuntimeEnabled = false;
+                    ResetTestAutoFishingRuntimeState();
+                    UpdateTestAutoFishingStatusLabel();
+                    break;
+                case BindTarget.TestAutoFishingCaptureArea:
+                    _testAutoFishingCaptureBindWasDown = false;
                     break;
             }
 
@@ -3131,6 +3590,16 @@ namespace MinecraftHelper
             ConfirmPendingBind(BindTarget.TestCaptureArea);
         }
 
+        private void BtnTestAutoFishingBind_Click(object sender, RoutedEventArgs e)
+        {
+            ConfirmPendingBind(BindTarget.TestAutoFishing);
+        }
+
+        private void BtnTestAutoFishingCaptureBind_Click(object sender, RoutedEventArgs e)
+        {
+            ConfirmPendingBind(BindTarget.TestAutoFishingCaptureArea);
+        }
+
         private async void BtnTestSelectCaptureArea_Click(object sender, RoutedEventArgs e)
         {
             await BeginTestCaptureAreaSelectionAsync(triggeredByBind: false);
@@ -3160,6 +3629,34 @@ namespace MinecraftHelper
             UpdateStatusBar("Zresetowano dane E i obszar OCR. Zaznacz obszar ponownie.", "Green");
         }
 
+        private async void BtnTestAutoFishingSelectArea_Click(object sender, RoutedEventArgs e)
+        {
+            await BeginTestAutoFishingAreaSelectionAsync(triggeredByBind: false);
+        }
+
+        private void BtnTestAutoFishingResetArea_Click(object sender, RoutedEventArgs e)
+        {
+            if (_isLoadingUi)
+                return;
+            if (_isTestCaptureSelectionInProgress)
+            {
+                UpdateStatusBar("Najpierw zakończ zaznaczanie obszaru", "Orange");
+                return;
+            }
+
+            _settings.TestAutoFishingCaptureX = 0;
+            _settings.TestAutoFishingCaptureY = 0;
+            _settings.TestAutoFishingCaptureWidth = 0;
+            _settings.TestAutoFishingCaptureHeight = 0;
+            _testAutoFishingRuntimeEnabled = false;
+            ResetTestAutoFishingRuntimeState();
+            UpdateTestAutoFishingAreaInfo();
+            UpdateTestAutoFishingStatusLabel();
+            MarkDirty();
+            RefreshTopTiles();
+            UpdateStatusBar("Zresetowano obszar auto-łowienia.", "Green");
+        }
+
         private void BeginTestCaptureAreaSelectionFromBind()
         {
             if (_isTestCaptureSelectionInProgress)
@@ -3168,18 +3665,32 @@ namespace MinecraftHelper
             _ = BeginTestCaptureAreaSelectionAsync(triggeredByBind: true);
         }
 
+        private void BeginTestAutoFishingAreaSelectionFromBind()
+        {
+            if (_isTestCaptureSelectionInProgress)
+                return;
+
+            _ = BeginTestAutoFishingAreaSelectionAsync(triggeredByBind: true);
+        }
+
         private async Task BeginTestCaptureAreaSelectionAsync(bool triggeredByBind)
         {
             if (_isTestCaptureSelectionInProgress || _isLoadingUi)
                 return;
 
-            if (!_isMinecraftFocused || _focusedGameWindowHandle == IntPtr.Zero)
+            if (triggeredByBind && !_isMinecraftFocused)
             {
                 UpdateStatusBar("Najpierw ustaw fokus na okno Minecrafta", "Orange");
                 return;
             }
 
-            if (!TryGetWindowClientRectOnScreen(_focusedGameWindowHandle, out RECT clientRect))
+            if (!TryResolveTargetWindow(allowPendingSelection: !triggeredByBind, out IntPtr targetWindowHandle))
+            {
+                UpdateStatusBar("Wybierz okno gry Minecraft (nie launcher) w Ustawieniach i zapisz program", "Orange");
+                return;
+            }
+
+            if (!TryGetWindowClientRectOnScreen(targetWindowHandle, out RECT clientRect))
             {
                 UpdateStatusBar("Nie mogę odczytać rozmiaru okna gry", "Orange");
                 return;
@@ -3187,15 +3698,22 @@ namespace MinecraftHelper
 
             int clientWidth = Math.Max(0, clientRect.Right - clientRect.Left);
             int clientHeight = Math.Max(0, clientRect.Bottom - clientRect.Top);
-            if (clientWidth < 100 || clientHeight < 80)
+            if (clientWidth < MinimumCaptureSelectionSize || clientHeight < MinimumCaptureSelectionSize)
             {
-                UpdateStatusBar("Okno gry jest za małe do zaznaczania", "Orange");
+                UpdateStatusBar($"Okno gry musi mieć co najmniej {MinimumCaptureSelectionSize}x{MinimumCaptureSelectionSize} px do zaznaczania", "Orange");
                 return;
             }
 
             _isTestCaptureSelectionInProgress = true;
+            bool restoreWindowAfterSelection = !triggeredByBind && IsVisible;
             try
             {
+                if (restoreWindowAfterSelection)
+                {
+                    Hide();
+                    await Task.Delay(120);
+                }
+
                 UpdateStatusBar("Zaznacz obszar OCR: przytrzymaj LPM i przeciągnij (Esc anuluje)", "Orange");
                 Drawing.Rectangle clientBounds = new Drawing.Rectangle(clientRect.Left, clientRect.Top, clientWidth, clientHeight);
                 Drawing.Rectangle? screenSelection = await Task.Run(() => CaptureScreenSelectionWithinBounds(clientBounds));
@@ -3208,12 +3726,10 @@ namespace MinecraftHelper
                 }
 
                 Drawing.Rectangle selectedRect = screenSelection.Value;
-                int relativeX = Math.Clamp(selectedRect.Left - clientRect.Left, 0, Math.Max(0, clientWidth - 1));
-                int relativeY = Math.Clamp(selectedRect.Top - clientRect.Top, 0, Math.Max(0, clientHeight - 1));
-                int maxWidth = Math.Max(1, clientWidth - relativeX);
-                int maxHeight = Math.Max(1, clientHeight - relativeY);
-                int relativeWidth = Math.Clamp(selectedRect.Width, 24, maxWidth);
-                int relativeHeight = Math.Clamp(selectedRect.Height, 24, maxHeight);
+                int relativeX = Math.Clamp(selectedRect.Left - clientRect.Left, 0, clientWidth - MinimumCaptureSelectionSize);
+                int relativeY = Math.Clamp(selectedRect.Top - clientRect.Top, 0, clientHeight - MinimumCaptureSelectionSize);
+                int relativeWidth = Math.Clamp(selectedRect.Width, MinimumCaptureSelectionSize, clientWidth - relativeX);
+                int relativeHeight = Math.Clamp(selectedRect.Height, MinimumCaptureSelectionSize, clientHeight - relativeY);
 
                 _settings.TestCustomCaptureX = relativeX;
                 _settings.TestCustomCaptureY = relativeY;
@@ -3227,13 +3743,96 @@ namespace MinecraftHelper
             }
             finally
             {
+                if (restoreWindowAfterSelection)
+                {
+                    Show();
+                    Activate();
+                }
+
                 _isTestCaptureSelectionInProgress = false;
+            }
+        }
+
+        private async Task BeginTestAutoFishingAreaSelectionAsync(bool triggeredByBind)
+        {
+            if (_isTestCaptureSelectionInProgress || _isLoadingUi)
+                return;
+            if (triggeredByBind && !_isMinecraftFocused)
+            {
+                UpdateStatusBar("Najpierw ustaw fokus na okno Minecrafta", "Orange");
+                return;
+            }
+            if (!TryResolveTargetWindow(allowPendingSelection: !triggeredByBind, out IntPtr targetWindowHandle))
+            {
+                UpdateStatusBar("Wybierz okno gry Minecraft (nie launcher) w Ustawieniach i zapisz program", "Orange");
+                return;
+            }
+            if (!TryGetWindowClientRectOnScreen(targetWindowHandle, out RECT clientRect))
+            {
+                UpdateStatusBar("Nie mogę odczytać rozmiaru okna gry", "Orange");
+                return;
+            }
+
+            int clientWidth = Math.Max(0, clientRect.Right - clientRect.Left);
+            int clientHeight = Math.Max(0, clientRect.Bottom - clientRect.Top);
+            if (clientWidth < MinimumCaptureSelectionSize || clientHeight < MinimumCaptureSelectionSize)
+            {
+                UpdateStatusBar($"Okno gry musi mieć co najmniej {MinimumCaptureSelectionSize}x{MinimumCaptureSelectionSize} px do zaznaczania", "Orange");
+                return;
+            }
+
+            _isTestCaptureSelectionInProgress = true;
+            bool restoreWindowAfterSelection = !triggeredByBind && IsVisible;
+            try
+            {
+                if (restoreWindowAfterSelection)
+                {
+                    Hide();
+                    await Task.Delay(120);
+                }
+
+                UpdateStatusBar("Zaznacz obszar spławika: przytrzymaj LPM i przeciągnij (Esc anuluje)", "Orange");
+                Drawing.Rectangle clientBounds = new Drawing.Rectangle(clientRect.Left, clientRect.Top, clientWidth, clientHeight);
+                Drawing.Rectangle? screenSelection = await Task.Run(() => CaptureScreenSelectionWithinBounds(clientBounds));
+                if (!screenSelection.HasValue)
+                {
+                    UpdateStatusBar(triggeredByBind
+                        ? "Bind auto-łowienia: anulowano zaznaczanie obszaru"
+                        : "Anulowano zaznaczanie obszaru auto-łowienia", "Orange");
+                    return;
+                }
+
+                Drawing.Rectangle selectedRect = screenSelection.Value;
+                int relativeX = Math.Clamp(selectedRect.Left - clientRect.Left, 0, clientWidth - MinimumCaptureSelectionSize);
+                int relativeY = Math.Clamp(selectedRect.Top - clientRect.Top, 0, clientHeight - MinimumCaptureSelectionSize);
+                int relativeWidth = Math.Clamp(selectedRect.Width, MinimumCaptureSelectionSize, clientWidth - relativeX);
+                int relativeHeight = Math.Clamp(selectedRect.Height, MinimumCaptureSelectionSize, clientHeight - relativeY);
+                _settings.TestAutoFishingCaptureX = relativeX;
+                _settings.TestAutoFishingCaptureY = relativeY;
+                _settings.TestAutoFishingCaptureWidth = relativeWidth;
+                _settings.TestAutoFishingCaptureHeight = relativeHeight;
+                ResetTestAutoFishingRuntimeState();
+                UpdateTestAutoFishingAreaInfo();
+                UpdateTestAutoFishingStatusLabel();
+                MarkDirty();
+                UpdateStatusBar($"Zapisano obszar spławika: x={relativeX}, y={relativeY}, {relativeWidth}x{relativeHeight}", "Green");
+            }
+            finally
+            {
+                if (restoreWindowAfterSelection)
+                {
+                    Show();
+                    Activate();
+                }
+
+                _isTestCaptureSelectionInProgress = false;
+                RefreshTestAutoFishingPreview(DateTime.UtcNow, force: true);
             }
         }
 
         private static Drawing.Rectangle? CaptureScreenSelectionWithinBounds(Drawing.Rectangle bounds)
         {
-            if (bounds.Width < 40 || bounds.Height < 40)
+            if (bounds.Width < MinimumCaptureSelectionSize || bounds.Height < MinimumCaptureSelectionSize)
                 return null;
 
             Drawing.Rectangle previousFrame = Drawing.Rectangle.Empty;
@@ -3423,6 +4022,45 @@ namespace MinecraftHelper
             TxtMinutesToSecondsOutput.Foreground = new SolidColorBrush(Color.FromRgb(56, 214, 180));
         }
 
+        private void TxtTestAutoFishingRepairConfig_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (_isLoadingUi)
+                return;
+
+            MarkDirty();
+            if (_testAutoFishingRuntimeEnabled)
+                ResetTestAutoFishingRuntimeState(DateTime.UtcNow);
+            UpdateTestAutoFishingStatusLabel();
+            RefreshTopTiles();
+        }
+
+        private void TxtTestAutoFishingMinutesToSecondsInput_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (TxtTestAutoFishingMinutesToSecondsOutput == null)
+                return;
+
+            string raw = TxtTestAutoFishingMinutesToSecondsInput.Text.Trim();
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                TxtTestAutoFishingMinutesToSecondsOutput.Text = "Wpisz minuty, aby dostać sekundy dla pola \"Co X sek\".";
+                TxtTestAutoFishingMinutesToSecondsOutput.Foreground = new SolidColorBrush(Color.FromRgb(146, 166, 193));
+                return;
+            }
+
+            string normalized = raw.Replace(',', '.');
+            if (!double.TryParse(normalized, NumberStyles.Float, CultureInfo.InvariantCulture, out double minutes) || minutes < 0)
+            {
+                TxtTestAutoFishingMinutesToSecondsOutput.Text = "Nieprawidłowa wartość. Przykład: 3 lub 30,5";
+                TxtTestAutoFishingMinutesToSecondsOutput.Foreground = new SolidColorBrush(Color.FromRgb(251, 191, 36));
+                return;
+            }
+
+            double seconds = minutes * 60.0;
+            CultureInfo pl = CultureInfo.GetCultureInfo("pl-PL");
+            TxtTestAutoFishingMinutesToSecondsOutput.Text = $"{minutes.ToString("0.##", pl)} min = {seconds.ToString("0.##", pl)} s";
+            TxtTestAutoFishingMinutesToSecondsOutput.Foreground = new SolidColorBrush(Color.FromRgb(56, 214, 180));
+        }
+
         private void CbTargetProcessList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (_isLoadingUi)
@@ -3493,8 +4131,8 @@ namespace MinecraftHelper
             // HOLD
             _settings.HoldEnabled = ChkMacroManualEnabled.IsChecked ?? false;
             _settings.HoldToggleKey = TxtMacroManualKey.Text.Trim();
-            _settings.HoldLeftEnabled = ChkHoldLeftEnabled.IsChecked ?? true;
-            _settings.HoldRightEnabled = ChkHoldRightEnabled.IsChecked ?? true;
+            _settings.HoldLeftEnabled = ChkHoldLeftEnabled.IsChecked == true;
+            _settings.HoldRightEnabled = ChkHoldRightEnabled.IsChecked == true;
             _settings.HoldLeftButton.MinCps = ParseNonNegativeInt(TxtManualLeftMinCps.Text);
             _settings.HoldLeftButton.MaxCps = ParseNonNegativeInt(TxtManualLeftMaxCps.Text);
             _settings.HoldRightButton.MinCps = ParseNonNegativeInt(TxtManualRightMinCps.Text);
@@ -3506,6 +4144,7 @@ namespace MinecraftHelper
             _settings.AutoLeftButton.MinCps = ParseNonNegativeInt(TxtAutoLeftMinCps.Text);
             _settings.AutoLeftButton.MaxCps = ParseNonNegativeInt(TxtAutoLeftMaxCps.Text);
             _settings.AutoLeftComboMode = ChkAutoLeftComboMode.IsChecked ?? false;
+            _settings.AutoLeftDabMode = ChkAutoLeftDabMode.IsChecked == true;
 
             _settings.AutoRightButton.Enabled = ChkAutoRightEnabled.IsChecked ?? false;
             _settings.AutoRightButton.Key = TxtAutoRightKey.Text.Trim();
@@ -3563,11 +4202,16 @@ namespace MinecraftHelper
 
             // EQ
             _settings.PauseWhenCursorVisible = ChkPauseWhenCursorVisible.IsChecked ?? true;
-            _settings.TestEntitiesEnabled = ChkTestEntitiesEnabled.IsChecked ?? true;
+            _settings.TestEntitiesEnabled = ChkTestEntitiesEnabled.IsChecked == true;
             _settings.TestCustomCaptureEnabled = _settings.TestEntitiesEnabled;
             _settings.TestCustomCaptureBind = TxtTestCustomCaptureBind.Text.Trim();
             _settings.TestFastUpExitEnabled = ChkTestFastUpExitEnabled.IsChecked ?? false;
             _settings.TestFastUpExitBind = TxtTestFastUpExitBind.Text.Trim();
+            _settings.TestAutoFishingEnabled = ChkTestAutoFishingEnabled.IsChecked ?? false;
+            _settings.TestAutoFishingBind = TxtTestAutoFishingBind.Text.Trim();
+            _settings.TestAutoFishingCaptureBind = TxtTestAutoFishingCaptureBind.Text.Trim();
+            _settings.TestAutoFishingRepairCommand = TxtTestAutoFishingRepairCommand.Text.Trim();
+            _settings.TestAutoFishingRepairEverySeconds = Math.Clamp(ParseNonNegativeInt(TxtTestAutoFishingRepairEverySeconds.Text), 0, TestAutoFishingRepairIntervalMaxSeconds);
             _settings.TestFastUpExitBlockSlot = GetSelectedTestFastUpSlot(CbTestFastUpExitBlockSlot, 2);
             _settings.TestFastUpExitPickaxeSlot = GetSelectedTestFastUpSlot(CbTestFastUpExitPickaxeSlot, 1);
             string selectedPickaxeType = GetSelectedTestFastUpPickaxeType();
@@ -3586,8 +4230,8 @@ namespace MinecraftHelper
             _settings.TestFastUpExitPlaceAfterJumpMs = SlTestFastUpExitPlaceMs == null
                 ? NormalizeFastUpPlaceAfterJumpMs(_settings.TestFastUpExitPlaceAfterJumpMs)
                 : NormalizeFastUpPlaceAfterJumpMs((int)Math.Round(SlTestFastUpExitPlaceMs.Value));
-            _settings.OverlayHudEnabled = ChkOverlayHudEnabled.IsChecked ?? true;
-            _settings.OverlayAnimationsEnabled = ChkOverlayAnimationsEnabled.IsChecked ?? true;
+            _settings.OverlayHudEnabled = ChkOverlayHudEnabled.IsChecked == true;
+            _settings.OverlayAnimationsEnabled = ChkOverlayAnimationsEnabled.IsChecked == true;
             _settings.OverlayMonitorIndex = Math.Max(0, CbOverlayMonitor?.SelectedIndex ?? 0);
             _settings.OverlayCorner = ToOverlayCornerSetting(GetSelectedOverlayCorner());
 
@@ -3886,7 +4530,7 @@ namespace MinecraftHelper
             if (ChkTestEntitiesEnabled?.IsChecked != true)
                 return;
 
-            if (!_isMinecraftFocused || _focusedGameWindowHandle == IntPtr.Zero)
+            if (!_isMinecraftFocused || _targetGameWindowHandle == IntPtr.Zero)
             {
                 UpdateTestF3Status("Czekam na fokus gry", success: false);
                 RegisterF3ReadFailure(hardReset: true);
@@ -3902,7 +4546,7 @@ namespace MinecraftHelper
                 return;
             }
 
-            if (!TryGetF3CaptureArea(_focusedGameWindowHandle, out Drawing.Rectangle captureArea))
+            if (!TryGetF3CaptureArea(_targetGameWindowHandle, out Drawing.Rectangle captureArea))
             {
                 UpdateTestF3Status("Nie mogę wyznaczyć obszaru F3", success: false);
                 RegisterF3ReadFailure(hardReset: true);
@@ -3959,19 +4603,47 @@ namespace MinecraftHelper
 
             int clientWidth = Math.Max(0, clientRect.Right - clientRect.Left);
             int clientHeight = Math.Max(0, clientRect.Bottom - clientRect.Top);
-            if (clientWidth < 40 || clientHeight < 40)
+            if (clientWidth < MinimumCaptureSelectionSize || clientHeight < MinimumCaptureSelectionSize)
                 return false;
 
-            int offsetX = Math.Clamp(_settings.TestCustomCaptureX, 0, Math.Max(0, clientWidth - 24));
-            int offsetY = Math.Clamp(_settings.TestCustomCaptureY, 0, Math.Max(0, clientHeight - 24));
-            int width = Math.Clamp(_settings.TestCustomCaptureWidth, 24, Math.Max(24, clientWidth - offsetX));
-            int height = Math.Clamp(_settings.TestCustomCaptureHeight, 24, Math.Max(24, clientHeight - offsetY));
+            int offsetX = Math.Clamp(_settings.TestCustomCaptureX, 0, Math.Max(0, clientWidth - MinimumCaptureSelectionSize));
+            int offsetY = Math.Clamp(_settings.TestCustomCaptureY, 0, Math.Max(0, clientHeight - MinimumCaptureSelectionSize));
+            int width = Math.Clamp(_settings.TestCustomCaptureWidth, MinimumCaptureSelectionSize, Math.Max(MinimumCaptureSelectionSize, clientWidth - offsetX));
+            int height = Math.Clamp(_settings.TestCustomCaptureHeight, MinimumCaptureSelectionSize, Math.Max(MinimumCaptureSelectionSize, clientHeight - offsetY));
 
             if (offsetX + width > clientWidth)
                 width = clientWidth - offsetX;
             if (offsetY + height > clientHeight)
                 height = clientHeight - offsetY;
-            if (width <= 0 || height <= 0)
+            if (width < MinimumCaptureSelectionSize || height < MinimumCaptureSelectionSize)
+                return false;
+
+            captureArea = new Drawing.Rectangle(clientRect.Left + offsetX, clientRect.Top + offsetY, width, height);
+            return true;
+        }
+
+        private bool TryGetTestAutoFishingCaptureArea(IntPtr windowHandle, out Drawing.Rectangle captureArea)
+        {
+            captureArea = Drawing.Rectangle.Empty;
+            if (!HasTestAutoFishingAreaConfigured())
+                return false;
+            if (!TryGetWindowClientRectOnScreen(windowHandle, out RECT clientRect))
+                return false;
+
+            int clientWidth = Math.Max(0, clientRect.Right - clientRect.Left);
+            int clientHeight = Math.Max(0, clientRect.Bottom - clientRect.Top);
+            if (clientWidth < MinimumCaptureSelectionSize || clientHeight < MinimumCaptureSelectionSize)
+                return false;
+
+            int offsetX = Math.Clamp(_settings.TestAutoFishingCaptureX, 0, Math.Max(0, clientWidth - MinimumCaptureSelectionSize));
+            int offsetY = Math.Clamp(_settings.TestAutoFishingCaptureY, 0, Math.Max(0, clientHeight - MinimumCaptureSelectionSize));
+            int width = Math.Clamp(_settings.TestAutoFishingCaptureWidth, MinimumCaptureSelectionSize, Math.Max(MinimumCaptureSelectionSize, clientWidth - offsetX));
+            int height = Math.Clamp(_settings.TestAutoFishingCaptureHeight, MinimumCaptureSelectionSize, Math.Max(MinimumCaptureSelectionSize, clientHeight - offsetY));
+            if (offsetX + width > clientWidth)
+                width = clientWidth - offsetX;
+            if (offsetY + height > clientHeight)
+                height = clientHeight - offsetY;
+            if (width < MinimumCaptureSelectionSize || height < MinimumCaptureSelectionSize)
                 return false;
 
             captureArea = new Drawing.Rectangle(clientRect.Left + offsetX, clientRect.Top + offsetY, width, height);
@@ -4450,7 +5122,7 @@ namespace MinecraftHelper
             if (!IsCursorCurrentlyVisible())
                 return false;
 
-            if (_focusedGameWindowHandle != IntPtr.Zero && IsCursorClippedToWindowClient(_focusedGameWindowHandle))
+            if (_targetGameWindowHandle != IntPtr.Zero && IsCursorClippedToWindowClient(_targetGameWindowHandle))
                 return false;
 
             return true;
@@ -4500,6 +5172,7 @@ namespace MinecraftHelper
             else
                 UpdateStatusBar("Makro wznowione", "Orange");
 
+            UpdateTestAutoFishingStatusLabel();
             RefreshTopTiles();
         }
 
@@ -4693,19 +5366,35 @@ namespace MinecraftHelper
             if (clearToggleEnabled)
                 _holdLeftToggleClickingEnabled = false;
 
+            ReleaseHoldRightInjectedButton();
             _holdLeftToggleWasDown = false;
             _holdLeftToggleDownStartedAtUtc = DateTime.MinValue;
             _nextHoldLeftClickAtUtc = DateTime.UtcNow;
             _holdRightRuntimePressActive = false;
         }
 
+        private void ReleaseHoldRightInjectedButton()
+        {
+            if (!_holdRightInjectedButtonDown)
+                return;
+
+            mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, UIntPtr.Zero);
+            _holdRightInjectedButtonDown = false;
+        }
+
         private void RunMacroTick(object? sender, EventArgs e)
         {
             if (_isLoadingUi)
+            {
+                SetAutoLeftDabHold(false);
                 return;
+            }
 
             if (_bindCaptureTarget != BindTarget.None || _bindyCaptureEntry != null)
+            {
+                SetAutoLeftDabHold(false);
                 return;
+            }
 
             if (_suppressBindToggleUntilRelease)
             {
@@ -4717,6 +5406,8 @@ namespace MinecraftHelper
                 bool kop633Down = IsConfiguredBindKeyDown(TxtKopacz633Key.Text);
                 bool testCaptureDown = IsConfiguredBindKeyDown(TxtTestCustomCaptureBind.Text);
                 bool fastUpDown = IsConfiguredBindKeyDown(TxtTestFastUpExitBind.Text);
+                bool autoFishingDown = IsConfiguredBindKeyDown(TxtTestAutoFishingBind.Text);
+                bool autoFishingCaptureDown = IsConfiguredBindKeyDown(TxtTestAutoFishingCaptureBind.Text);
                 bool bindyDown = IsAnyBindyKeyDown();
 
                 _holdBindWasDown = holdDown;
@@ -4727,10 +5418,15 @@ namespace MinecraftHelper
                 _kopacz633BindWasDown = kop633Down;
                 _testCaptureBindWasDown = testCaptureDown;
                 _testFastUpExitBindWasDown = fastUpDown;
+                _testAutoFishingBindWasDown = autoFishingDown;
+                _testAutoFishingCaptureBindWasDown = autoFishingCaptureDown;
                 SyncAutoComboStates();
 
-                if (holdDown || autoLeftDown || autoRightDown || jablkaDown || kop533Down || kop633Down || testCaptureDown || fastUpDown || bindyDown)
+                if (holdDown || autoLeftDown || autoRightDown || jablkaDown || kop533Down || kop633Down || testCaptureDown || fastUpDown || autoFishingDown || autoFishingCaptureDown || bindyDown)
+                {
+                    SetAutoLeftDabHold(false);
                     return;
+                }
 
                 _suppressBindToggleUntilRelease = false;
             }
@@ -4747,14 +5443,18 @@ namespace MinecraftHelper
                 _kopacz633BindWasDown = IsConfiguredBindKeyDown(TxtKopacz633Key.Text);
                 _testCaptureBindWasDown = IsConfiguredBindKeyDown(TxtTestCustomCaptureBind.Text);
                 _testFastUpExitBindWasDown = IsConfiguredBindKeyDown(TxtTestFastUpExitBind.Text);
+                _testAutoFishingBindWasDown = IsConfiguredBindKeyDown(TxtTestAutoFishingBind.Text);
+                _testAutoFishingCaptureBindWasDown = IsConfiguredBindKeyDown(TxtTestAutoFishingCaptureBind.Text);
                 SyncBindyKeyStates();
                 SyncAutoComboStates();
 
                 SetCursorPauseState(false);
+                SetAutoLeftDabHold(false);
                 SetKopacz533MiningHold(false);
                 SetKopacz633AttackHold(false);
                 SetKopacz633StrafeDirection(Kopacz633StrafeDirection.None);
                 ResetTestFastUpExitRuntimeState();
+                ResetTestAutoFishingRuntimeState();
                 ResetHoldLeftToggleState(clearToggleEnabled: false);
                 ResetBindyRuntimeState();
                 return;
@@ -4771,11 +5471,13 @@ namespace MinecraftHelper
             bool bindyModeSelected = ChkBindyEnabled.IsChecked == true;
             bool testCaptureModeSelected = ChkTestEntitiesEnabled.IsChecked == true;
             bool fastUpModeSelected = ChkTestFastUpExitEnabled.IsChecked == true;
+            bool autoFishingModeSelected = ChkTestAutoFishingEnabled.IsChecked == true;
             bool internalCommandTyping =
                 _jablkaCommandStage != JablkaCommandStage.None ||
                 _kopacz533CommandStage != Kopacz533CommandStage.None ||
                 _kopacz633CommandStage != Kopacz633CommandStage.None ||
-                _bindyCommandStage != BindyCommandStage.None;
+                _bindyCommandStage != BindyCommandStage.None ||
+                _testAutoFishingRepairStage != TestAutoFishingRepairStage.None;
 
             if (internalCommandTyping)
             {
@@ -4788,6 +5490,8 @@ namespace MinecraftHelper
                 _kopacz633BindWasDown = IsConfiguredBindKeyDown(TxtKopacz633Key.Text);
                 _testCaptureBindWasDown = IsConfiguredBindKeyDown(TxtTestCustomCaptureBind.Text);
                 _testFastUpExitBindWasDown = IsConfiguredBindKeyDown(TxtTestFastUpExitBind.Text);
+                _testAutoFishingBindWasDown = IsConfiguredBindKeyDown(TxtTestAutoFishingBind.Text);
+                _testAutoFishingCaptureBindWasDown = IsConfiguredBindKeyDown(TxtTestAutoFishingCaptureBind.Text);
                 SyncBindyKeyStates();
                 SyncAutoComboStates();
             }
@@ -4795,11 +5499,38 @@ namespace MinecraftHelper
             if (!internalCommandTyping && testCaptureModeSelected && IsBindPressed(TxtTestCustomCaptureBind.Text, ref _testCaptureBindWasDown))
                 BeginTestCaptureAreaSelectionFromBind();
 
+            if (!internalCommandTyping && autoFishingModeSelected && IsBindPressed(TxtTestAutoFishingCaptureBind.Text, ref _testAutoFishingCaptureBindWasDown))
+                BeginTestAutoFishingAreaSelectionFromBind();
+
             if (!internalCommandTyping && IsBindPressed(TxtTestFastUpExitBind.Text, ref _testFastUpExitBindWasDown) && fastUpModeSelected)
             {
                 _testFastUpExitRuntimeEnabled = !_testFastUpExitRuntimeEnabled;
                 ResetTestFastUpExitRuntimeState(DateTime.UtcNow);
                 UpdateStatusBar(_testFastUpExitRuntimeEnabled ? "Szybkie wyjście do góry aktywowane" : "Szybkie wyjście do góry wyłączone", "Orange");
+                changed = true;
+            }
+
+            if (!internalCommandTyping && IsBindPressed(TxtTestAutoFishingBind.Text, ref _testAutoFishingBindWasDown) && autoFishingModeSelected)
+            {
+                if (!HasTestAutoFishingAreaConfigured())
+                {
+                    _testAutoFishingRuntimeEnabled = false;
+                    ResetTestAutoFishingRuntimeState(DateTime.UtcNow);
+                    UpdateStatusBar("Auto łowienie: najpierw zaznacz obszar spławika", "Orange");
+                }
+                else
+                {
+                    bool enabling = !_testAutoFishingRuntimeEnabled;
+                    _testAutoFishingRuntimeEnabled = enabling;
+                    DateTime toggledAtUtc = DateTime.UtcNow;
+                    if (enabling)
+                        ResetTestAutoFishingCatchStats();
+                    ResetTestAutoFishingRuntimeState(toggledAtUtc);
+                    if (enabling)
+                        StartTestAutoFishingCastRegistrationDelay(toggledAtUtc);
+                    UpdateStatusBar(enabling ? "Auto łowienie aktywowane" : "Auto łowienie wyłączone", "Orange");
+                }
+                UpdateTestAutoFishingStatusLabel();
                 changed = true;
             }
 
@@ -4971,6 +5702,13 @@ namespace MinecraftHelper
                 ResetTestFastUpExitRuntimeState();
                 changed = true;
             }
+            if (!autoFishingModeSelected && _testAutoFishingRuntimeEnabled)
+            {
+                _testAutoFishingRuntimeEnabled = false;
+                ResetTestAutoFishingRuntimeState();
+                UpdateTestAutoFishingStatusLabel();
+                changed = true;
+            }
             if (!bindyModeSelected)
             {
                 SyncBindyKeyStates();
@@ -4987,23 +5725,28 @@ namespace MinecraftHelper
             DateTime now = DateTime.UtcNow;
             bool pauseWhenCursorVisible = ChkPauseWhenCursorVisible.IsChecked == true;
             bool jablkaCommandInProgress = _jablkaCommandStage != JablkaCommandStage.None;
+            bool autoFishingCommandInProgress = _testAutoFishingRepairStage != TestAutoFishingRepairStage.None || _testAutoFishingRecastAfterRepairPending;
             bool anyCursorPauseMacroRuntimeActive =
                 (holdModeSelected && _holdMacroRuntimeEnabled) ||
                 (autoLeftModeSelected && _autoLeftRuntimeEnabled) ||
                 (autoRightModeSelected && _autoRightRuntimeEnabled) ||
                 (jablkaModeSelected && _jablkaRuntimeEnabled) ||
-                (fastUpModeSelected && _testFastUpExitRuntimeEnabled);
+                (fastUpModeSelected && _testFastUpExitRuntimeEnabled) ||
+                (autoFishingModeSelected && _testAutoFishingRuntimeEnabled);
 
             // Cursor-pause applies only to PVP/Jabłka modes (not Kopacz).
             // During internal command sequence (chat open -> type -> enter) ignore cursor pause.
             bool shouldPauseForCursor = pauseWhenCursorVisible
                 && anyCursorPauseMacroRuntimeActive
                 && !jablkaCommandInProgress
+                && !autoFishingCommandInProgress
                 && IsInventoryCursorVisible();
 
             SetCursorPauseState(shouldPauseForCursor);
             if (shouldPauseForCursor)
             {
+                if (SetAutoLeftDabHold(false))
+                    RefreshTopTiles();
                 _nextHoldLeftClickAtUtc = now;
                 _nextHoldRightClickAtUtc = now;
                 ResetHoldLeftToggleState(clearToggleEnabled: false);
@@ -5016,8 +5759,12 @@ namespace MinecraftHelper
                 SetKopacz633StrafeDirection(Kopacz633StrafeDirection.None);
                 ResetKopacz633RuntimeState(now);
                 ResetTestFastUpExitRuntimeState(now);
+                // Preserve fishing detection state while a GUI is open; PPM remains blocked by this return.
                 return;
             }
+
+            if (SetAutoLeftDabHold(autoLeftModeSelected && _autoLeftRuntimeEnabled && ChkAutoLeftDabMode.IsChecked == true && !internalCommandTyping))
+                RefreshTopTiles();
 
             if (holdModeSelected && _holdMacroRuntimeEnabled)
             {
@@ -5046,7 +5793,7 @@ namespace MinecraftHelper
                 }
 
                 bool rightHoldWasActive = _holdRightRuntimePressActive;
-                bool rightHoldActive = holdRightEnabled && IsVirtualKeyDown(VK_RBUTTON);
+                bool rightHoldActive = holdRightEnabled && IsPhysicalMouseButtonDown(VK_RBUTTON);
                 if (rightHoldActive != rightHoldWasActive)
                 {
                     _holdRightRuntimePressActive = rightHoldActive;
@@ -5055,13 +5802,14 @@ namespace MinecraftHelper
 
                 if (holdRightEnabled && rightHoldActive)
                 {
-                    TryPerformClick(ref _nextHoldRightClickAtUtc, TxtManualRightMinCps.Text, TxtManualRightMaxCps.Text, leftButton: false, now, holdPulseMode: true);
+                    if (TryPerformClick(ref _nextHoldRightClickAtUtc, TxtManualRightMinCps.Text, TxtManualRightMaxCps.Text, leftButton: false, now, holdPulseMode: true))
+                        _holdRightInjectedButtonDown = true;
                 }
                 else
                 {
                     _nextHoldRightClickAtUtc = now;
-                    if (rightHoldWasActive)
-                        mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, UIntPtr.Zero);
+                    if (rightHoldWasActive || _holdRightInjectedButtonDown)
+                        ReleaseHoldRightInjectedButton();
                 }
             }
             else
@@ -5117,6 +5865,11 @@ namespace MinecraftHelper
                 RunTestFastUpExitTick(now);
             else
                 ResetTestFastUpExitRuntimeState(now);
+
+            if (autoFishingModeSelected && _testAutoFishingRuntimeEnabled)
+                RunTestAutoFishingTick(now);
+            else
+                ResetTestAutoFishingRuntimeState(now);
 
             RefreshLiveTopTiles(now);
         }
@@ -5226,6 +5979,376 @@ namespace MinecraftHelper
                     _testFastUpExitStage = FastUpExitStage.LookUp;
                     _nextTestFastUpExitActionAtUtc = now;
                     return;
+            }
+        }
+
+        private void RunTestAutoFishingTick(DateTime now)
+        {
+            if (_jablkaCommandStage != JablkaCommandStage.None
+                || _kopacz533CommandStage != Kopacz533CommandStage.None
+                || _kopacz633CommandStage != Kopacz633CommandStage.None
+                || _bindyCommandStage != BindyCommandStage.None)
+                return;
+
+            if (_testAutoFishingRepairStage != TestAutoFishingRepairStage.None)
+            {
+                if (!TryProcessTestAutoFishingRepairCommand(now))
+                    ResetTestAutoFishingRuntimeState(now);
+                UpdateTestAutoFishingStatusLabel();
+                return;
+            }
+
+            if (HasConfiguredTestAutoFishingRepair() && now >= _nextTestAutoFishingRepairAtUtc)
+            {
+                StartTestAutoFishingRepairCommand(now);
+                UpdateTestAutoFishingStatusLabel();
+                return;
+            }
+
+            if (_testAutoFishingRecastAfterRepairPending)
+            {
+                if (now < _testAutoFishingRecastAfterRepairAtUtc)
+                    return;
+
+                SendMouseClick(leftButton: false, holdPulseMode: false);
+                _testAutoFishingRecastAfterRepairPending = false;
+                _testAutoFishingAwaitSecondClick = true;
+                _testAutoFishingWaitingForCastRegistration = false;
+                _nextTestAutoFishingActionAtUtc = now.AddMilliseconds(TestAutoFishingSecondClickDelayMs);
+                ResetTestAutoFishingDetection(now);
+                UpdateTestAutoFishingStatusLabel();
+                return;
+            }
+
+            if (_testAutoFishingAwaitSecondClick)
+            {
+                if (now < _nextTestAutoFishingActionAtUtc)
+                    return;
+
+                SendMouseClick(leftButton: false, holdPulseMode: false);
+                _testAutoFishingAwaitSecondClick = false;
+                StartTestAutoFishingCastRegistrationDelay(now);
+                UpdateTestAutoFishingStatusLabel();
+                return;
+            }
+
+            if (_testAutoFishingWaitingForCastRegistration)
+            {
+                if (now < _nextTestAutoFishingActionAtUtc)
+                {
+                    UpdateTestAutoFishingStatusLabel();
+                    return;
+                }
+
+                _testAutoFishingWaitingForCastRegistration = false;
+                _nextTestAutoFishingActionAtUtc = now;
+                _nextTestAutoFishingScanAtUtc = now;
+            }
+
+            if (now < _nextTestAutoFishingActionAtUtc || now < _nextTestAutoFishingScanAtUtc)
+                return;
+            if (!TryGetTestAutoFishingCaptureArea(_targetGameWindowHandle, out Drawing.Rectangle captureArea))
+            {
+                _testAutoFishingRuntimeEnabled = false;
+                ResetTestAutoFishingRuntimeState(now);
+                UpdateTestAutoFishingStatusLabel();
+                UpdateStatusBar("Auto łowienie: obszar spławika jest nieprawidłowy", "Orange");
+                RefreshTopTiles();
+                return;
+            }
+
+            _nextTestAutoFishingScanAtUtc = now.AddMilliseconds(TestAutoFishingScanIntervalMs);
+            try
+            {
+                using Drawing.Bitmap bitmap = new Drawing.Bitmap(captureArea.Width, captureArea.Height, DrawingImaging.PixelFormat.Format32bppArgb);
+                using (Drawing.Graphics graphics = Drawing.Graphics.FromImage(bitmap))
+                    graphics.CopyFromScreen(captureArea.Left, captureArea.Top, 0, 0, captureArea.Size, Drawing.CopyPixelOperation.SourceCopy);
+
+                if (!TryGetFishingBobberPosition(bitmap, out double bobberX, out double bobberY, out int redPixels))
+                {
+                    HandleMissingFishingBobber(now);
+                    return;
+                }
+
+                _testAutoFishingMissedDetections = 0;
+                _testAutoFishingNoBobberSinceAtUtc = DateTime.MinValue;
+                _testAutoFishingLastDetectedBobberX = bobberX;
+                _testAutoFishingLastDetectedBobberY = bobberY;
+                _testAutoFishingLastDetectedRedPixels = redPixels;
+                if (!_testAutoFishingBaselineReady)
+                {
+                    _testAutoFishingBaselineBobberY = bobberY;
+                    _testAutoFishingBaselineReady = true;
+                    _testAutoFishingBiteConfirmationFrames = 0;
+                    _testAutoFishingBaselineArmedAtUtc = now.AddMilliseconds(TestAutoFishingBiteArmingDelayMs);
+                    UpdateTestAutoFishingStatusLabel();
+                    return;
+                }
+
+                bool armed = now >= _testAutoFishingBaselineArmedAtUtc;
+                double drop = bobberY - _testAutoFishingBaselineBobberY;
+                if (armed && drop >= TestAutoFishingDropThresholdPx)
+                {
+                    _testAutoFishingBiteConfirmationFrames++;
+                    if (_testAutoFishingBiteConfirmationFrames >= TestAutoFishingRequiredBiteFrames)
+                    {
+                        TriggerTestAutoFishingCatch(now, "Auto łowienie: branie! PPM -> ponowne zarzucenie");
+                        return;
+                    }
+                }
+                else
+                {
+                    _testAutoFishingBiteConfirmationFrames = 0;
+                }
+
+                if (_testAutoFishingBiteConfirmationFrames == 0)
+                {
+                    double updateWeight = armed ? (drop > 0 ? 0.01 : 0.04) : 0.55;
+                    _testAutoFishingBaselineBobberY = _testAutoFishingBaselineBobberY * (1.0 - updateWeight) + bobberY * updateWeight;
+                }
+                UpdateTestAutoFishingStatusLabel();
+            }
+            catch
+            {
+                HandleMissingFishingBobber(now);
+            }
+        }
+
+        private void HandleMissingFishingBobber(DateTime now)
+        {
+            _testAutoFishingLastDetectedBobberX = double.NaN;
+            _testAutoFishingLastDetectedBobberY = double.NaN;
+            _testAutoFishingLastDetectedRedPixels = 0;
+            _testAutoFishingBiteConfirmationFrames = 0;
+            _testAutoFishingMissedDetections++;
+            if (_testAutoFishingNoBobberSinceAtUtc == DateTime.MinValue)
+                _testAutoFishingNoBobberSinceAtUtc = now;
+
+            if (_testAutoFishingBaselineReady
+                && now >= _testAutoFishingBaselineArmedAtUtc
+                && _testAutoFishingMissedDetections >= TestAutoFishingLossTriggerMisses)
+            {
+                TriggerTestAutoFishingCatch(now, "Auto łowienie: branie (zanik spławika)");
+                return;
+            }
+
+            if ((now - _testAutoFishingNoBobberSinceAtUtc).TotalMilliseconds >= TestAutoFishingNoBobberRecastMs)
+            {
+                SendMouseClick(leftButton: false, holdPulseMode: false);
+                _testAutoFishingAwaitSecondClick = false;
+                StartTestAutoFishingCastRegistrationDelay(now);
+                UpdateTestAutoFishingStatusLabel();
+                UpdateStatusBar("Auto łowienie: brak spławika przez 5s -> ponowny rzut (PPM)", "Orange");
+                return;
+            }
+
+            if (_testAutoFishingMissedDetections >= TestAutoFishingMissTolerance)
+                _testAutoFishingBaselineReady = false;
+            UpdateTestAutoFishingStatusLabel();
+        }
+
+        private void TriggerTestAutoFishingCatch(DateTime now, string status)
+        {
+            RegisterTestAutoFishingCatch(now);
+            SendMouseClick(leftButton: false, holdPulseMode: false);
+            _testAutoFishingAwaitSecondClick = true;
+            _testAutoFishingWaitingForCastRegistration = false;
+            _nextTestAutoFishingActionAtUtc = now.AddMilliseconds(TestAutoFishingSecondClickDelayMs);
+            ResetTestAutoFishingDetection(now);
+            UpdateTestAutoFishingStatusLabel();
+            UpdateStatusBar(status, "Orange");
+        }
+
+        private void StartTestAutoFishingCastRegistrationDelay(DateTime now)
+        {
+            ResetTestAutoFishingDetection(now);
+            _testAutoFishingNoBobberSinceAtUtc = now;
+            _testAutoFishingWaitingForCastRegistration = true;
+            _nextTestAutoFishingActionAtUtc = now.AddMilliseconds(TestAutoFishingCastRegistrationDelayMs);
+            _nextTestAutoFishingScanAtUtc = _nextTestAutoFishingActionAtUtc;
+        }
+
+        private void ResetTestAutoFishingDetection(DateTime now)
+        {
+            _testAutoFishingBaselineReady = false;
+            _testAutoFishingBaselineBobberY = 0;
+            _testAutoFishingBaselineArmedAtUtc = now;
+            _testAutoFishingNoBobberSinceAtUtc = DateTime.MinValue;
+            _testAutoFishingLastDetectedBobberX = double.NaN;
+            _testAutoFishingLastDetectedBobberY = double.NaN;
+            _testAutoFishingLastDetectedRedPixels = 0;
+            _testAutoFishingMissedDetections = 0;
+            _testAutoFishingBiteConfirmationFrames = 0;
+        }
+
+        private void StartTestAutoFishingRepairCommand(DateTime now)
+        {
+            if (!HasConfiguredTestAutoFishingRepair())
+            {
+                _nextTestAutoFishingRepairAtUtc = DateTime.MaxValue;
+                return;
+            }
+
+            _testAutoFishingRepairStage = TestAutoFishingRepairStage.OpenChat;
+            _nextTestAutoFishingRepairStageAtUtc = now;
+            _testAutoFishingAwaitSecondClick = false;
+            _testAutoFishingRecastAfterRepairPending = false;
+            _testAutoFishingWaitingForCastRegistration = false;
+            ResetTestAutoFishingDetection(now);
+            _nextTestAutoFishingActionAtUtc = now;
+            _nextTestAutoFishingScanAtUtc = now;
+            UpdateStatusBar("Auto łowienie: wykonywanie komendy naprawy", "Orange");
+        }
+
+        private bool TryProcessTestAutoFishingRepairCommand(DateTime now)
+        {
+            if (_testAutoFishingRepairStage == TestAutoFishingRepairStage.None)
+                return false;
+            if (now < _nextTestAutoFishingRepairStageAtUtc)
+                return true;
+
+            switch (_testAutoFishingRepairStage)
+            {
+                case TestAutoFishingRepairStage.OpenChat:
+                    SendKeyTap(VK_T);
+                    _testAutoFishingRepairStage = TestAutoFishingRepairStage.TypeCommand;
+                    _nextTestAutoFishingRepairStageAtUtc = now.AddMilliseconds(TestAutoFishingRepairDelayAfterOpenChatMs);
+                    return true;
+                case TestAutoFishingRepairStage.TypeCommand:
+                    string command = GetConfiguredTestAutoFishingRepairCommand();
+                    if (string.IsNullOrWhiteSpace(command))
+                    {
+                        _testAutoFishingRepairStage = TestAutoFishingRepairStage.None;
+                        _nextTestAutoFishingRepairAtUtc = DateTime.MaxValue;
+                        return true;
+                    }
+                    if (!SendTextByKeyboard(command))
+                    {
+                        UpdateStatusBar("Auto łowienie: błąd wpisywania komendy naprawy", "Red");
+                        _testAutoFishingRepairStage = TestAutoFishingRepairStage.None;
+                        _nextTestAutoFishingRepairAtUtc = now.AddSeconds(3);
+                        return true;
+                    }
+                    _testAutoFishingRepairStage = TestAutoFishingRepairStage.SubmitCommand;
+                    _nextTestAutoFishingRepairStageAtUtc = now.AddMilliseconds(TestAutoFishingRepairDelayAfterTypeCommandMs);
+                    return true;
+                case TestAutoFishingRepairStage.SubmitCommand:
+                    SendKeyTap(VK_RETURN);
+                    _testAutoFishingRepairStage = TestAutoFishingRepairStage.None;
+                    int interval = GetConfiguredTestAutoFishingRepairIntervalSeconds();
+                    _nextTestAutoFishingRepairAtUtc = interval > 0 ? now.AddSeconds(interval) : DateTime.MaxValue;
+                    _testAutoFishingRecastAfterRepairPending = true;
+                    _testAutoFishingRecastAfterRepairAtUtc = now.AddMilliseconds(TestAutoFishingRepairRecastDelayMs);
+                    _nextTestAutoFishingActionAtUtc = _testAutoFishingRecastAfterRepairAtUtc;
+                    _nextTestAutoFishingScanAtUtc = _testAutoFishingRecastAfterRepairAtUtc;
+                    ResetTestAutoFishingDetection(now);
+                    UpdateStatusBar("Auto łowienie: komenda naprawy wykonana", "Green");
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        private static bool TryGetFishingBobberPosition(Drawing.Bitmap screenshot, out double bobberX, out double bobberY, out int matchedPixelCount)
+        {
+            bobberX = 0;
+            bobberY = 0;
+            matchedPixelCount = 0;
+            if (screenshot.Width < 2 || screenshot.Height < 2)
+                return false;
+
+            Drawing.Rectangle rect = new Drawing.Rectangle(0, 0, screenshot.Width, screenshot.Height);
+            DrawingImaging.BitmapData bitmapData = screenshot.LockBits(rect, DrawingImaging.ImageLockMode.ReadOnly, DrawingImaging.PixelFormat.Format32bppArgb);
+            try
+            {
+                int stride = bitmapData.Stride;
+                int absoluteStride = Math.Abs(stride);
+                byte[] pixels = new byte[absoluteStride * bitmapData.Height];
+                Marshal.Copy(bitmapData.Scan0, pixels, 0, pixels.Length);
+                int width = bitmapData.Width;
+                int height = bitmapData.Height;
+                bool[] redMask = new bool[width * height];
+                for (int y = 0; y < bitmapData.Height; y++)
+                {
+                    int row = stride >= 0 ? y * stride : (bitmapData.Height - 1 - y) * absoluteStride;
+                    for (int x = 0; x < bitmapData.Width; x++)
+                    {
+                        int index = row + x * 4;
+                        byte blue = pixels[index];
+                        byte green = pixels[index + 1];
+                        byte red = pixels[index + 2];
+                        if (red >= 130 && green <= 145 && blue <= 145 && red - green >= 15 && red - blue >= 10)
+                            redMask[y * width + x] = true;
+                    }
+                }
+
+                // The red tip of a bobber is one compact mark. Ignore unrelated scattered red pixels.
+                bool[] visited = new bool[redMask.Length];
+                var pending = new Queue<int>();
+                double bestXTotal = 0;
+                double bestYTotal = 0;
+                for (int start = 0; start < redMask.Length; start++)
+                {
+                    if (!redMask[start] || visited[start])
+                        continue;
+
+                    int clusterPixels = 0;
+                    double clusterXTotal = 0;
+                    double clusterYTotal = 0;
+                    visited[start] = true;
+                    pending.Enqueue(start);
+
+                    while (pending.Count > 0)
+                    {
+                        int point = pending.Dequeue();
+                        int pointX = point % width;
+                        int pointY = point / width;
+                        clusterPixels++;
+                        clusterXTotal += pointX;
+                        clusterYTotal += pointY;
+
+                        for (int offsetY = -1; offsetY <= 1; offsetY++)
+                        {
+                            int neighbourY = pointY + offsetY;
+                            if (neighbourY < 0 || neighbourY >= height)
+                                continue;
+
+                            for (int offsetX = -1; offsetX <= 1; offsetX++)
+                            {
+                                if (offsetX == 0 && offsetY == 0)
+                                    continue;
+
+                                int neighbourX = pointX + offsetX;
+                                if (neighbourX < 0 || neighbourX >= width)
+                                    continue;
+
+                                int neighbour = neighbourY * width + neighbourX;
+                                if (!redMask[neighbour] || visited[neighbour])
+                                    continue;
+
+                                visited[neighbour] = true;
+                                pending.Enqueue(neighbour);
+                            }
+                        }
+                    }
+
+                    if (clusterPixels > matchedPixelCount)
+                    {
+                        matchedPixelCount = clusterPixels;
+                        bestXTotal = clusterXTotal;
+                        bestYTotal = clusterYTotal;
+                    }
+                }
+
+                if (matchedPixelCount < TestAutoFishingMinRedPixels)
+                    return false;
+                bobberX = bestXTotal / matchedPixelCount;
+                bobberY = bestYTotal / matchedPixelCount;
+                return true;
+            }
+            finally
+            {
+                screenshot.UnlockBits(bitmapData);
             }
         }
 
@@ -5777,6 +6900,23 @@ namespace MinecraftHelper
             _kopacz533Holding = enabled;
         }
 
+        private bool SetAutoLeftDabHold(bool enabled)
+        {
+            if (enabled && (_targetGameWindowHandle == IntPtr.Zero || GetForegroundWindow() != _targetGameWindowHandle))
+                enabled = false;
+
+            if (_autoLeftDabHolding == enabled)
+                return false;
+
+            if (enabled)
+                SendKeyDown(VK_O);
+            else
+                SendKeyUp(VK_O);
+
+            _autoLeftDabHolding = enabled;
+            return true;
+        }
+
         private void SetKopacz633AttackHold(bool enabled)
         {
             if (_kopacz633HoldingAttack == enabled)
@@ -6060,6 +7200,27 @@ namespace MinecraftHelper
             _testFastUpExitLookSweepNextStage = FastUpExitStage.LookUp;
         }
 
+        private void ResetTestAutoFishingRuntimeState()
+        {
+            ResetTestAutoFishingRuntimeState(DateTime.UtcNow);
+        }
+
+        private void ResetTestAutoFishingRuntimeState(DateTime now)
+        {
+            _nextTestAutoFishingScanAtUtc = now;
+            _nextTestAutoFishingActionAtUtc = now;
+            _nextTestAutoFishingRepairAtUtc = DateTime.MaxValue;
+            _nextTestAutoFishingRepairStageAtUtc = now;
+            _testAutoFishingAwaitSecondClick = false;
+            _testAutoFishingRecastAfterRepairPending = false;
+            _testAutoFishingRecastAfterRepairAtUtc = now;
+            _testAutoFishingWaitingForCastRegistration = false;
+            _testAutoFishingRepairStage = TestAutoFishingRepairStage.None;
+            ResetTestAutoFishingDetection(now);
+            if (_testAutoFishingRuntimeEnabled && HasConfiguredTestAutoFishingRepair())
+                _nextTestAutoFishingRepairAtUtc = now.AddSeconds(GetConfiguredTestAutoFishingRepairIntervalSeconds());
+        }
+
         private void ResetBindyRuntimeState()
         {
             ResetBindyRuntimeState(DateTime.UtcNow);
@@ -6337,9 +7498,25 @@ namespace MinecraftHelper
                 return;
 
             _autoLeftRuntimeEnabled = false;
+            SetAutoLeftDabHold(false);
             _autoLeftComboTriggerWasDown = false;
             _autoLeftComboStopWasDown = false;
             _nextAutoLeftClickAtUtc = DateTime.UtcNow;
+            RefreshTopTiles();
+            MarkDirty();
+        }
+
+        private void ChkAutoLeftDabMode_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_isLoadingUi)
+                return;
+
+            bool shouldHold = ChkAutoLeftDabMode.IsChecked == true
+                && ChkAutoLeftEnabled.IsChecked == true
+                && _autoLeftRuntimeEnabled
+                && _isMinecraftFocused
+                && !_isPausedByCursorVisibility;
+            SetAutoLeftDabHold(shouldHold);
             RefreshTopTiles();
             MarkDirty();
         }
@@ -6394,6 +7571,23 @@ namespace MinecraftHelper
             }
 
             UpdateEnabledStates();
+            MarkDirty();
+        }
+
+        private void ChkTestAutoFishingEnabled_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_isLoadingUi)
+                return;
+
+            if (ChkTestAutoFishingEnabled.IsChecked != true)
+            {
+                _testAutoFishingRuntimeEnabled = false;
+                ResetTestAutoFishingRuntimeState();
+            }
+
+            UpdateEnabledStates();
+            RefreshTopTiles();
+            UpdateTestAutoFishingStatusLabel();
             MarkDirty();
         }
 
@@ -6536,7 +7730,14 @@ namespace MinecraftHelper
                 EllSettingsSaved.Fill = new SolidColorBrush(Color.FromRgb(56, 214, 180));
 
                 _isMinecraftFocused = CheckGameFocus();
-                UpdateStatusBar("Program gry zapisany", "Green");
+                if (selectedProcess != null && LooksLikeLauncherWindow(selectedProcess))
+                {
+                    UpdateStatusBar("Zapisano launcher. Bindy działają w wybranym oknie; wybierz okno właściwej gry Minecraft.", "Orange");
+                }
+                else
+                {
+                    UpdateStatusBar("Program gry zapisany", "Green");
+                }
             }
             catch (Exception ex)
             {
@@ -6645,12 +7846,13 @@ namespace MinecraftHelper
             SetKopacz533MiningHold(false);
             SetKopacz633AttackHold(false);
             SetKopacz633StrafeDirection(Kopacz633StrafeDirection.None);
+            SetAutoLeftDabHold(false);
             _testFastUpExitRuntimeEnabled = false;
             ResetTestFastUpExitRuntimeState();
+            _testAutoFishingRuntimeEnabled = false;
+            ResetTestAutoFishingRuntimeState();
             ResetBindyRuntimeState();
             base.OnClosed(e);
         }
     }
 }
-
-

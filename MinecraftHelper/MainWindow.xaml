@@ -837,6 +837,12 @@
                                               Checked="ChkAutoLeftComboMode_Changed"
                                               Unchecked="ChkAutoLeftComboMode_Changed"/>
 
+                                    <CheckBox Name="ChkAutoLeftDabMode"
+                                              Margin="0,0,0,10"
+                                              Content="Tryb DAB: podczas pracy AUTO LPM trzymaj klawisz O"
+                                              Checked="ChkAutoLeftDabMode_Changed"
+                                              Unchecked="ChkAutoLeftDabMode_Changed"/>
+
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                                         <TextBlock Text="Min CPS:" Width="100" VerticalAlignment="Center"/>
                                         <TextBox Name="TxtAutoLeftMinCps" Width="80" TextChanged="AnyTextBox_TextChanged"/>
@@ -1312,11 +1318,10 @@
 
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                                 <CheckBox Name="ChkTestEntitiesEnabled"
-                                          IsChecked="True"
                                           VerticalAlignment="Center"
                                           Checked="ChkTestEntitiesEnabled_Changed"
                                           Unchecked="ChkTestEntitiesEnabled_Changed"/>
-                                <TextBlock Text="Wykrywanie graczy (E)"
+                                <TextBlock Text="Wykrywanie encji (E)"
                                            FontSize="12"
                                            FontWeight="Bold"
                                            Margin="10,0,0,0"
@@ -1329,12 +1334,12 @@
                                         ToolTipService.ShowDuration="120000">
                                     <Button.ToolTip>
                                         <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
-                                                 Content="Wykrywanie graczy (EXPERIMENTAL). Ustaw bind (najlepiej losowy klawisz, którego użyjesz tylko raz).&#10;&#10;Sposób użycia:&#10;1. Uruchom Minecrafta z włączonym F3.&#10;2. Otwórz czat za pomocą '/'.&#10;3. Kliknij wybrany bind.&#10;4. Zaznacz obszar z danymi z F3 (szukaj zakładki zaczynającej się na E). Dla lepszego działania ustaw mniej danych w F3. Zaznaczanie działa jak wycinanie fragmentu ekranu w narzędziu systemowym Windows."/>
+                                                 Content="Wykrywanie encji z linii F3 E: (EXPERIMENTAL). Ustaw bind (najlepiej losowy klawisz, którego użyjesz tylko raz).&#10;&#10;Sposób użycia:&#10;1. Uruchom Minecrafta z włączonym F3.&#10;2. Otwórz czat za pomocą '/'.&#10;3. Kliknij wybrany bind.&#10;4. Zaznacz obszar z danymi z F3 (szukaj linii zaczynającej się na E). Dla lepszego działania ustaw mniej danych w F3. Zaznaczanie działa jak wycinanie fragmentu ekranu w narzędziu systemowym Windows."/>
                                     </Button.ToolTip>
                                 </Button>
                             </StackPanel>
 
-                            <TextBlock Text="Wykrywanie graczy/mobów z F3 (test)"
+                            <TextBlock Text="Wykrywanie encji z F3 (test)"
                                        FontSize="11"
                                        Margin="0,0,0,12"
                                        Foreground="#92A6C1"
@@ -1649,6 +1654,188 @@
                                     </Border>
                                 </StackPanel>
                             </Border>
+
+                            <Border Name="BorderTestAutoFishingSection"
+                                    Background="Transparent"
+                                    BorderBrush="Transparent"
+                                    BorderThickness="0"
+                                    Padding="0"
+                                    MinHeight="0"
+                                    Margin="0,16,0,0">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                        <CheckBox Name="ChkTestAutoFishingEnabled"
+                                                  VerticalAlignment="Center"
+                                                  Checked="ChkTestAutoFishingEnabled_Changed"
+                                                  Unchecked="ChkTestAutoFishingEnabled_Changed"/>
+                                        <TextBlock Text="Auto łowienie wędką"
+                                                   FontSize="12"
+                                                   FontWeight="Bold"
+                                                   Margin="10,0,0,0"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="#7FC8FF"/>
+                                        <Button Content="?"
+                                                Style="{StaticResource MacroInfoButtonStyle}"
+                                                Margin="8,0,0,0"
+                                                ToolTipService.InitialShowDelay="100"
+                                                ToolTipService.ShowDuration="120000">
+                                            <Button.ToolTip>
+                                                <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
+                                                         Content="Zaznacz mały obszar wokół czerwonej części spławika, ustaw bind uruchamiania oraz opcjonalny bind ponownego zaznaczenia. Po zarzuceniu makro czeka 2 sekundy, zapisuje pozycję spławika i zwija dopiero po potwierdzonym braniu. Jeśli w ciągu 5 sekund od rzutu nie zobaczy spławika, automatycznie ponowi rzut."/>
+                                            </Button.ToolTip>
+                                        </Button>
+                                    </StackPanel>
+
+                                    <TextBlock Text="Makro testowe: monitoring ruchu spławika w zaznaczonym obszarze."
+                                               FontSize="11"
+                                               Margin="0,0,0,10"
+                                               Foreground="#92A6C1"
+                                               TextWrapping="Wrap"/>
+
+                                    <Border Name="BorderTestAutoFishingContent"
+                                            Background="#161F2B"
+                                            BorderBrush="#4B6283"
+                                            BorderThickness="1"
+                                            CornerRadius="4"
+                                            Padding="10"
+                                            Visibility="Collapsed">
+                                        <Grid Name="PanelTestAutoFishingContent">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="230"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                                    <TextBlock Text="Bind:" Width="170" VerticalAlignment="Center"/>
+                                                    <TextBox Name="TxtTestAutoFishingBind"
+                                                             Width="100"
+                                                             Margin="0,0,10,0"
+                                                             IsReadOnly="True"
+                                                             FontWeight="Bold"
+                                                             Foreground="#38D6B4"
+                                                             Tag="TestAutoFishing"
+                                                             PreviewMouseLeftButtonDown="BindKeyBox_PreviewMouseLeftButtonDown"/>
+                                                    <Button Name="BtnTestAutoFishingBind"
+                                                            Content="Zapisz"
+                                                            Width="80"
+                                                            Margin="0,0,10,0"
+                                                            Click="BtnTestAutoFishingBind_Click"/>
+                                                    <Button Name="BtnTestAutoFishingBindClear"
+                                                            Content="Usuń bind"
+                                                            Width="90"
+                                                            Tag="TestAutoFishing"
+                                                            Click="BtnClearBind_Click"/>
+                                                </StackPanel>
+
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                                    <TextBlock Text="Bind zaznaczania:" Width="170" VerticalAlignment="Center"/>
+                                                    <TextBox Name="TxtTestAutoFishingCaptureBind"
+                                                             Width="100"
+                                                             Margin="0,0,10,0"
+                                                             IsReadOnly="True"
+                                                             FontWeight="Bold"
+                                                             Foreground="#38D6B4"
+                                                             Tag="TestAutoFishingCaptureArea"
+                                                             PreviewMouseLeftButtonDown="BindKeyBox_PreviewMouseLeftButtonDown"/>
+                                                    <Button Name="BtnTestAutoFishingCaptureBind"
+                                                            Content="Zapisz"
+                                                            Width="80"
+                                                            Margin="0,0,10,0"
+                                                            Click="BtnTestAutoFishingCaptureBind_Click"/>
+                                                    <Button Name="BtnTestAutoFishingCaptureBindClear"
+                                                            Content="Usuń bind"
+                                                            Width="90"
+                                                            Margin="0,0,10,0"
+                                                            Tag="TestAutoFishingCaptureArea"
+                                                            Click="BtnClearBind_Click"/>
+                                                    <Button Name="BtnTestAutoFishingSelectArea"
+                                                            Content="Zaznacz obszar"
+                                                            Width="120"
+                                                            Margin="0,0,10,0"
+                                                            Click="BtnTestAutoFishingSelectArea_Click"/>
+                                                    <Button Name="BtnTestAutoFishingResetArea"
+                                                            Content="Resetuj obszar"
+                                                            Width="120"
+                                                            Click="BtnTestAutoFishingResetArea_Click"/>
+                                                </StackPanel>
+
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                                    <TextBlock Text="Komenda naprawy:" Width="170" VerticalAlignment="Center"/>
+                                                    <TextBox Name="TxtTestAutoFishingRepairCommand"
+                                                             Width="340"
+                                                             TextChanged="TxtTestAutoFishingRepairConfig_TextChanged"/>
+                                                    <TextBlock Text=" Co X sek:" Margin="10,0,8,0" VerticalAlignment="Center"/>
+                                                    <TextBox Name="TxtTestAutoFishingRepairEverySeconds"
+                                                             Width="80"
+                                                             TextChanged="TxtTestAutoFishingRepairConfig_TextChanged"/>
+                                                </StackPanel>
+
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                                    <TextBlock Text="Min -> sek:" Width="170" VerticalAlignment="Center"/>
+                                                    <TextBox Name="TxtTestAutoFishingMinutesToSecondsInput"
+                                                             Width="100"
+                                                             Margin="0,0,10,0"
+                                                             TextChanged="TxtTestAutoFishingMinutesToSecondsInput_TextChanged"/>
+                                                    <TextBlock Name="TxtTestAutoFishingMinutesToSecondsOutput"
+                                                               Text="np. 3 min = 180 s"
+                                                               VerticalAlignment="Center"
+                                                               FontSize="11"
+                                                               Foreground="#92A6C1"/>
+                                                </StackPanel>
+
+                                                <TextBlock Name="TxtTestAutoFishingAreaInfo"
+                                                           Text="Brak obszaru monitoringu spławika. Kliknij &quot;Zaznacz obszar&quot;."
+                                                           Margin="0,0,0,8"
+                                                           FontSize="11"
+                                                           Foreground="#92A6C1"
+                                                           TextWrapping="Wrap"/>
+                                                <TextBlock Text="0 sekund = wyłączone. Gdy komenda się wykona, makro ponownie zarzuci wędkę i wróci do monitoringu."
+                                                           FontSize="11"
+                                                           Margin="0,0,0,8"
+                                                           Foreground="#92A6C1"
+                                                           TextWrapping="Wrap"/>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="Status spławika:" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                    <TextBlock Name="TxtTestAutoFishingState"
+                                                               Text="-"
+                                                               Margin="10,0,0,0"
+                                                               VerticalAlignment="Center"
+                                                               Foreground="#7FC8FF"/>
+                                                </StackPanel>
+                                            </StackPanel>
+
+                                            <Border Grid.Column="1"
+                                                    Background="#101722"
+                                                    BorderBrush="#4B6283"
+                                                    BorderThickness="1"
+                                                    CornerRadius="4"
+                                                    Padding="8"
+                                                    VerticalAlignment="Top">
+                                                <StackPanel>
+                                                    <TextBlock Text="Podgląd obszaru"
+                                                               Margin="0,0,0,6"
+                                                               FontSize="11"
+                                                               FontWeight="Bold"
+                                                               Foreground="#7FC8FF"/>
+                                                    <Border Background="#0B121D"
+                                                            BorderBrush="#26384F"
+                                                            BorderThickness="1"
+                                                            Height="125">
+                                                        <Image Name="ImgTestAutoFishingPreview" Stretch="Uniform"/>
+                                                    </Border>
+                                                    <TextBlock Name="TxtTestAutoFishingPreviewInfo"
+                                                               Text="Brak zaznaczonego obszaru."
+                                                               Margin="0,6,0,0"
+                                                               FontSize="10"
+                                                               Foreground="#92A6C1"
+                                                               TextWrapping="Wrap"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </Grid>
                 </ScrollViewer>
@@ -1806,4 +1993,3 @@
         </TabControl>
     </DockPanel>
 </Window>
-

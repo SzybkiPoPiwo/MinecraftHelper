@@ -4,6 +4,8 @@
 
 MinecraftHelper to desktopowa aplikacja WPF (.NET 8) na Windows do konfiguracji i uruchamiania makr pod Minecraft.
 
+**Aktualna wersja: `v1.0.10`**
+
 <img width="3168" height="1344" alt="MinecraftHelper Preview" src="https://github.com/user-attachments/assets/1ee1fa6b-54a1-4432-8733-1936e8c83b55" />
 
 ---
@@ -24,7 +26,7 @@ Projekt jest open-source i rozwijany modułowo.
 
 - PVP:
   - HOLD (`LPM + PPM`) z jednym bindem i osobnymi checkboxami LPM/PPM
-  - `AUTO LPM` (bind + CPS)
+  - `AUTO LPM` (bind + CPS, opcjonalny tryb DAB trzymający `O` podczas pracy makra)
   - `AUTO PPM` (bind + CPS)
   - `Jabłka z liści` (bind + komenda)
 - Kopacz:
@@ -39,6 +41,7 @@ Projekt jest open-source i rozwijany modułowo.
   - tryb niestandardowego obszaru OCR + bind zaznaczania + reset danych
   - `Szybkie wyjście do góry` (bind, slot bloku, slot kilofa, typ kilofa, ms trzymania LPM)
   - autozapis ustawień ms per typ kilofa + notatka sugerowanych wartości
+  - `Auto łowienie wędką` z zaznaczanym obszarem spławika, detekcją czerwonej końcówki i automatycznym ponownym rzutem
 - Ustawienia:
   - wybór procesu gry z listy uruchomionych okien
   - konfiguracja HUD overlay (włącz, animacje, monitor, pozycja)
@@ -85,6 +88,7 @@ Projekt jest open-source i rozwijany modułowo.
   - checkbox włączający
   - bind
   - zakres CPS
+  - `Tryb DAB` - podczas aktywnego makra przytrzymuje klawisz `O` i zwalnia go przy wyłączeniu lub pauzie
 - `AUTOMATYCZNY PPM`:
   - checkbox włączający
   - bind
@@ -136,7 +140,7 @@ Projekt jest open-source i rozwijany modułowo.
 
 <img width="1584" height="1000" alt="image" src="https://github.com/user-attachments/assets/7dedebef-8485-4187-9f41-cec82212cebb" />
 
-- checkbox `Wykrywanie graczy (E)`
+- checkbox `Wykrywanie encji (E)`
 - OCR oparty o linię F3 `E: x/x`
 - `Niestandardowy obszar OCR`:
   - bind do uruchamiania zaznaczania
@@ -144,6 +148,12 @@ Projekt jest open-source i rozwijany modułowo.
   - przycisk `Resetuj dane`
 - live odczyt:
   - `Encje (E): x/x`
+- `Auto łowienie wędką`:
+  - zaznaczany obszar monitoringu spławika
+  - po rzucie odczekuje 2 sekundy przed zapisaniem pozycji spławika
+  - szuka zwartego czerwonego fragmentu spławika i pokazuje wykrycie w HUD
+  - jeżeli przez 5 sekund od rzutu nie znajdzie spławika, ponawia rzut
+  - ogranicza przedwczesne zwijanie przy niewielkich drganiach obrazu
 
 #### Ustawienia
 
@@ -175,6 +185,7 @@ Aplikacja zapisuje ustawienia automatycznie.
   - `Settings Saved: ✓ Tak` - zapisane
   - `Błąd` - problem z zapisem
 - ręczny przycisk `Zapisz program` zapisuje od razu wybór procesu gry
+- przy pierwszym uruchomieniu makra, HUD i odczyt encji są wyłączone; domyślnie włączona pozostaje tylko pauza przy widocznym kursorze
 
 Domyślna lokalizacja pliku:
 
@@ -237,13 +248,13 @@ Przykład:
 cd D:\MinecraftHelper
 Set-ExecutionPolicy -Scope Process Bypass
 $env:ISCC_PATH="C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
-.\scripts\build-installer.ps1 -Version 1.0.0 -Rid win-x64 -SelfContained:$true -Clean
+.\scripts\build-installer.ps1 -Version 1.0.10 -Rid win-x64 -SelfContained:$true -Clean
 ```
 
 Wynik:
 
 - publish: `artifacts/publish/win-x64`
-- instalator: `artifacts/installer/MinecraftHelper-Setup-1.0.0.exe`
+- instalator: `artifacts/installer/MinecraftHelper-Setup-1.0.10.exe`
 
 Uwagi:
 
@@ -262,17 +273,21 @@ Uwagi:
   - zapisuje jako aktywne ustawienia lokalne
 
 ---
-## 10. Co zostało ostatnio dodane
+## 10. Co zostało dodane w v1.0.10
 
-- `Szybkie wyjście do góry` w `Experimental`:
-  - flow kopania do góry + stawianie bloku pod sobą
-  - osobne ustawienia ms per typ kilofa
-  - autozapis ustawień dla wybranego kilofa
-- nowy popup HUD dla aktywnego `Szybkiego wyjścia do góry` (status + konfiguracja)
-- duży, ciemny komunikat o konflikcie bindów z nazwą zajmującego modułu
-- ekran startowy aplikacji (splash) z paskiem ładowania
-- ikonki `?` z tooltipami opisującymi działanie modułów
-- poprawki układu i spójności sekcji `Experimental` i `Ustawienia`
+- nowe `Auto łowienie wędką` w `Experimental`:
+  - detekcja zwartej czerwonej końcówki spławika w zaznaczonym obszarze
+  - 2 sekundy stabilizacji po rzucie i automatyczny ponowny rzut po 5 sekundach bez spławika
+  - lepsza ochrona przed fałszywym braniem przy niewielkich drganiach
+  - dane na HUD: obszar, położenie spławika, czerwone piksele i liczba złowień
+- `Tryb DAB` dla `AUTO LPM`:
+  - automatyczne przytrzymanie `O` podczas pracy makra
+  - widoczny stan `DAB (O)` w HUD
+  - zwalnianie klawisza po wyłączeniu, pauzie, utracie fokusu lub zamknięciu programu
+- poprawki HUD i ustawień:
+  - `E: x/x` jest poprawnie opisane jako liczba encji
+  - pierwszy start nie aktywuje automatycznie HUD-u, animacji, trybów HOLD ani wykrywania encji
+  - domyślnie zaznaczona pozostaje tylko pauza przy widocznym kursorze
 
 ---
 ## 11. Kontakt

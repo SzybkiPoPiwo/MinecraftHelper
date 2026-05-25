@@ -229,19 +229,19 @@ namespace MinecraftHelper
             {
                 string label = line.Substring(0, separator + 1);
                 string value = line.Substring(separator + 1).TrimStart();
-                bool isPlayersLine = label.StartsWith("Gracze", StringComparison.OrdinalIgnoreCase);
+                bool isEntityCountLine = label.StartsWith("Encje", StringComparison.OrdinalIgnoreCase);
 
                 text.Inlines.Add(new Run(label + " ")
                 {
                     Foreground = LabelBrush,
                     FontWeight = FontWeights.Bold,
-                    FontSize = isPlayersLine ? 16 : 14
+                    FontSize = isEntityCountLine ? 16 : 14
                 });
                 text.Inlines.Add(new Run(value)
                 {
-                    Foreground = isPlayersLine ? ResolvePlayersBrush(value, warningTile) : ResolveValueBrush(value, warningTile),
+                    Foreground = isEntityCountLine ? ResolveEntityCountBrush(value, warningTile) : ResolveValueBrush(value, warningTile),
                     FontWeight = FontWeights.ExtraBold,
-                    FontSize = isPlayersLine ? 30 : 18
+                    FontSize = isEntityCountLine ? 30 : 18
                 });
                 return text;
             }
@@ -299,7 +299,7 @@ namespace MinecraftHelper
             return AccentBrush;
         }
 
-        private static Brush ResolvePlayersBrush(string valuePart, bool warningTile)
+        private static Brush ResolveEntityCountBrush(string valuePart, bool warningTile)
         {
             string lower = valuePart.ToLowerInvariant();
             if (lower.Contains("brak", StringComparison.Ordinal))

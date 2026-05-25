@@ -2,7 +2,7 @@
 #define MyAppExeName "MinecraftHelper.exe"
 
 #ifndef AppVersion
-  #define AppVersion "0.0.0"
+  #define AppVersion "1.0.10"
 #endif
 
 #ifndef PublishDir
@@ -17,6 +17,7 @@
 AppId={{D9C22E2B-2FB1-47F4-8C4B-5AA80A3A3B95}
 AppName={#MyAppName}
 AppVersion={#AppVersion}
+VersionInfoVersion={#AppVersion}.0
 AppPublisher=SzybkiPoPiwo
 DefaultDirName={localappdata}\Programs\{#MyAppName}
 DefaultGroupName={#MyAppName}

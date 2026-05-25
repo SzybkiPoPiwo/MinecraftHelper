@@ -1,5 +1,5 @@
 param(
-    [string]$Version = "1.0.0",
+    [string]$Version = "1.0.10",
     [ValidateSet("win-x64", "win-x86")]
     [string]$Rid = "win-x64",
     [bool]$SelfContained = $true,
@@ -16,7 +16,8 @@ function Resolve-IsccPath {
 
     $candidates = @(
         "C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
-        "C:\Program Files\Inno Setup 6\ISCC.exe"
+        "C:\Program Files\Inno Setup 6\ISCC.exe",
+        (Join-Path $env:LOCALAPPDATA "Programs\Inno Setup 6\ISCC.exe")
     )
 
     foreach ($path in $candidates) {
@@ -57,6 +58,10 @@ dotnet publish $projectPath `
     -c Release `
     -r $Rid `
     --self-contained $selfContainedValue `
+    -p:Version=$Version `
+    -p:AssemblyVersion="$Version.0" `
+    -p:FileVersion="$Version.0" `
+    -p:InformationalVersion=$Version `
     -p:PublishSingleFile=$publishSingleFileValue `
     -p:IncludeNativeLibrariesForSelfExtract=$includeNativeSelfExtractValue `
     -p:IncludeAllContentForSelfExtract=$includeAllContentSelfExtractValue `

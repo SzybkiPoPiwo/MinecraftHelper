@@ -33,14 +33,15 @@ namespace MinecraftHelper.Models
 
         public bool HoldEnabled { get; set; }
         public string HoldToggleKey { get; set; } = "";
-        public bool HoldLeftEnabled { get; set; } = true;
-        public bool HoldRightEnabled { get; set; } = true;
+        public bool HoldLeftEnabled { get; set; }
+        public bool HoldRightEnabled { get; set; }
         public MacroButton HoldLeftButton { get; set; } = new MacroButton();
         public MacroButton HoldRightButton { get; set; } = new MacroButton();
 
         public MacroButton AutoLeftButton { get; set; } = new MacroButton();
         public MacroButton AutoRightButton { get; set; } = new MacroButton();
         public bool AutoLeftComboMode { get; set; }
+        public bool AutoLeftDabMode { get; set; }
         public bool AutoRightComboMode { get; set; }
 
         public bool Kopacz533Enabled { get; set; }
@@ -62,7 +63,7 @@ namespace MinecraftHelper.Models
         public List<MinerCommand> BindyCommands { get; set; } = new List<MinerCommand>();
         public List<BindyEntry> BindyEntries { get; set; } = new List<BindyEntry>();
         public bool PauseWhenCursorVisible { get; set; } = true;
-        public bool TestEntitiesEnabled { get; set; } = true;
+        public bool TestEntitiesEnabled { get; set; }
         public bool TestCustomCaptureEnabled { get; set; }
         public string TestCustomCaptureBind { get; set; } = "";
         public int TestCustomCaptureX { get; set; }
@@ -82,8 +83,17 @@ namespace MinecraftHelper.Models
         public Dictionary<string, int> TestFastUpExitBreakDurationByPickaxe { get; set; } = new Dictionary<string, int>();
         public int TestFastUpExitPlaceAfterJumpMs { get; set; } = 45;
         public bool TestFastUpExitPlaceAfterJumpEnabled { get; set; } = true;
-        public bool OverlayHudEnabled { get; set; } = true;
-        public bool OverlayAnimationsEnabled { get; set; } = true;
+        public bool TestAutoFishingEnabled { get; set; }
+        public string TestAutoFishingBind { get; set; } = "";
+        public string TestAutoFishingCaptureBind { get; set; } = "";
+        public int TestAutoFishingCaptureX { get; set; }
+        public int TestAutoFishingCaptureY { get; set; }
+        public int TestAutoFishingCaptureWidth { get; set; }
+        public int TestAutoFishingCaptureHeight { get; set; }
+        public string TestAutoFishingRepairCommand { get; set; } = "";
+        public int TestAutoFishingRepairEverySeconds { get; set; }
+        public bool OverlayHudEnabled { get; set; }
+        public bool OverlayAnimationsEnabled { get; set; }
         public int OverlayMonitorIndex { get; set; }
         public string OverlayCorner { get; set; } = "RightBottom";
         public string TargetWindowTitle { get; set; } = "";
