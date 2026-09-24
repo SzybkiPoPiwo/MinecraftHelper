@@ -15,6 +15,7 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Navigation;
 using System.Windows.Threading;
 using System.Windows.Media.Imaging;
@@ -37,6 +38,9 @@ namespace MinecraftHelper
     {
         private readonly SettingsService _settingsService;
         private AppSettings _settings;
+        private readonly bool _isFirstRun;
+        private readonly string _currentAppVersion;
+        private readonly bool _showStartupNotice;
 
         private bool _pendingChanges = false;
         private readonly DispatcherTimer _dirtyTimer;
@@ -48,6 +52,7 @@ namespace MinecraftHelper
         private bool _isMinecraftFocused;
         private IntPtr _targetGameWindowHandle = IntPtr.Zero;
         private bool _isLoadingUi = true;
+        private readonly Dictionary<FrameworkElement, bool> _expandableSectionStates = new();
         private bool _isPausedByCursorVisibility;
         private bool _holdMacroRuntimeEnabled;
         private bool _autoLeftRuntimeEnabled;
@@ -560,8 +565,15 @@ namespace MinecraftHelper
             InitializeTrayIcon();
 
             _settingsService = new SettingsService();
+            _isFirstRun = !_settingsService.SettingsFileExists;
             _settings = _settingsService.Load();
             EnsureSettingsConsistency();
+            _currentAppVersion = ReleaseNotesCatalog.CurrentVersion;
+            _showStartupNotice = _isFirstRun
+                || !string.Equals(
+                    _settings.LastAcknowledgedVersion,
+                    _currentAppVersion,
+                    StringComparison.OrdinalIgnoreCase);
             _autoClickScheduler = new AutoClickScheduler();
 
             _dirtyTimer = new DispatcherTimer
@@ -634,6 +646,42 @@ namespace MinecraftHelper
             }
 
             _trayMinimizeBehaviorEnabled = true;
+
+            if (_showStartupNotice)
+            {
+                Dispatcher.BeginInvoke(
+                    new Action(ShowStartupNotice),
+                    DispatcherPriority.ApplicationIdle);
+            }
+        }
+
+        private void ShowStartupNotice()
+        {
+            if (!IsVisible || _isExitRequested)
+                return;
+
+            var dialog = new FirstRunGuideWindow(
+                _isFirstRun,
+                _currentAppVersion,
+                _settings.LastAcknowledgedVersion)
+            {
+                Owner = this
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                try
+                {
+                    _settings.LastAcknowledgedVersion = _currentAppVersion;
+                    _settingsService.Save(_settings);
+                }
+                catch (Exception ex)
+                {
+                    UpdateStatusBar("Nie udało się zapisać potwierdzenia wersji: " + ex.Message, "Red");
+                }
+            }
+
+            Activate();
         }
 
         private void StartMouseHook()
@@ -886,6 +934,7 @@ namespace MinecraftHelper
         private void EnsureSettingsConsistency()
         {
             _settings ??= new AppSettings();
+            _settings.LastAcknowledgedVersion ??= string.Empty;
 
             _settings.MacroLeftButton ??= new MacroButton();
             _settings.MacroRightButton ??= new MacroButton();
@@ -3161,6 +3210,98 @@ namespace MinecraftHelper
             section.Opacity = enabled ? 1.0 : 0.55;
         }
 
+        private void SetExpandableSectionState(
+            FrameworkElement section,
+            bool expanded)
+        {
+            if (_expandableSectionStates.TryGetValue(section, out bool previousState)
+                && previousState == expanded)
+                return;
+
+            _expandableSectionStates[section] = expanded;
+
+            section.BeginAnimation(FrameworkElement.HeightProperty, null);
+            section.BeginAnimation(UIElement.OpacityProperty, null);
+
+            if (_isLoadingUi || !IsLoaded)
+            {
+                section.Height = double.NaN;
+                section.Opacity = 1.0;
+                section.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
+                return;
+            }
+
+            var easing = new CubicEase { EasingMode = EasingMode.EaseOut };
+            TimeSpan duration = TimeSpan.FromMilliseconds(expanded ? 180 : 140);
+
+            if (expanded)
+            {
+                section.Visibility = Visibility.Visible;
+                section.Height = double.NaN;
+                section.UpdateLayout();
+                double targetHeight = Math.Max(1.0, section.ActualHeight);
+
+                section.Height = 0;
+                section.Opacity = 0;
+
+                var heightAnimation = new DoubleAnimation(0, targetHeight, duration)
+                {
+                    EasingFunction = easing
+                };
+                heightAnimation.Completed += (_, _) =>
+                {
+                    if (!_expandableSectionStates.TryGetValue(section, out bool currentState)
+                        || !currentState)
+                        return;
+
+                    section.BeginAnimation(FrameworkElement.HeightProperty, null);
+                    section.BeginAnimation(UIElement.OpacityProperty, null);
+                    section.Height = double.NaN;
+                    section.Opacity = 1.0;
+                };
+
+                section.BeginAnimation(FrameworkElement.HeightProperty, heightAnimation);
+                section.BeginAnimation(
+                    UIElement.OpacityProperty,
+                    new DoubleAnimation(0, 1, duration) { EasingFunction = easing });
+                return;
+            }
+
+            if (section.Visibility != Visibility.Visible)
+            {
+                section.Height = double.NaN;
+                section.Opacity = 1.0;
+                section.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            double currentHeight = Math.Max(1.0, section.ActualHeight);
+            double currentOpacity = section.Opacity;
+            section.Height = currentHeight;
+
+            var collapseAnimation = new DoubleAnimation(currentHeight, 0, duration)
+            {
+                EasingFunction = easing
+            };
+            collapseAnimation.Completed += (_, _) =>
+            {
+                if (!_expandableSectionStates.TryGetValue(section, out bool currentState)
+                    || currentState)
+                    return;
+
+                section.BeginAnimation(FrameworkElement.HeightProperty, null);
+                section.BeginAnimation(UIElement.OpacityProperty, null);
+                section.Height = double.NaN;
+                section.Opacity = 1.0;
+                section.Visibility = Visibility.Collapsed;
+            };
+
+            section.BeginAnimation(FrameworkElement.HeightProperty, collapseAnimation);
+            section.BeginAnimation(
+                UIElement.OpacityProperty,
+                new DoubleAnimation(currentOpacity, 0, duration) { EasingFunction = easing });
+        }
+
         private void UpdateEnabledStates(object? sender = null, RoutedEventArgs? e = null)
         {
             bool manualOn = ChkMacroManualEnabled.IsChecked ?? false;
@@ -3168,6 +3309,9 @@ namespace MinecraftHelper
             bool holdRightOn = manualOn && ChkHoldRightEnabled.IsChecked == true;
             bool autoLeftOn = ChkAutoLeftEnabled.IsChecked ?? false;
             bool autoRightOn = ChkAutoRightEnabled.IsChecked ?? false;
+
+            SetExpandableSectionState(PanelAutoLeftContent, autoLeftOn);
+            SetExpandableSectionState(PanelAutoRightContent, autoRightOn);
 
             TxtMacroManualKey.IsEnabled = manualOn;
             BtnMacroManualCapture.IsEnabled = manualOn;
@@ -3227,6 +3371,7 @@ namespace MinecraftHelper
             }
 
             bool kop533On = ChkKopacz533Enabled.IsChecked ?? false;
+            SetExpandableSectionState(PanelKopacz533Content, kop533On);
             TxtKopacz533Key.IsEnabled = kop533On;
             BtnKopacz533Capture.IsEnabled = kop533On;
             BtnKopacz533Clear.IsEnabled = kop533On;
@@ -3240,6 +3385,7 @@ namespace MinecraftHelper
             }
 
             bool kop633On = ChkKopacz633Enabled.IsChecked ?? false;
+            SetExpandableSectionState(PanelKopacz633Content, kop633On);
             TxtKopacz633Key.IsEnabled = kop633On;
             BtnKopacz633Capture.IsEnabled = kop633On;
             BtnKopacz633Clear.IsEnabled = kop633On;
@@ -3260,15 +3406,17 @@ namespace MinecraftHelper
             UpdateKopaczUpwardInfoVisibility();
 
             bool inventoryCleanupOn = ChkInventoryCleanupEnabled.IsChecked == true;
+            SetExpandableSectionState(PanelInventoryCleanupExpandableContent, inventoryCleanupOn);
             PanelInventoryCleanupContent.IsEnabled = inventoryCleanupOn;
-            PanelInventoryCleanupContent.Opacity = inventoryCleanupOn ? 1.0 : 0.5;
-            PanelCobbleXSettings.IsEnabled = inventoryCleanupOn && ChkCobbleXEnabled.IsChecked == true;
-            PanelCobbleXSettings.Opacity = PanelCobbleXSettings.IsEnabled ? 1.0 : 0.55;
+            bool cobbleXSettingsOn = inventoryCleanupOn && ChkCobbleXEnabled.IsChecked == true;
+            SetExpandableSectionState(PanelCobbleXSettings, cobbleXSettingsOn);
+            PanelCobbleXSettings.IsEnabled = cobbleXSettingsOn;
             if (!inventoryCleanupOn)
                 ResetInventoryCleanupState(scheduleNext: false);
 
             // JABŁKA Z LIŚCI
             bool jablkaOn = ChkJablkaZLisciEnabled.IsChecked ?? false;
+            SetExpandableSectionState(PanelJablkaContent, jablkaOn);
             TxtJablkaZLisciKey.IsEnabled = jablkaOn;
             BtnJablkaZLisciCapture.IsEnabled = jablkaOn;
             BtnJablkaZLisciClear.IsEnabled = jablkaOn;
@@ -3283,7 +3431,7 @@ namespace MinecraftHelper
             bool bindyOn = ChkBindyEnabled.IsChecked ?? false;
             if (PanelBindyContent != null)
             {
-                PanelBindyContent.Visibility = bindyOn ? Visibility.Visible : Visibility.Collapsed;
+                SetExpandableSectionState(PanelBindyContent, bindyOn);
                 PanelBindyContent.IsEnabled = bindyOn;
             }
             if (PanelBindyCommands != null)
@@ -3294,6 +3442,7 @@ namespace MinecraftHelper
                 ResetBindyRuntimeState();
 
             bool cursorPauseOn = ChkPauseWhenCursorVisible.IsChecked == true;
+            SetExpandableSectionState(PanelCursorPauseContent, cursorPauseOn);
             bool testEntitiesOn = ChkTestEntitiesEnabled?.IsChecked == true;
             bool testCustomOn = testEntitiesOn;
             bool testFastUpOn = ChkTestFastUpExitEnabled?.IsChecked == true;
@@ -3350,8 +3499,8 @@ namespace MinecraftHelper
                 _testFastUpExitRuntimeEnabled = false;
                 ResetTestFastUpExitRuntimeState();
             }
-            if (BorderTestAutoFishingContent != null)
-                BorderTestAutoFishingContent.Visibility = testAutoFishingOn ? Visibility.Visible : Visibility.Collapsed;
+            if (PanelTestAutoFishingExpandableContent != null)
+                SetExpandableSectionState(PanelTestAutoFishingExpandableContent, testAutoFishingOn);
             if (PanelTestAutoFishingContent != null)
                 PanelTestAutoFishingContent.IsEnabled = testAutoFishingOn;
             if (TxtTestAutoFishingBind != null)
@@ -3381,16 +3530,13 @@ namespace MinecraftHelper
             }
             UpdateTestAutoFishingStatusLabel();
 
+            bool overlayHudOn = ChkOverlayHudEnabled.IsChecked == true;
+            SetExpandableSectionState(PanelOverlayHudContent, overlayHudOn);
+            PanelOverlayHudContent.IsEnabled = overlayHudOn;
+
             SetSectionVisualState(BorderManualLeftSection, holdLeftOn);
             SetSectionVisualState(BorderManualRightSection, holdRightOn);
             SetSectionVisualState(BorderManualBindSection, manualOn);
-            SetSectionVisualState(BorderAutoLeftSection, autoLeftOn);
-            SetSectionVisualState(BorderAutoRightSection, autoRightOn);
-            SetSectionVisualState(BorderJablkaSection, jablkaOn);
-            SetSectionVisualState(BorderCursorPauseSection, cursorPauseOn);
-            SetSectionVisualState(BorderKopacz533Section, kop533On);
-            SetSectionVisualState(BorderKopacz633Section, kop633On);
-            SetSectionVisualState(BorderBindySection, bindyOn);
             SetSectionVisualState(BorderTestCustomCaptureSection, testCustomOn);
             SetSectionVisualState(BorderTestFastUpExitSection, true);
 
@@ -8406,6 +8552,7 @@ namespace MinecraftHelper
             if (_isLoadingUi)
                 return;
 
+            UpdateEnabledStates();
             UpdateOverlayLayout();
             RefreshOverlayHud(DateTime.UtcNow);
             MarkDirty();
@@ -8639,6 +8786,7 @@ namespace MinecraftHelper
             if (ChkPauseWhenCursorVisible.IsChecked != true)
                 SetCursorPauseState(false);
 
+            UpdateEnabledStates();
             RefreshTopTiles();
             MarkDirty();
         }
@@ -8695,9 +8843,7 @@ namespace MinecraftHelper
             if (_isLoadingUi)
                 return;
 
-            PanelCobbleXSettings.IsEnabled = ChkInventoryCleanupEnabled.IsChecked == true
-                && ChkCobbleXEnabled.IsChecked == true;
-            PanelCobbleXSettings.Opacity = PanelCobbleXSettings.IsEnabled ? 1.0 : 0.55;
+            UpdateEnabledStates();
             RefreshTopTiles();
             RefreshOverlayHud(DateTime.UtcNow);
             MarkDirty();

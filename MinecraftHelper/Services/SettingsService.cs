@@ -15,6 +15,8 @@ namespace MinecraftHelper.Services
 
         public string SettingsFilePath => Path.Combine(SettingsDirectoryPath, SettingsFileName);
 
+        public bool SettingsFileExists => File.Exists(SettingsFilePath);
+
         private void EnsureSettingsDirectoryExists()
         {
             Directory.CreateDirectory(SettingsDirectoryPath);

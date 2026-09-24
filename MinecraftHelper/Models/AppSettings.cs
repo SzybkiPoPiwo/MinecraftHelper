@@ -27,6 +27,8 @@ namespace MinecraftHelper.Models
 
     public class AppSettings
     {
+        public string LastAcknowledgedVersion { get; set; } = "";
+
         // Legacy fields kept for backward compatibility with old settings.json files.
         public MacroButton MacroLeftButton { get; set; } = new MacroButton();
         public MacroButton MacroRightButton { get; set; } = new MacroButton();
