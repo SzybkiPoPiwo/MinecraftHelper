@@ -33,6 +33,8 @@ Projekt jest open-source i rozwijany modułowo.
   - `Kopacz 5/3/3`
   - `Kopacz 6/3/3` (na wprost / do góry)
   - harmonogram komend z opóźnieniami
+  - automatyczne czyszczenie 27 slotów głównego EQ według typu przedmiotu i paczki Minecraft Helper v3
+  - wykrywanie pełnych stacków cobblestone oraz opcjonalne wysłanie komendy CobbleX po czyszczeniu
 - BINDY:
   - wiele wierszy (własna nazwa, bind, komenda, enabled)
   - pojedyncze wykonanie komendy po naciśnięciu binda
@@ -115,6 +117,13 @@ Projekt jest open-source i rozwijany modułowo.
   - kierunek: `Na wprost` / `Do góry`
   - szerokość / długość (zależnie od kierunku)
   - lista komend
+- `Automatyczne wyrzucanie / CobbleX`:
+  - skan oznaczonych typów tylko w 27 slotach głównego EQ (bez hotbara, pancerza i craftingu)
+  - wyrzucanie całych stosów przez `lewy Ctrl + Q`
+  - osobny wybór typów, które mają zostać wyrzucone lub zachowane
+  - licznik zwykłego cobblestone ze stackiem dokładnie `64`; pojedynczy, mossy i enchantowany wynik CobbleX nie jest liczony jako surowiec
+  - po osiągnięciu ustawionego progu (domyślnie 9 stacków) zamyka EQ i wysyła konfigurowalną komendę (domyślnie `/cx`)
+  - podczas całej operacji pozostałe komendy kopacza czekają, a stan i licznik są widoczne w HUD
 - panel informacyjny:
   - podpowiedzi optymalnych czasów
   - AFK facing dla trybu "Do góry"

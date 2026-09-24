@@ -486,7 +486,7 @@
                 <!-- Wiersz 3: Kafelki Statusów -->
                 <Grid Grid.Row="2">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="1*"/>
+                        <ColumnDefinition Width="0"/>
                         <ColumnDefinition Width="1*"/>
                         <ColumnDefinition Width="1*"/>
                         <ColumnDefinition Width="1*"/>
@@ -517,7 +517,7 @@
                         </Style>
                     </Grid.Resources>
 
-                    <Border Name="BorderManualStatus" Grid.Column="0" Style="{StaticResource TileStyle}">
+                    <Border Name="BorderManualStatus" Grid.Column="0" Style="{StaticResource TileStyle}" Visibility="Collapsed">
                         <StackPanel>
                             <TextBlock Text="LPM + PPM" Style="{StaticResource TileHeader}"/>
                             <TextBlock Name="TxtManualCps"
@@ -649,13 +649,13 @@
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <Grid Margin="10,20">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="1*"/>
-                            <ColumnDefinition Width="30"/>
+                            <ColumnDefinition Width="0"/>
+                            <ColumnDefinition Width="0"/>
                             <ColumnDefinition Width="1*"/>
                         </Grid.ColumnDefinitions>
 
                         <!-- LEWA KOLUMNA -->
-                        <StackPanel Grid.Column="0">
+                        <StackPanel Grid.Column="0" Visibility="Collapsed">
                             <Border Background="#161F2B" CornerRadius="4" Padding="10" Margin="0,0,0,15">
                                 <StackPanel Orientation="Horizontal">
                                     <CheckBox Name="ChkMacroManualEnabled"
@@ -784,7 +784,7 @@
                             </Border>
                         </StackPanel>
 
-                        <Border Grid.Column="1" Width="1" Background="#34465E" Margin="14,0"/>
+                        <Border Grid.Column="1" Width="1" Background="#34465E" Margin="14,0" Visibility="Collapsed"/>
 
                         <StackPanel Grid.Column="2">
                             <Border Name="BorderAutoLeftSection" Style="{StaticResource SectionBorderStyle}">
@@ -1158,6 +1158,143 @@
                                     <Button Name="BtnKopacz633AddCommand" Content="+ Dodaj komendę" Width="140" Click="BtnKopacz633AddCommand_Click" Background="#1E2A39" BorderBrush="#4B6283" BorderThickness="1"/>
                                 </StackPanel>
                             </Border>
+
+                            <Border Name="BorderInventoryCleanupSection" Style="{StaticResource SectionBorderStyle}">
+                                <StackPanel>
+                                    <CheckBox Name="ChkInventoryCleanupEnabled"
+                                              Content="Automatyczne wyrzucanie oznaczonych przedmiotów"
+                                              FontSize="13"
+                                              FontWeight="Bold"
+                                              Checked="ChkInventoryCleanupEnabled_Changed"
+                                              Unchecked="ChkInventoryCleanupEnabled_Changed"/>
+
+                                    <TextBlock Text="Wyrzuca całe oznaczone stosy z wybranych pól głównego ekwipunku."
+                                               TextWrapping="Wrap"
+                                               FontSize="11"
+                                               Foreground="#A8BAD3"
+                                               Margin="0,8,0,8"/>
+
+                                    <Border Background="#111A25"
+                                            BorderBrush="#34465E"
+                                            BorderThickness="1"
+                                            CornerRadius="4"
+                                            Padding="10,8"
+                                            Margin="0,0,0,12">
+                                        <StackPanel>
+                                            <TextBlock Text="Wymagania klienta"
+                                                       FontSize="11"
+                                                       FontWeight="Bold"
+                                                       Foreground="#7FC8FF"
+                                                       Margin="0,0,0,5"/>
+                                            <TextBlock FontSize="10.5"
+                                                       Foreground="#CFDBEB"
+                                                       TextWrapping="Wrap"
+                                                       LineHeight="16">
+                                                <Run Text="• Minecraft lub BlazingPack 1.8.8; paczka Minecraft Helper v3 musi być aktywna nad Default.&#x0a;"/>
+                                                <Run Text="• W Ustawieniach wybierz właściwe okno gry Java/BlazingPack, nie okno launchera.&#x0a;"/>
+                                                <Run Text="• Sterowanie klienta: E = ekwipunek, Q = wyrzuć przedmiot, T = czat; lewy Ctrl nie może być przechwytywany przez inny skrót.&#x0a;"/>
+                                                <Run Text="• Podczas skanu gra musi mieć fokus, być widoczna i nie może być zasłonięta innym oknem.&#x0a;"/>
+                                                <Run Text="• Przedmiot musi mieć kolorowy znacznik z paczki. Hotbar, pancerz i crafting są zawsze pomijane."/>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <StackPanel Name="PanelInventoryCleanupContent">
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                            <TextBlock Text="Czyść co (sekundy):" Width="150" VerticalAlignment="Center"/>
+                                            <TextBox Name="TxtInventoryCleanupIntervalSeconds"
+                                                     Width="80"
+                                                     TextChanged="AnyTextBox_TextChanged"/>
+                                        </StackPanel>
+
+                                        <Border Background="#111A25"
+                                                BorderBrush="#34465E"
+                                                BorderThickness="1"
+                                                CornerRadius="4"
+                                                Padding="10,8"
+                                                Margin="0,0,0,12">
+                                            <StackPanel>
+                                                <CheckBox Name="ChkCobbleXEnabled"
+                                                          Content="Automatycznie twórz CobbleX po skanie EQ"
+                                                          FontWeight="SemiBold"
+                                                          Checked="ChkCobbleXEnabled_Changed"
+                                                          Unchecked="ChkCobbleXEnabled_Changed"/>
+                                                <StackPanel Name="PanelCobbleXSettings" Margin="0,8,0,0">
+                                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,7">
+                                                        <TextBlock Text="Komenda:" Width="105" VerticalAlignment="Center"/>
+                                                        <TextBox Name="TxtCobbleXCommand"
+                                                                 Width="155"
+                                                                 TextChanged="AnyTextBox_TextChanged"/>
+                                                        <TextBlock Text="Pełne stacki 64:" Margin="18,0,8,0" VerticalAlignment="Center"/>
+                                                        <TextBox Name="TxtCobbleXRequiredStacks"
+                                                                 Width="55"
+                                                                 TextChanged="AnyTextBox_TextChanged"/>
+                                                    </StackPanel>
+                                                    <TextBlock Text="Po wyrzuceniu program zamyka EQ i wysyła komendę, gdy wykryje wymaganą liczbę pełnych stacków zwykłego cobblestone. Gotowy CobbleX bez napisu 64, mossy i wariant enchantowany nie są liczone."
+                                                               TextWrapping="Wrap"
+                                                               FontSize="10"
+                                                               Foreground="#92A6C1"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <TextBlock Text="Przedmioty do wyrzucenia:"
+                                                   FontSize="11"
+                                                   FontWeight="Bold"
+                                                   Foreground="#A8BAD3"
+                                                   Margin="0,0,0,2"/>
+                                        <TextBlock Text="Zaznaczone = wyrzucaj cały stos. Odznaczone = zawsze zostaw."
+                                                   FontSize="10"
+                                                   Foreground="#7F93AE"
+                                                   Margin="0,0,0,6"/>
+                                        <UniformGrid Name="PanelInventoryCleanupItemTypes"
+                                                     Columns="4"
+                                                     Width="600"
+                                                     HorizontalAlignment="Left"
+                                                     Margin="0,0,0,6"/>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                            <Button Content="Wyrzucaj wszystkie typy"
+                                                    Width="155"
+                                                    Click="BtnInventoryCleanupSelectAllItemTypes_Click"/>
+                                            <Button Content="Zostaw wszystkie"
+                                                    Width="125"
+                                                    Margin="8,0,0,0"
+                                                    Click="BtnInventoryCleanupClearItemTypes_Click"/>
+                                        </StackPanel>
+
+                                        <TextBlock Text="Skanowane sloty (1–27):"
+                                                   FontSize="11"
+                                                   FontWeight="Bold"
+                                                   Foreground="#A8BAD3"
+                                                   Margin="0,0,0,6"/>
+                                        <UniformGrid Name="PanelInventoryCleanupSlots"
+                                                     Columns="9"
+                                                     Width="414"
+                                                     HorizontalAlignment="Left"
+                                                     Margin="0,0,0,10"/>
+
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                            <Button Content="Zaznacz wszystkie"
+                                                    Width="125"
+                                                    Click="BtnInventoryCleanupSelectAll_Click"/>
+                                            <Button Content="Wyczyść wybór"
+                                                    Width="110"
+                                                    Margin="8,0,0,0"
+                                                    Click="BtnInventoryCleanupClearSlots_Click"/>
+                                            <Button Content="Test wykrywania"
+                                                    Width="120"
+                                                    Margin="8,0,0,0"
+                                                    Click="BtnInventoryCleanupTest_Click"/>
+                                        </StackPanel>
+
+                                        <TextBlock Name="TxtInventoryCleanupStatus"
+                                                   Text="Gotowe do testu."
+                                                   TextWrapping="Wrap"
+                                                   FontSize="11"
+                                                   Foreground="#D8E2F0"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </ScrollViewer>
 
@@ -1316,7 +1453,7 @@
                                        Foreground="#FBBF24"
                                        TextWrapping="Wrap"/>
 
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,12" Visibility="Collapsed">
                                 <CheckBox Name="ChkTestEntitiesEnabled"
                                           VerticalAlignment="Center"
                                           Checked="ChkTestEntitiesEnabled_Changed"
@@ -1340,12 +1477,13 @@
                             </StackPanel>
 
                             <TextBlock Text="Wykrywanie encji z F3 (test)"
+                                       Visibility="Collapsed"
                                        FontSize="11"
                                        Margin="0,0,0,12"
                                        Foreground="#92A6C1"
                                        TextWrapping="Wrap"/>
 
-                            <StackPanel Name="PanelTestEntitiesContent">
+                            <StackPanel Name="PanelTestEntitiesContent" Visibility="Collapsed">
                                 <Border Style="{StaticResource SectionBorderStyle}">
                                     <StackPanel>
                                         <TextBlock Text="Automatyczny odczyt F3"
@@ -1421,6 +1559,7 @@
                             </StackPanel>
 
                             <Border Name="BorderTestFastUpExitSection"
+                                    Visibility="Collapsed"
                                     Background="Transparent"
                                     BorderBrush="Transparent"
                                     BorderThickness="0"

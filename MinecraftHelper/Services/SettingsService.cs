@@ -24,7 +24,7 @@ namespace MinecraftHelper.Services
         {
             EnsureSettingsDirectoryExists();
             string json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(SettingsFilePath, json);
+            WriteAllTextAtomically(SettingsFilePath, json);
         }
 
         public AppSettings Load()
@@ -58,7 +58,7 @@ namespace MinecraftHelper.Services
                     Directory.CreateDirectory(directory);
 
                 string json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
-                File.WriteAllText(filePath, json);
+                WriteAllTextAtomically(filePath, json);
             }
             catch (Exception ex)
             {
@@ -79,6 +79,25 @@ namespace MinecraftHelper.Services
             catch (Exception ex)
             {
                 throw new InvalidOperationException("Błąd importu ustawień.", ex);
+            }
+        }
+
+        private static void WriteAllTextAtomically(string filePath, string contents)
+        {
+            string directory = Path.GetDirectoryName(filePath) ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(directory))
+                directory = Directory.GetCurrentDirectory();
+
+            string tempPath = Path.Combine(directory, $".{Path.GetFileName(filePath)}.{Guid.NewGuid():N}.tmp");
+            try
+            {
+                File.WriteAllText(tempPath, contents);
+                File.Move(tempPath, filePath, overwrite: true);
+            }
+            finally
+            {
+                if (File.Exists(tempPath))
+                    File.Delete(tempPath);
             }
         }
     }

@@ -408,4 +408,5 @@ MinecraftHelper/obj_codex/
 MinecraftHelper/bin_codex_verify/
 MinecraftHelper/obj_codex_verify/
 MinecraftHelper/bin_tmp/
+.build-check/
 artifacts/

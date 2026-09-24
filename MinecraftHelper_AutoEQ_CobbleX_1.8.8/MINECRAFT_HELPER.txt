@@ -1,0 +1,24 @@
+MinecraftHelper AutoEQ + CobbleX - paczka dla 1.8.8
+
+Paczka jest generowana z Old_Default_1.8.8 przez:
+  node tools/build-discard-texture-pack.js
+
+Oznaczone przedmioty:
+- diament
+- sztabka zlota
+- sztabka zelaza
+- jablko
+- proch
+- emerald
+- wegiel
+- kwarc
+- zwykla ksiazka
+- ender perla
+- redstone
+- obsydian
+- piasek
+
+Zlotych jablek, wegla drzewnego i innych wariantow ksiazek celowo nie oznaczono.
+Kazdy typ ma osobny kod znacznika; wybor typow do wyrzucenia ustawia sie w aplikacji.
+Program skanuje tylko 27 glownych slotow ekwipunku; hotbar jest pomijany.
+Wymagane sa domyslne klawisze Minecrafta: E (ekwipunek), Q (wyrzucanie) i T (czat).

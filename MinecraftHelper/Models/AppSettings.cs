@@ -54,6 +54,22 @@ namespace MinecraftHelper.Models
         public int Kopacz633Width { get; set; }
         public int Kopacz633Length { get; set; }
         public List<MinerCommand> Kopacz633Commands { get; set; } = new List<MinerCommand>();
+        public bool InventoryCleanupEnabled { get; set; }
+        public int InventoryCleanupIntervalSeconds { get; set; } = 120;
+        public List<int> InventoryCleanupSlots { get; set; } = new List<int>
+        {
+            0, 1, 2, 3, 4, 5, 6, 7, 8,
+            9, 10, 11, 12, 13, 14, 15, 16, 17,
+            18, 19, 20, 21, 22, 23, 24, 25, 26
+        };
+        public List<string> InventoryCleanupItemTypes { get; set; } = new List<string>
+        {
+            "diamond", "gold_ingot", "iron_ingot", "obsidian", "apple", "sand", "gunpowder",
+            "emerald", "coal", "quartz", "book", "ender_pearl", "redstone"
+        };
+        public bool CobbleXEnabled { get; set; }
+        public string CobbleXCommand { get; set; } = "/cx";
+        public int CobbleXRequiredFullStacks { get; set; } = 9;
         public bool JablkaZLisciEnabled { get; set; }
         public string JablkaZLisciKey { get; set; } = "";
         public string JablkaZLisciCommand { get; set; } = "";
