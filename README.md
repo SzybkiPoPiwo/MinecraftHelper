@@ -1,296 +1,296 @@
-> Projekt jest aktywnie rozwijany. Część funkcji oznaczonych jako Experimental może zawierać błędy.
+<p align="center">
+  <img src="docs/images/minecraft-helper-banner.png" alt="Minecraft Helper — automatyzacja dla Minecraft 1.8.8" width="100%">
+</p>
 
-# MinecraftHelper
+<h1 align="center">Minecraft Helper</h1>
 
-MinecraftHelper to desktopowa aplikacja WPF (.NET 8) na Windows do konfiguracji i uruchamiania makr pod Minecraft.
+<p align="center">
+  Clickery, automatyczne kopanie, Auto EQ, CobbleX, bindy i HUD dla Minecraft 1.8.8.
+</p>
 
-**Aktualna wersja: `v1.0.10`**
+<p align="center">
+  <strong>Windows 10/11</strong> · <strong>Minecraft 1.8.8</strong> · <strong>bez Forge i modów</strong> · <strong>wersja 1.1.0</strong>
+</p>
 
-<img width="3168" height="1344" alt="MinecraftHelper Preview" src="https://github.com/user-attachments/assets/1ee1fa6b-54a1-4432-8733-1936e8c83b55" />
+<p align="center">
+  <a href="#szybki-start">Szybki start</a> ·
+  <a href="#pvp">PVP</a> ·
+  <a href="#kopacz-auto-eq-i-cobblex">Kopacz</a> ·
+  <a href="#bindy">BINDY</a> ·
+  <a href="#experimental">Experimental</a> ·
+  <a href="#ustawienia-i-hud">Ustawienia</a> ·
+  <a href="#instalacja">Instalacja</a> ·
+  <a href="#to-do">TO DO</a>
+</p>
 
----
+Minecraft Helper to aplikacja dla Windows wspomagająca grę w Minecraft 1.8.8. Pozwala uruchamiać clickery, automatyzować kopanie, wykonywać komendy pod własnymi bindami oraz porządkować ekwipunek przy użyciu przygotowanej paczki zasobów. Program nie wymaga Forge ani instalowania moda w grze.
 
-## 1. Co to jest i dla kogo
+> Program wysyła wejście z klawiatury i myszy do wybranego okna gry. Przed uruchomieniem funkcji upewnij się, że wskazany jest właściwy proces Minecrafta, a okno gry ma fokus.
 
-MinecraftHelper to narzędzie dla graczy Minecraft:
+## Szybki start
 
-- GUI do konfiguracji makr i bindów
-- działanie runtime pod wybrane okno gry
-- zapis ustawień bez ręcznej edycji plików JSON
+Jeżeli korzystasz z programu pierwszy raz:
 
-Projekt jest open-source i rozwijany modułowo.
+1. [Zainstaluj aplikację](#instalacja) albo [uruchom ją ze źródeł](docs/BUILDING.md).
+2. Uruchom Minecraft lub BlazingPack w wersji 1.8.8 i wejdź do gry.
+3. W Minecraft Helper otwórz zakładkę `Ustawienia`.
+4. Kliknij `Odśwież`, wybierz właściwy proces gry i kliknij `Zapisz program`. Nie wybieraj launchera.
+5. Otwórz interesującą Cię zakładkę, zaznacz moduł i skonfiguruj jego ustawienia.
+6. Ustaw bind, zapisz ustawienia i przejdź do Minecrafta.
 
----
+Zaznaczenie głównego pola modułu rozwija jego konfigurację. Samo zaznaczenie nie zawsze uruchamia funkcję — clickery, Kopacz i pozostałe moduły włącza się ustawionym bindem. Szczegółowe podpowiedzi są dostępne pod przyciskami `?`.
 
-## 2. Co działa teraz (stan aktualny)
+Przy pierwszym uruchomieniu pojawi się okno powitalne. Po aktualizacji programu to samo okno pokaże listę zmian i ostrzeże o ewentualnej różnicy wersji zapisanych ustawień.
 
-- PVP:
-  - HOLD (`LPM + PPM`) z jednym bindem i osobnymi checkboxami LPM/PPM
-  - `AUTO LPM` (bind + CPS, opcjonalny tryb DAB trzymający `O` podczas pracy makra)
-  - `AUTO PPM` (bind + CPS)
-  - `Jabłka z liści` (bind + komenda)
-- Kopacz:
-  - `Kopacz 5/3/3`
-  - `Kopacz 6/3/3` (na wprost / do góry)
-  - harmonogram komend z opóźnieniami
-- BINDY:
-  - wiele wierszy (własna nazwa, bind, komenda, enabled)
-  - pojedyncze wykonanie komendy po naciśnięciu binda
-- Experimental:
-  - OCR F3 pod odczyt `E: x/x`
-  - tryb niestandardowego obszaru OCR + bind zaznaczania + reset danych
-  - `Szybkie wyjście do góry` (bind, slot bloku, slot kilofa, typ kilofa, ms trzymania LPM)
-  - autozapis ustawień ms per typ kilofa + notatka sugerowanych wartości
-  - `Auto łowienie wędką` z zaznaczanym obszarem spławika, detekcją czerwonej końcówki i automatycznym ponownym rzutem
-- Ustawienia:
-  - wybór procesu gry z listy uruchomionych okien
-  - konfiguracja HUD overlay (włącz, animacje, monitor, pozycja)
-  - import/export ustawień
-- UI:
-  - status bar na górze
-  - kafelki statusu trybów
-  - wskaźniki `Minecraft Focus` i `Settings Saved`
-  - minimalizacja do traya
-  - tooltipy `?` z opisami działania przy sekcjach makr
-  - ciemny komunikat konfliktu bindów (zajęty klawisz)
-  - ekran startowy (splash) z paskiem ładowania
+## Przegląd funkcji
 
----
+| Zakładka | Do czego służy |
+| --- | --- |
+| `PVP` | Automatyczne klikanie LPM i PPM, obsługa bindów oraz pauza po otwarciu GUI. |
+| `Kopacz` | Automatyczne kopanie, harmonogram komend, czyszczenie ekwipunku i tworzenie CobbleX. |
+| `BINDY` | Własne skróty, które wpisują i wysyłają przygotowane komendy na czacie. |
+| `Experimental` | Funkcje testowe, obecnie automatyczne łowienie. |
+| `Ustawienia` | Wybór procesu Minecrafta, konfiguracja HUD oraz import i eksport ustawień. |
 
-## 3. Jak działa interfejs (skrót)
+## PVP
 
-### Górny panel
+<p align="center">
+  <a href="docs/images/app-pvp.png">
+    <img src="docs/images/app-pvp.png" alt="Zakładka PVP w Minecraft Helper" width="100%">
+  </a><br>
+  <sub>Kliknij obraz, aby otworzyć go w pełnym rozmiarze.</sub>
+</p>
 
-- `NAZWA OKNA`: aktualnie zapisany proces/okno gry
-- kafelki statusów:
-  - `LPM + PPM`
-  - `AUTO LPM`
-  - `AUTO PPM`
-  - `KOPACZ 5/3/3`
-  - `KOPACZ 6/3/3`
-  - `Jabłka z liści`
-  - `Pauza ekwipunku`
-- pasek stanu:
-  - `Minecraft Focus` - czy aplikacja widzi fokus wybranego okna gry
-  - `Settings Saved` - czy ustawienia są już zapisane
+W tej zakładce znajdują się funkcje związane z klikaniem oraz ich zabezpieczenie przed działaniem w otwartym ekwipunku.
 
-### Zakładki
+### AUTO LPM i AUTO PPM
 
-#### PVP
+- `AUTO LPM` automatycznie wykonuje lewe kliknięcia.
+- `AUTO PPM` automatycznie wykonuje prawe kliknięcia.
+- Zakres minimalnego i maksymalnego CPS określa szybkość klikania.
+- W trybie klasycznym ustawiony bind włącza clicker, a kolejne naciśnięcie go wyłącza.
+- Tryb combo pozwala osobno ustawić przycisk rozpoczynający i zatrzymujący działanie.
+- Opcjonalny tryb `DAB (O)` przytrzymuje klawisz `O` podczas działania AUTO LPM.
 
-<img width="1584" height="1000" alt="image" src="https://github.com/user-attachments/assets/149a4656-dc0e-4d63-810c-8601da4e483e" />
+Najpierw zaznacz wybrany moduł, rozwiń ustawienia, przypisz bind i zapisz konfigurację. Clicker działa tylko wtedy, gdy zapisane okno Minecrafta ma fokus.
 
-- `LPM + PPM HOLD`:
-  - 1 bind do aktywacji modułu
-  - osobne checkboxy: `Lewy przycisk (LPM)` i `Prawy przycisk (PPM)`
-  - osobne zakresy `Min CPS` / `Max CPS`
-- `AUTOMATYCZNY LPM`:
-  - checkbox włączający
-  - bind
-  - zakres CPS
-  - `Tryb DAB` - podczas aktywnego makra przytrzymuje klawisz `O` i zwalnia go przy wyłączeniu lub pauzie
-- `AUTOMATYCZNY PPM`:
-  - checkbox włączający
-  - bind
-  - zakres CPS
-- `Jabłka z liści`:
-  - checkbox włączający
-  - bind
-  - komenda (zapisywana z GUI)
-  - opis działania: 70 cykli slotów + chat `T` + `ENTER` + `/repair`
-- `Pauza gdy kursor widoczny`:
-  - zatrzymuje klikanie, gdy jest widoczny kursor (ekwipunek/GUI)
+### Pozostałe opcje
 
-#### Kopacz
+- `Jabłka z liści` wykonują przygotowany cykl z wybranym bindem i komendą.
+- `Pauza gdy kursor widoczny (ekwipunek/GUI)` zatrzymuje klikanie, kiedy gra pokazuje kursor. Zalecamy pozostawić tę opcję włączoną.
 
-<img width="1584" height="1000" alt="image" src="https://github.com/user-attachments/assets/aa8e0cd7-37f6-4a4c-afcc-225b3a0659d6" />
+## Kopacz, Auto EQ i CobbleX
 
-- `Kopacz 5/3/3`:
-  - checkbox włączający
-  - bind
-  - lista komend (`+ Dodaj komendę`) z opóźnieniem w sekundach
-- `Kopacz 6/3/3`:
-  - checkbox włączający
-  - bind
-  - kierunek: `Na wprost` / `Do góry`
-  - szerokość / długość (zależnie od kierunku)
-  - lista komend
-- panel informacyjny:
-  - podpowiedzi optymalnych czasów
-  - AFK facing dla trybu "Do góry"
-  - konwerter minut -> sekundy
+<p align="center">
+  <a href="docs/images/app-kopacz.png">
+    <img src="docs/images/app-kopacz.png" alt="Zakładka Kopacz w Minecraft Helper" width="100%">
+  </a><br>
+  <sub>Kliknij obraz, aby otworzyć go w pełnym rozmiarze.</sub>
+</p>
 
-#### BINDY
+Zakładka `Kopacz` łączy automatyczne kopanie z wykonywaniem komend oraz opcjonalnym czyszczeniem ekwipunku.
 
-<img width="1584" height="1000" alt="image" src="https://github.com/user-attachments/assets/a8f238cc-d068-4a2a-8242-9b7b1d704c31" />
+### Tryby kopania
 
-- checkbox `Włącz moduł BINDY`
-- każdy wiersz ma:
-  - `Enabled`
-  - `Nazwa`
-  - `Klawisz` (zapis bindu)
-  - `Komenda`
-  - usuwanie wiersza
-- jeden bind uruchamia jednorazowy flow:
-  - otwarcie chatu (`T`)
-  - wpisanie komendy
-  - zatwierdzenie (`ENTER`)
+- `Kopacz 5/3/3` — automatyczny schemat kopania z bindem i listą komend wykonywanych po ustawionym czasie.
+- `Kopacz 6/3/3` — wariant kopania na wprost lub do góry, z konfiguracją szerokości i długości.
 
-#### Experimental
+Po zaznaczeniu wybranego trybu rozwiną się jego ustawienia. Ustaw bind, kierunek, potrzebne czasy i zapisz konfigurację. Czasy zaplanowanych komend są liczone od rozpoczęcia cyklu, dlatego kolejne komendy powinny mieć rosnące wartości.
 
-<img width="1584" height="941" alt="image" src="https://github.com/user-attachments/assets/f8bebd58-d4b3-4071-ba97-2a66ad71668b" />
+### Auto EQ — automatyczne czyszczenie ekwipunku
 
-- checkbox `Wykrywanie encji (E)`
-- OCR oparty o linię F3 `E: x/x`
-- `Niestandardowy obszar OCR`:
-  - bind do uruchamiania zaznaczania
-  - przycisk `Zaznacz obszar`
-  - przycisk `Resetuj dane`
-- live odczyt:
-  - `Encje (E): x/x`
-- `Auto łowienie wędką`:
-  - zaznaczany obszar monitoringu spławika
-  - po rzucie odczekuje 2 sekundy przed zapisaniem pozycji spławika
-  - szuka zwartego czerwonego fragmentu spławika i pokazuje wykrycie w HUD
-  - jeżeli przez 5 sekund od rzutu nie znajdzie spławika, ponawia rzut
-  - ogranicza przedwczesne zwijanie przy niewielkich drganiach obrazu
+Auto EQ otwiera ekwipunek w ustalonych odstępach, rozpoznaje oznaczone przedmioty i wyrzuca całe stosy z wybranych pól przez `lewy Ctrl + Q`.
 
-#### Ustawienia
+Program sprawdza tylko 27 pól głównego ekwipunku. Hotbar, pancerz i crafting są zawsze pomijane. Zaznaczony typ przedmiotu oznacza „wyrzucaj”, a odznaczony „zawsze zostaw”. Na czas skanowania i wyrzucania pozostałe akcje Kopacza czekają.
 
-<img width="1584" height="1000" alt="image" src="https://github.com/user-attachments/assets/96f6f217-5023-4761-ad70-a785f0935889" />
+#### Wymagana paczka zasobów
 
-- `Program gry`:
-  - lista aktywnych procesów z oknem
-  - przycisk `Odśwież`
-  - przycisk `Zapisz program`
-- `Ustawienia HUD (overlay)`:
-  - `Panel HUD`
-  - `Animacje HUD`
-  - wybór monitora
-  - pozycja: prawy/lewy, górny/dolny róg
-- `Import/Export ustawień`:
-  - eksport do JSON
-  - import z JSON
+Rozpoznawanie przedmiotów działa z folderem:
 
----
+```text
+MinecraftHelper_AutoEQ_CobbleX_1.8.8
+```
 
-## 4. Zapis ustawień - jak działa
+Skopiuj go z głównego katalogu repozytorium do:
 
-Aplikacja zapisuje ustawienia automatycznie.
+```text
+%APPDATA%\.minecraft\resourcepacks
+```
 
-- każda zmiana w GUI oznacza ustawienia jako "niezapisane"
-- po krótkiej chwili bez kolejnych zmian (debounce ~1s) działa auto-zapis
-- status w UI:
-  - `Settings Saved: ✗ Nie` - zmiany czekają na zapis
-  - `Settings Saved: ✓ Tak` - zapisane
-  - `Błąd` - problem z zapisem
-- ręczny przycisk `Zapisz program` zapisuje od razu wybór procesu gry
-- przy pierwszym uruchomieniu makra, HUD i odczyt encji są wyłączone; domyślnie włączona pozostaje tylko pauza przy widocznym kursorze
+Następnie w Minecraft:
 
-Domyślna lokalizacja pliku:
+1. włącz `MinecraftHelper AutoEQ + CobbleX (1.8.8)`,
+2. umieść ją nad paczką `Default`,
+3. wyłącz starsze paczki Minecraft Helper, aby znaczniki się nie nakładały,
+4. ustaw `GUI Scale` na `Large`.
 
-- `%AppData%\Minecraft Helper\settings.json`
+Wymagane są domyślne klawisze: `E` dla ekwipunku, `Q` dla wyrzucania i `T` dla czatu. Lewy `Ctrl` nie może być przechwytywany przez inny skrót. Podczas skanu gra musi być widoczna, aktywna i niezasłonięta innym oknem.
 
----
+#### Konfiguracja Auto EQ
 
-## 5. Wymagania
+1. Zaznacz `Automatyczne czyszczenie ekwipunku (Auto EQ)`.
+2. Ustaw odstęp pomiędzy skanami.
+3. Wybierz typy przedmiotów przeznaczone do wyrzucenia.
+4. Wybierz pola głównego ekwipunku, które program ma sprawdzać.
+5. Otwórz ekwipunek w grze i użyj `Test wykrywania`.
+6. Sprawdź wynik testu, a następnie uruchom jeden z trybów Kopacza.
 
-### Dla użytkownika końcowego (instalator)
+Obsługiwane oznaczenia: diament, złoto, żelazo, obsydian, jabłko, piasek, proch, emerald, węgiel, kwarc, książka, ender perła i redstone.
 
-- Windows 10/11
-- brak potrzeby instalowania .NET osobno, jeśli instalator jest zbudowany jako self-contained
+### Automatyczne tworzenie CobbleX
 
-### Dla dewelopera (uruchamianie z kodu)
+Po włączeniu tej opcji ustaw komendę serwera — domyślnie `/cx` — oraz wymaganą liczbę pełnych stacków, domyślnie `9`.
 
-- Windows 10/11
-- .NET 8 SDK
+Program liczy zwykły cobblestone z widoczną liczbą `64`. Gotowy CobbleX bez liczby 64, mossy cobblestone i wariant enchantowany nie są liczone jako materiał. Po osiągnięciu progu program kończy czyszczenie, zamyka ekwipunek, otwiera czat, wysyła komendę i wznawia kopanie.
 
----
+Aktualny stan Auto EQ, licznik cobblestone i wynik ostatniego skanu mogą być pokazane w HUD.
 
-## 6. Szybki start (użytkownik)
+## BINDY
 
-1. Zainstaluj aplikację z instalatora.
-2. W zakładce `Ustawienia` wybierz `Program gry` i kliknij `Zapisz program`.
-3. W zakładce `PVP` / `Kopacz` / `BINDY` ustaw bindy i opcje.
-4. Sprawdź na górze:
-   - `Minecraft Focus`
-   - `Settings Saved`
-5. Wróć do gry i uruchamiaj moduły bindami.
+<p align="center">
+  <a href="docs/images/app-bindy.png">
+    <img src="docs/images/app-bindy.png" alt="Zakładka BINDY w Minecraft Helper" width="100%">
+  </a><br>
+  <sub>Kliknij obraz, aby otworzyć go w pełnym rozmiarze.</sub>
+</p>
 
----
+Moduł pozwala przypisać własne komendy do klawiszy. Każdy wpis może mieć osobną nazwę, bind i treść komendy. Po naciśnięciu binda program otwiera czat, wpisuje przygotowaną komendę i zatwierdza ją klawiszem `Enter`.
 
-## 7. Uruchomienie lokalnie (z kodu)
+1. Zaznacz `Włącz moduł BINDY`.
+2. Dodaj wpis, podaj jego nazwę i komendę.
+3. Ustaw klawisz aktywujący.
+4. Zapisz ustawienia i wróć do aktywnego okna gry.
 
-```bash
+## Experimental
+
+<p align="center">
+  <a href="docs/images/app-experimental.png">
+    <img src="docs/images/app-experimental.png" alt="Zakładka Experimental w Minecraft Helper" width="100%">
+  </a><br>
+  <sub>Kliknij obraz, aby otworzyć go w pełnym rozmiarze.</sub>
+</p>
+
+Zakładka zawiera funkcje będące nadal w fazie testów. Mogą wymagać dokładniejszego ustawienia i nie zawsze zachowywać się identycznie na każdym kliencie.
+
+`Auto łowienie wędką` obserwuje zaznaczony fragment ekranu, wykrywa ruch czerwonej końcówki spławika, zwija wędkę po potwierdzonym braniu i może ponowić rzut. Najlepszy efekt daje zaznaczenie małego obszaru bezpośrednio wokół spławika.
+
+## Ustawienia i HUD
+
+<p align="center">
+  <a href="docs/images/app-settings.png">
+    <img src="docs/images/app-settings.png" alt="Zakładka Ustawienia w Minecraft Helper" width="100%">
+  </a><br>
+  <sub>Kliknij obraz, aby otworzyć go w pełnym rozmiarze.</sub>
+</p>
+
+To tutaj należy rozpocząć konfigurację programu:
+
+- `Program gry` wskazuje proces Minecrafta, do którego mają trafiać klawisze i kliknięcia.
+- `Odśwież` ponownie pobiera listę uruchomionych okien.
+- `Zapisz program` zapamiętuje wybrane okno gry.
+- `Panel HUD (overlay)` pokazuje stan uruchomionych funkcji na ekranie.
+- HUD pozwala wybrać monitor, narożnik oraz wyłączyć animacje.
+- `Eksportuj` zapisuje kopię konfiguracji, a `Importuj` przywraca ją z pliku JSON.
+
+Ustawienia zapisują się automatycznie w:
+
+```text
+%APPDATA%\Minecraft Helper\settings.json
+```
+
+Nie wybieraj procesu launchera. Wskaż właściwe okno Minecrafta lub używanego klienta po wejściu do gry.
+
+## Zmiany w wersji 1.1.0
+
+- Dodano Auto EQ z wyborem typów przedmiotów i slotów 1–27.
+- Dodano wyrzucanie całych stosów przez `lewy Ctrl + Q`.
+- Dodano wykrywanie pełnych stacków cobblestone i automatyczną komendę CobbleX.
+- Rozszerzono HUD o stan Auto EQ, licznik cobblestone i wynik ostatniego skanu.
+- Dodano paczkę zasobów `MinecraftHelper AutoEQ + CobbleX (1.8.8)`.
+- Uproszczono zakładki PVP i Experimental.
+- Poprawiono stabilność clickera i niekontrolowane przesunięcia kursora.
+- Dodano zwijane ustawienia modułów, ujednolicone nagłówki oraz pomoc pod przyciskami `?`.
+- Dodano komunikaty pierwszego uruchomienia, changelog i kontrolę zgodności zapisanych ustawień.
+- Dodano samodzielny instalator Windows.
+
+## Kontakt i zgłaszanie problemów
+
+Jeżeli zauważysz błąd, problem z konfiguracją albo masz propozycję nowej funkcji, opisz sytuację i podaj możliwie dużo szczegółów. Pomocne są screeny, używany klient Minecrafta, ustawienia modułu i informacja, co wydarzyło się przed błędem.
+
+- GitHub: [SzybkiPoPiwo](https://github.com/SzybkiPoPiwo)
+- Discord: `twojstaryricardo`
+
+## Instalacja
+
+Najprościej uruchomić instalator:
+
+```text
+MinecraftHelper-Setup-1.1.0.exe
+```
+
+Instalator działa dla bieżącego użytkownika, nie wymaga osobnej instalacji .NET 8, może utworzyć skrót na pulpicie i dodaje standardowy deinstalator Windows.
+
+### Windows SmartScreen i Smart App Control
+
+Instalator nie ma komercyjnego podpisu cyfrowego, dlatego Windows 11 może potraktować go jako nierozpoznaną aplikację. Sam brak reputacji nie oznacza wykrycia wirusa, ale zawsze upewnij się, że plik pochodzi z tego repozytorium.
+
+Jeżeli pojawi się standardowe okno Microsoft Defender SmartScreen:
+
+1. kliknij `Więcej informacji`,
+2. sprawdź nazwę pliku i wydawcę,
+3. wybierz `Uruchom mimo to` tylko wtedy, gdy ufasz pobranemu plikowi.
+
+Na części instalacji Windows 11 funkcja `Inteligentna kontrola aplikacji` (`Smart App Control`) całkowicie blokuje niepodpisane programy. Najbezpieczniejszym rozwiązaniem jest wtedy pobranie repozytorium, sprawdzenie kodu i [samodzielne zbudowanie aplikacji](docs/BUILDING.md).
+
+Jeżeli świadomie zdecydujesz się wyłączyć Smart App Control, przejdź do `Zabezpieczenia Windows` → `Kontrola aplikacji i przeglądarki` → `Ustawienia Inteligentnej kontroli aplikacji`. Nie wyłączaj programu antywirusowego, zapory ani całego Microsoft Defendera. Ponowne włączenie Smart App Control może zależeć od wydania Windows i wymagać resetu lub ponownej instalacji systemu.
+
+Aktualne informacje: [Inteligentna kontrola aplikacji — FAQ](https://support.microsoft.com/pl-pl/windows/security/threat-malware-protection/smart-app-control-frequently-asked-questions) oraz [Kontrola aplikacji i przeglądarki](https://support.microsoft.com/pl-pl/windows/security/windows-security-app-browser-control).
+
+Jeżeli zabezpieczenia zgłaszają konkretne zagrożenie, a nie tylko brak reputacji wydawcy, przerwij instalację, przeskanuj plik i sprawdź kod źródłowy.
+
+### Kod źródłowy i bezpieczeństwo
+
+Repozytorium zawiera kod C#, interfejs, skrypty budowania instalatora, generator paczki zasobów oraz jej pliki. Możesz pobrać całość, samodzielnie przejrzeć kod i zbudować program lokalnie zamiast korzystać z gotowego instalatora.
+
+## Budowanie ze źródeł
+
+Pełna instrukcja znajduje się w [docs/BUILDING.md](docs/BUILDING.md).
+
+Wymagane są Windows 10 lub 11, .NET 8 SDK oraz Visual Studio 2022, Rider albo Visual Studio Code. Inno Setup 6 jest potrzebny tylko do tworzenia instalatora.
+
+```powershell
 git clone https://github.com/SzybkiPoPiwo/MinecraftHelper.git
 cd MinecraftHelper
-dotnet restore
-dotnet build MinecraftHelper.slnx
+dotnet restore .\MinecraftHelper\MinecraftHelper.csproj
+dotnet build .\MinecraftHelper\MinecraftHelper.csproj -c Release
 dotnet run --project MinecraftHelper/MinecraftHelper.csproj
 ```
 
----
-
-## 8. Budowanie instalatora (.exe)
-
-W repo jest gotowy skrypt:
-
-- `scripts/build-installer.ps1`
-
-Wymagania:
-
-- Inno Setup 6 (`ISCC.exe`)
-- .NET 8 SDK
-
-Przykład:
+### Budowanie instalatora
 
 ```powershell
-cd D:\MinecraftHelper
-Set-ExecutionPolicy -Scope Process Bypass
-$env:ISCC_PATH="C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
-.\scripts\build-installer.ps1 -Version 1.0.10 -Rid win-x64 -SelfContained:$true -Clean
+.\scripts\build-installer.ps1 -Version 1.1.0 -Rid win-x64 -SelfContained:$true -Clean
 ```
 
-Wynik:
+Wynik zostanie zapisany w `artifacts/installer/MinecraftHelper-Setup-1.1.0.exe`.
 
-- publish: `artifacts/publish/win-x64`
-- instalator: `artifacts/installer/MinecraftHelper-Setup-1.0.10.exe`
+### Odtworzenie paczki zasobów
 
-Uwagi:
+Generator wymaga Node.js:
 
-- domyślnie build jest multi-file (stabilniejszy dla OCR/Tesseract)
-- opcjonalny single-file: dodaj `-SingleFile`
+```powershell
+node tools/build-discard-texture-pack.js
+```
 
----
+## TO DO
 
-## 9. Import / Export ustawień
+Planowane kierunki dalszego rozwoju:
 
-- Export zapisuje aktualną konfigurację do wskazanego pliku `.json`.
-- Import:
-  - ładuje ustawienia z pliku `.json`
-  - przechodzi walidację spójności
-  - odświeża GUI
-  - zapisuje jako aktywne ustawienia lokalne
+- obsługa nowszych wersji Minecrafta,
+- możliwość zminimalizowania Minecrafta i dalszego kopania w tle,
+- zdalna obsługa własnego klienta Minecraft za pomocą telefonu,
+- zbieranie logów podczas kopania,
+- odczytywanie i prezentowanie informacji z czatu,
+- automatyczne ponowne łączenie z serwerem (`auto reconnect`).
 
----
-## 10. Co zostało dodane w v1.0.10
-
-- nowe `Auto łowienie wędką` w `Experimental`:
-  - detekcja zwartej czerwonej końcówki spławika w zaznaczonym obszarze
-  - 2 sekundy stabilizacji po rzucie i automatyczny ponowny rzut po 5 sekundach bez spławika
-  - lepsza ochrona przed fałszywym braniem przy niewielkich drganiach
-  - dane na HUD: obszar, położenie spławika, czerwone piksele i liczba złowień
-- `Tryb DAB` dla `AUTO LPM`:
-  - automatyczne przytrzymanie `O` podczas pracy makra
-  - widoczny stan `DAB (O)` w HUD
-  - zwalnianie klawisza po wyłączeniu, pauzie, utracie fokusu lub zamknięciu programu
-- poprawki HUD i ustawień:
-  - `E: x/x` jest poprawnie opisane jako liczba encji
-  - pierwszy start nie aktywuje automatycznie HUD-u, animacji, trybów HOLD ani wykrywania encji
-  - domyślnie zaznaczona pozostaje tylko pauza przy widocznym kursorze
-
----
-## 11. Kontakt
-
-- GitHub: https://github.com/SzybkiPoPiwo
-- Discord: `twojstaryricardo`
+Lista przedstawia pomysły na przyszłość i nie oznacza jeszcze konkretnego terminu ich wdrożenia.

@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:MinecraftHelper"
         mc:Ignorable="d"
-        Title="Minecraft Helper" Height="980" Width="1600"
+        Title="Minecraft Helper 1.1.0" Height="980" Width="1600"
         Icon="Assets/app.ico"
         Background="#0F141D" Foreground="#E8EEF8">
 
@@ -347,14 +347,22 @@
                                               Command="ScrollBar.LineUpCommand"
                                               CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"/>
 
-                                <Track x:Name="PART_Track" Grid.Row="1" IsDirectionReversed="True">
+                                <Track x:Name="PART_Track"
+                                       Grid.Row="1"
+                                       Orientation="{TemplateBinding Orientation}"
+                                       Minimum="{TemplateBinding Minimum}"
+                                       Maximum="{TemplateBinding Maximum}"
+                                       Value="{TemplateBinding Value}"
+                                       ViewportSize="{TemplateBinding ViewportSize}"
+                                       IsDirectionReversed="True">
                                     <Track.DecreaseRepeatButton>
                                         <RepeatButton Style="{StaticResource DarkScrollRepeatButton}"
                                                       Command="ScrollBar.PageUpCommand"
                                                       CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"/>
                                     </Track.DecreaseRepeatButton>
                                     <Track.Thumb>
-                                        <Thumb Style="{StaticResource DarkScrollThumbStyle}"/>
+                                        <Thumb Style="{StaticResource DarkScrollThumbStyle}"
+                                               MinHeight="32"/>
                                     </Track.Thumb>
                                     <Track.IncreaseRepeatButton>
                                         <RepeatButton Style="{StaticResource DarkScrollRepeatButton}"
@@ -397,14 +405,22 @@
                                                       Command="ScrollBar.LineLeftCommand"
                                                       CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"/>
 
-                                        <Track x:Name="PART_Track" Grid.Column="1" IsDirectionReversed="False">
+                                        <Track x:Name="PART_Track"
+                                               Grid.Column="1"
+                                               Orientation="{TemplateBinding Orientation}"
+                                               Minimum="{TemplateBinding Minimum}"
+                                               Maximum="{TemplateBinding Maximum}"
+                                               Value="{TemplateBinding Value}"
+                                               ViewportSize="{TemplateBinding ViewportSize}"
+                                               IsDirectionReversed="False">
                                             <Track.DecreaseRepeatButton>
                                                 <RepeatButton Style="{StaticResource DarkScrollRepeatButton}"
                                                               Command="ScrollBar.PageLeftCommand"
                                                               CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"/>
                                             </Track.DecreaseRepeatButton>
                                             <Track.Thumb>
-                                                <Thumb Style="{StaticResource DarkScrollThumbStyle}"/>
+                                                <Thumb Style="{StaticResource DarkScrollThumbStyle}"
+                                                       MinWidth="32"/>
                                             </Track.Thumb>
                                             <Track.IncreaseRepeatButton>
                                                 <RepeatButton Style="{StaticResource DarkScrollRepeatButton}"
@@ -429,6 +445,15 @@
 
         <Style TargetType="ScrollViewer">
             <Setter Property="Background" Value="Transparent"/>
+        </Style>
+
+        <!-- Wspólny wygląd tytułów głównych, rozwijanych sekcji -->
+        <Style x:Key="MainSectionHeaderTextStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Margin" Value="10,0,0,0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Foreground" Value="#7FC8FF"/>
         </Style>
 
         <!-- Styl dla ramek sekcji -->
@@ -486,7 +511,7 @@
                 <!-- Wiersz 3: Kafelki Statusów -->
                 <Grid Grid.Row="2">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="1*"/>
+                        <ColumnDefinition Width="0"/>
                         <ColumnDefinition Width="1*"/>
                         <ColumnDefinition Width="1*"/>
                         <ColumnDefinition Width="1*"/>
@@ -517,7 +542,7 @@
                         </Style>
                     </Grid.Resources>
 
-                    <Border Name="BorderManualStatus" Grid.Column="0" Style="{StaticResource TileStyle}">
+                    <Border Name="BorderManualStatus" Grid.Column="0" Style="{StaticResource TileStyle}" Visibility="Collapsed">
                         <StackPanel>
                             <TextBlock Text="LPM + PPM" Style="{StaticResource TileHeader}"/>
                             <TextBlock Name="TxtManualCps"
@@ -649,13 +674,13 @@
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <Grid Margin="10,20">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="1*"/>
-                            <ColumnDefinition Width="30"/>
+                            <ColumnDefinition Width="0"/>
+                            <ColumnDefinition Width="0"/>
                             <ColumnDefinition Width="1*"/>
                         </Grid.ColumnDefinitions>
 
                         <!-- LEWA KOLUMNA -->
-                        <StackPanel Grid.Column="0">
+                        <StackPanel Grid.Column="0" Visibility="Collapsed">
                             <Border Background="#161F2B" CornerRadius="4" Padding="10" Margin="0,0,0,15">
                                 <StackPanel Orientation="Horizontal">
                                     <CheckBox Name="ChkMacroManualEnabled"
@@ -784,22 +809,18 @@
                             </Border>
                         </StackPanel>
 
-                        <Border Grid.Column="1" Width="1" Background="#34465E" Margin="14,0"/>
+                        <Border Grid.Column="1" Width="1" Background="#34465E" Margin="14,0" Visibility="Collapsed"/>
 
                         <StackPanel Grid.Column="2">
                             <Border Name="BorderAutoLeftSection" Style="{StaticResource SectionBorderStyle}">
                                 <StackPanel>
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                                    <StackPanel Orientation="Horizontal">
                                         <CheckBox Name="ChkAutoLeftEnabled"
                                                   VerticalAlignment="Center"
                                                   Checked="ChkAutoLeftEnabled_Changed"
                                                   Unchecked="ChkAutoLeftEnabled_Changed"/>
                                         <TextBlock Text="AUTOMATYCZNY LPM"
-                                                   FontSize="13"
-                                                   FontWeight="Bold"
-                                                   Margin="10,0,0,0"
-                                                   VerticalAlignment="Center"
-                                                   Foreground="White"/>
+                                                   Style="{StaticResource MainSectionHeaderTextStyle}"/>
                                         <Button Content="?"
                                                 Style="{StaticResource MacroInfoButtonStyle}"
                                                 Margin="8,0,0,0"
@@ -807,11 +828,15 @@
                                                 ToolTipService.ShowDuration="120000">
                                             <Button.ToolTip>
                                                 <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
-                                                         Content="Klasyczne makro uruchamiane po kliknięciu bindu."/>
+                                                         MaxWidth="520"
+                                                         Content="JAK USTAWIĆ AUTO LPM:&#10;1. Zaznacz tę sekcję, aby włączyć moduł. Samo zaznaczenie nie uruchamia klikania.&#10;2. Kliknij pole Klawisz, naciśnij wybrany bind, a następnie kliknij Zapisz.&#10;3. Ustaw minimalny i maksymalny CPS, np. 8–12. Program losuje tempo kliknięć w tym zakresie.&#10;&#10;TRYB KLASYCZNY:&#10;Naciśnij zapisany bind raz, aby rozpocząć AUTO LPM. Naciśnij go ponownie, aby zatrzymać.&#10;&#10;TRYB KOMBINACJI:&#10;Włącz opcję Tryb kombinacji. Naciśnij zapisany bind razem z fizycznym LPM i trzymaj LPM. Puszczenie LPM zatrzymuje clicker.&#10;&#10;TRYB DAB:&#10;Podczas aktywnego AUTO LPM program dodatkowo przytrzymuje klawisz O. Po wyłączeniu clickera, utracie fokusu gry lub pauzie klawisz O zostaje zwolniony.&#10;&#10;Clicker działa tylko wtedy, gdy wybrane okno Minecrafta ma fokus."/>
                                             </Button.ToolTip>
                                         </Button>
                                     </StackPanel>
 
+                                    <StackPanel Name="PanelAutoLeftContent"
+                                                Margin="0,15,0,0"
+                                                Visibility="Collapsed">
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                                         <TextBlock Text="Klawisz:" Width="100" VerticalAlignment="Center"/>
                                         <TextBox Name="TxtAutoLeftKey"
@@ -852,22 +877,19 @@
                                         <TextBlock Text="Max CPS:" Width="100" VerticalAlignment="Center"/>
                                         <TextBox Name="TxtAutoLeftMaxCps" Width="80" TextChanged="AnyTextBox_TextChanged"/>
                                     </StackPanel>
+                                    </StackPanel>
                                 </StackPanel>
                             </Border>
 
                             <Border Name="BorderAutoRightSection" Style="{StaticResource SectionBorderStyle}">
                                 <StackPanel>
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                                    <StackPanel Orientation="Horizontal">
                                         <CheckBox Name="ChkAutoRightEnabled"
                                                   VerticalAlignment="Center"
                                                   Checked="ChkAutoRightEnabled_Changed"
                                                   Unchecked="ChkAutoRightEnabled_Changed"/>
                                         <TextBlock Text="AUTOMATYCZNY PPM"
-                                                   FontSize="13"
-                                                   FontWeight="Bold"
-                                                   Margin="10,0,0,0"
-                                                   VerticalAlignment="Center"
-                                                   Foreground="White"/>
+                                                   Style="{StaticResource MainSectionHeaderTextStyle}"/>
                                         <Button Content="?"
                                                 Style="{StaticResource MacroInfoButtonStyle}"
                                                 Margin="8,0,0,0"
@@ -875,11 +897,15 @@
                                                 ToolTipService.ShowDuration="120000">
                                             <Button.ToolTip>
                                                 <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
-                                                         Content="Klasyczne makro uruchamiane po kliknięciu bindu."/>
+                                                         MaxWidth="520"
+                                                         Content="JAK USTAWIĆ AUTO PPM:&#10;1. Zaznacz tę sekcję, aby włączyć moduł. Samo zaznaczenie nie uruchamia klikania.&#10;2. Kliknij pole Klawisz, naciśnij wybrany bind, a następnie kliknij Zapisz.&#10;3. Ustaw minimalny i maksymalny CPS, np. 8–12. Program losuje tempo kliknięć w tym zakresie.&#10;&#10;TRYB KLASYCZNY:&#10;Naciśnij zapisany bind raz, aby rozpocząć AUTO PPM. Naciśnij go ponownie, aby zatrzymać.&#10;&#10;TRYB KOMBINACJI:&#10;Włącz opcję Tryb kombinacji. Naciśnij zapisany bind razem z fizycznym PPM i trzymaj PPM. Puszczenie PPM zatrzymuje clicker.&#10;&#10;Clicker działa tylko wtedy, gdy wybrane okno Minecrafta ma fokus."/>
                                             </Button.ToolTip>
                                         </Button>
                                     </StackPanel>
 
+                                    <StackPanel Name="PanelAutoRightContent"
+                                                Margin="0,15,0,0"
+                                                Visibility="Collapsed">
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                                         <TextBlock Text="Klawisz:" Width="100" VerticalAlignment="Center"/>
                                         <TextBox Name="TxtAutoRightKey"
@@ -914,22 +940,19 @@
                                         <TextBlock Text="Max CPS:" Width="100" VerticalAlignment="Center"/>
                                         <TextBox Name="TxtAutoRightMaxCps" Width="80" TextChanged="AnyTextBox_TextChanged"/>
                                     </StackPanel>
+                                    </StackPanel>
                                 </StackPanel>
                             </Border>
 
                             <Border Name="BorderJablkaSection" Style="{StaticResource SectionBorderStyle}">
                                 <StackPanel>
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                                    <StackPanel Orientation="Horizontal">
                                         <CheckBox Name="ChkJablkaZLisciEnabled"
                                                    VerticalAlignment="Center"
                                                    Checked="ChkJablkaZLisciEnabled_Changed"
                                                    Unchecked="ChkJablkaZLisciEnabled_Changed"/>
                                         <TextBlock Text="Jabłka z liści"
-                                                   FontSize="13"
-                                                   FontWeight="Bold"
-                                                   Margin="10,0,0,0"
-                                                   VerticalAlignment="Center"
-                                                   Foreground="White"/>
+                                                   Style="{StaticResource MainSectionHeaderTextStyle}"/>
                                         <Button Content="?"
                                                 Style="{StaticResource MacroInfoButtonStyle}"
                                                 Margin="8,0,0,0"
@@ -942,6 +965,9 @@
                                         </Button>
                                     </StackPanel>
 
+                                    <StackPanel Name="PanelJablkaContent"
+                                                Margin="0,15,0,0"
+                                                Visibility="Collapsed">
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                                         <TextBlock Text="Klawisz:" Width="100" VerticalAlignment="Center"/>
                                         <TextBox Name="TxtJablkaZLisciKey"
@@ -980,21 +1006,18 @@
                                                FontSize="11"
                                                Foreground="#7F94B2"
                                                TextWrapping="Wrap"/>
+                                    </StackPanel>
                                 </StackPanel>
                             </Border>
                             <Border Name="BorderCursorPauseSection" Style="{StaticResource SectionBorderStyle}">
                                 <StackPanel>
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                    <StackPanel Orientation="Horizontal">
                                         <CheckBox Name="ChkPauseWhenCursorVisible"
                                                   VerticalAlignment="Center"
                                                   Checked="ChkPauseWhenCursorVisible_Changed"
                                                   Unchecked="ChkPauseWhenCursorVisible_Changed"/>
                                         <TextBlock Text="Pauza gdy kursor widoczny (ekwipunek/GUI)"
-                                                   FontSize="13"
-                                                   FontWeight="Bold"
-                                                   Margin="10,0,0,0"
-                                                   VerticalAlignment="Center"
-                                                   Foreground="White"/>
+                                                   Style="{StaticResource MainSectionHeaderTextStyle}"/>
                                         <Button Content="?"
                                                 Style="{StaticResource MacroInfoButtonStyle}"
                                                 Margin="8,0,0,0"
@@ -1007,10 +1030,14 @@
                                         </Button>
                                     </StackPanel>
 
-                                    <TextBlock Text="Gdy w grze pojawia się kursor, makra nie klikają."
-                   FontSize="11"
-                   Foreground="#7F94B2"
-                   TextWrapping="Wrap"/>
+                                    <StackPanel Name="PanelCursorPauseContent"
+                                                Margin="0,10,0,0"
+                                                Visibility="Collapsed">
+                                        <TextBlock Text="Gdy w grze pojawia się kursor, makra nie klikają."
+                                                   FontSize="11"
+                                                   Foreground="#7F94B2"
+                                                   TextWrapping="Wrap"/>
+                                    </StackPanel>
                                 </StackPanel>
                             </Border>
                         </StackPanel>
@@ -1032,14 +1059,13 @@
 
                             <Border Name="BorderKopacz533Section" Style="{StaticResource SectionBorderStyle}">
                                 <StackPanel>
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                                    <StackPanel Orientation="Horizontal">
                                         <CheckBox Name="ChkKopacz533Enabled"
-                                                  Content="Kopacz 5/3/3"
-                                                  FontSize="13"
-                                                  FontWeight="Bold"
                                                   VerticalAlignment="Center"
                                                   Checked="ChkKopacz533Enabled_Changed"
                                                   Unchecked="ChkKopacz533Enabled_Changed"/>
+                                        <TextBlock Text="Kopacz 5/3/3"
+                                                   Style="{StaticResource MainSectionHeaderTextStyle}"/>
                                         <Button Content="?"
                                                 Style="{StaticResource MacroInfoButtonStyle}"
                                                 Margin="8,0,0,0"
@@ -1052,6 +1078,9 @@
                                         </Button>
                                     </StackPanel>
 
+                                    <StackPanel Name="PanelKopacz533Content"
+                                                Margin="0,15,0,0"
+                                                Visibility="Collapsed">
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
                                         <TextBlock Text="Klawisz:" Width="120" VerticalAlignment="Center"/>
                                         <TextBox Name="TxtKopacz533Key"
@@ -1075,19 +1104,19 @@
                                     <StackPanel Name="PanelKopacz533Commands" Orientation="Vertical" Margin="0,0,0,15"/>
 
                                     <Button Name="BtnKopacz533AddCommand" Content="+ Dodaj komendę" Width="140" Click="BtnKopacz533AddCommand_Click" Background="#1E2A39" BorderBrush="#4B6283" BorderThickness="1"/>
+                                    </StackPanel>
                                 </StackPanel>
                             </Border>
 
                             <Border Name="BorderKopacz633Section" Style="{StaticResource SectionBorderStyle}">
                                 <StackPanel>
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                                    <StackPanel Orientation="Horizontal">
                                         <CheckBox Name="ChkKopacz633Enabled"
-                                                  Content="Kopacz 6/3/3"
-                                                  FontSize="13"
-                                                  FontWeight="Bold"
                                                   VerticalAlignment="Center"
                                                   Checked="ChkKopacz633Enabled_Changed"
                                                   Unchecked="ChkKopacz633Enabled_Changed"/>
+                                        <TextBlock Text="Kopacz 6/3/3"
+                                                   Style="{StaticResource MainSectionHeaderTextStyle}"/>
                                         <Button Content="?"
                                                 Style="{StaticResource MacroInfoButtonStyle}"
                                                 Margin="8,0,0,0"
@@ -1100,6 +1129,9 @@
                                         </Button>
                                     </StackPanel>
 
+                                    <StackPanel Name="PanelKopacz633Content"
+                                                Margin="0,15,0,0"
+                                                Visibility="Collapsed">
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
                                         <TextBlock Text="Klawisz:" Width="120" VerticalAlignment="Center"/>
                                         <TextBox Name="TxtKopacz633Key"
@@ -1156,6 +1188,159 @@
                                     <StackPanel Name="PanelKopacz633Commands" Orientation="Vertical" Margin="0,0,0,15"/>
 
                                     <Button Name="BtnKopacz633AddCommand" Content="+ Dodaj komendę" Width="140" Click="BtnKopacz633AddCommand_Click" Background="#1E2A39" BorderBrush="#4B6283" BorderThickness="1"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Name="BorderInventoryCleanupSection" Style="{StaticResource SectionBorderStyle}">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <CheckBox Name="ChkInventoryCleanupEnabled"
+                                                  VerticalAlignment="Center"
+                                                  Checked="ChkInventoryCleanupEnabled_Changed"
+                                                  Unchecked="ChkInventoryCleanupEnabled_Changed"/>
+                                        <TextBlock Text="Automatyczne czyszczenie ekwipunku (Auto EQ)"
+                                                   Style="{StaticResource MainSectionHeaderTextStyle}"/>
+                                        <Button Content="?"
+                                                Style="{StaticResource MacroInfoButtonStyle}"
+                                                Margin="8,0,0,0"
+                                                ToolTipService.InitialShowDelay="100"
+                                                ToolTipService.ShowDuration="120000">
+                                            <Button.ToolTip>
+                                                <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
+                                                         MaxWidth="520"
+                                                         Content="JAK TO USTAWIĆ:&#10;1. W zakładce Ustawienia wybierz proces właściwego okna Minecrafta, nie launchera.&#10;2. Włącz paczkę MinecraftHelper AutoEQ + CobbleX (1.8.8) i ustaw ją nad paczką Default. Wyłącz starsze paczki Minecraft Helper.&#10;3. W ustawieniach obrazu Minecrafta ustaw GUI Scale: Large.&#10;4. Zostaw domyślne sterowanie: E = ekwipunek, Q = wyrzucanie, T = czat. Lewy Ctrl nie może być zajęty przez inny skrót.&#10;5. Ustaw odstęp między skanami, wybierz typy przedmiotów do wyrzucania oraz sloty 1–27.&#10;6. Otwórz ekwipunek w grze i użyj przycisku Test wykrywania. Program powinien znaleźć okno EQ i rozpoznać kolorowe znaczniki na przedmiotach.&#10;&#10;JAK TO DZIAŁA:&#10;Funkcja działa tylko podczas pracy Kopacza 5/3/3 albo 6/3/3. Co ustawiony czas program otwiera EQ, skanuje wybrane pola i wyrzuca zawartość oznaczonych slotów przez lewy Ctrl + Q. Hotbar, pancerz i crafting są zawsze pomijane. Na czas skanu kopanie oraz zaplanowane komendy są wstrzymywane.&#10;&#10;Gra musi być widoczna, aktywna i niezasłonięta innym oknem."/>
+                                            </Button.ToolTip>
+                                        </Button>
+                                    </StackPanel>
+
+                                    <StackPanel Name="PanelInventoryCleanupExpandableContent"
+                                                Margin="0,10,0,0"
+                                                Visibility="Collapsed">
+                                        <TextBlock Text="Podczas pracy kopacza program co ustawiony czas otwiera EQ, rozpoznaje znaczniki z paczki i wyrzuca wybrane przedmioty z głównych 27 slotów."
+                                                   TextWrapping="Wrap"
+                                                   FontSize="11"
+                                                   Foreground="#A8BAD3"
+                                                   Margin="0,0,0,10"/>
+
+                                        <Border Background="#111A25"
+                                                BorderBrush="#34465E"
+                                                BorderThickness="1"
+                                                CornerRadius="4"
+                                                Padding="10,8"
+                                                Margin="0,0,0,12">
+                                            <StackPanel>
+                                                <TextBlock Text="Zanim uruchomisz"
+                                                           FontSize="11"
+                                                           FontWeight="Bold"
+                                                           Foreground="#7FC8FF"
+                                                           Margin="0,0,0,5"/>
+                                                <TextBlock Text="Włącz paczkę MinecraftHelper AutoEQ + CobbleX (1.8.8) nad Default, wybierz proces gry w Ustawieniach i pozostaw klawisze E, Q oraz T na ustawieniach domyślnych. Szczegółowa instrukcja znajduje się pod przyciskiem ?."
+                                                           FontSize="10.5"
+                                                           Foreground="#CFDBEB"
+                                                           TextWrapping="Wrap"
+                                                           LineHeight="16"/>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <StackPanel Name="PanelInventoryCleanupContent">
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                                <TextBlock Text="Skanuj ekwipunek co:" Width="150" VerticalAlignment="Center"/>
+                                                <TextBox Name="TxtInventoryCleanupIntervalSeconds"
+                                                         Width="80"
+                                                         TextChanged="AnyTextBox_TextChanged"/>
+                                                <TextBlock Text=" sekund" VerticalAlignment="Center" Foreground="#92A6C1"/>
+                                            </StackPanel>
+
+                                            <Border Background="#111A25"
+                                                    BorderBrush="#34465E"
+                                                    BorderThickness="1"
+                                                    CornerRadius="4"
+                                                    Padding="10,8"
+                                                    Margin="0,0,0,12">
+                                                <StackPanel>
+                                                    <CheckBox Name="ChkCobbleXEnabled"
+                                                              Content="Automatycznie twórz CobbleX po skanie EQ"
+                                                              FontWeight="SemiBold"
+                                                              Checked="ChkCobbleXEnabled_Changed"
+                                                              Unchecked="ChkCobbleXEnabled_Changed"/>
+                                                    <StackPanel Name="PanelCobbleXSettings"
+                                                                Margin="0,8,0,0"
+                                                                Visibility="Collapsed">
+                                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,7">
+                                                            <TextBlock Text="Komenda:" Width="105" VerticalAlignment="Center"/>
+                                                            <TextBox Name="TxtCobbleXCommand"
+                                                                     Width="155"
+                                                                     TextChanged="AnyTextBox_TextChanged"/>
+                                                            <TextBlock Text="Pełne stacki 64:" Margin="18,0,8,0" VerticalAlignment="Center"/>
+                                                            <TextBox Name="TxtCobbleXRequiredStacks"
+                                                                     Width="55"
+                                                                     TextChanged="AnyTextBox_TextChanged"/>
+                                                        </StackPanel>
+                                                        <TextBlock Text="Po wyrzuceniu program zamyka EQ i wysyła komendę, gdy wykryje wymaganą liczbę pełnych stacków zwykłego cobblestone. Gotowy CobbleX bez napisu 64, mossy i wariant enchantowany nie są liczone."
+                                                                   TextWrapping="Wrap"
+                                                                   FontSize="10"
+                                                                   Foreground="#92A6C1"/>
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </Border>
+
+                                            <TextBlock Text="Przedmioty do wyrzucenia:"
+                                                       FontSize="11"
+                                                       FontWeight="Bold"
+                                                       Foreground="#A8BAD3"
+                                                       Margin="0,0,0,2"/>
+                                            <TextBlock Text="Zaznaczone = wyrzucaj zawartość slotu. Odznaczone = zawsze zostaw."
+                                                       FontSize="10"
+                                                       Foreground="#7F93AE"
+                                                       Margin="0,0,0,6"/>
+                                            <UniformGrid Name="PanelInventoryCleanupItemTypes"
+                                                         Columns="4"
+                                                         Width="600"
+                                                         HorizontalAlignment="Left"
+                                                         Margin="0,0,0,6"/>
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                                <Button Content="Wyrzucaj wszystkie typy"
+                                                        Width="155"
+                                                        Click="BtnInventoryCleanupSelectAllItemTypes_Click"/>
+                                                <Button Content="Zostaw wszystkie"
+                                                        Width="125"
+                                                        Margin="8,0,0,0"
+                                                        Click="BtnInventoryCleanupClearItemTypes_Click"/>
+                                            </StackPanel>
+
+                                            <TextBlock Text="Skanowane sloty głównego EQ (1–27):"
+                                                       FontSize="11"
+                                                       FontWeight="Bold"
+                                                       Foreground="#A8BAD3"
+                                                       Margin="0,0,0,6"/>
+                                            <UniformGrid Name="PanelInventoryCleanupSlots"
+                                                         Columns="9"
+                                                         Width="414"
+                                                         HorizontalAlignment="Left"
+                                                         Margin="0,0,0,10"/>
+
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                                <Button Content="Zaznacz wszystkie"
+                                                        Width="125"
+                                                        Click="BtnInventoryCleanupSelectAll_Click"/>
+                                                <Button Content="Wyczyść wybór"
+                                                        Width="110"
+                                                        Margin="8,0,0,0"
+                                                        Click="BtnInventoryCleanupClearSlots_Click"/>
+                                                <Button Content="Test wykrywania"
+                                                        Width="120"
+                                                        Margin="8,0,0,0"
+                                                        Click="BtnInventoryCleanupTest_Click"/>
+                                            </StackPanel>
+
+                                            <TextBlock Name="TxtInventoryCleanupStatus"
+                                                       Text="Gotowe do testu."
+                                                       TextWrapping="Wrap"
+                                                       FontSize="11"
+                                                       Foreground="#D8E2F0"/>
+                                        </StackPanel>
+                                    </StackPanel>
                                 </StackPanel>
                             </Border>
                         </StackPanel>
@@ -1258,17 +1443,13 @@
 
                             <Border Name="BorderBindySection" Style="{StaticResource SectionBorderStyle}">
                                 <StackPanel>
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                                    <StackPanel Orientation="Horizontal">
                                         <CheckBox Name="ChkBindyEnabled"
                                                   VerticalAlignment="Center"
                                                   Checked="ChkBindyEnabled_Changed"
                                                   Unchecked="ChkBindyEnabled_Changed"/>
                                         <TextBlock Text="Włącz moduł BINDY"
-                                                   FontSize="13"
-                                                   FontWeight="Bold"
-                                                   Margin="10,0,0,0"
-                                                   VerticalAlignment="Center"
-                                                   Foreground="White"/>
+                                                   Style="{StaticResource MainSectionHeaderTextStyle}"/>
                                         <Button Content="?"
                                                 Style="{StaticResource MacroInfoButtonStyle}"
                                                 Margin="8,0,0,0"
@@ -1281,7 +1462,9 @@
                                         </Button>
                                     </StackPanel>
 
-                                    <StackPanel Name="PanelBindyContent">
+                                    <StackPanel Name="PanelBindyContent"
+                                                Margin="0,15,0,0"
+                                                Visibility="Collapsed">
                                         <TextBlock Text="Każdy wiersz ma własną nazwę, bind i komendę (1 bind = 1 komenda):"
                                                    FontSize="11"
                                                    FontWeight="Bold"
@@ -1316,7 +1499,7 @@
                                        Foreground="#FBBF24"
                                        TextWrapping="Wrap"/>
 
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,12" Visibility="Collapsed">
                                 <CheckBox Name="ChkTestEntitiesEnabled"
                                           VerticalAlignment="Center"
                                           Checked="ChkTestEntitiesEnabled_Changed"
@@ -1340,12 +1523,13 @@
                             </StackPanel>
 
                             <TextBlock Text="Wykrywanie encji z F3 (test)"
+                                       Visibility="Collapsed"
                                        FontSize="11"
                                        Margin="0,0,0,12"
                                        Foreground="#92A6C1"
                                        TextWrapping="Wrap"/>
 
-                            <StackPanel Name="PanelTestEntitiesContent">
+                            <StackPanel Name="PanelTestEntitiesContent" Visibility="Collapsed">
                                 <Border Style="{StaticResource SectionBorderStyle}">
                                     <StackPanel>
                                         <TextBlock Text="Automatyczny odczyt F3"
@@ -1421,6 +1605,7 @@
                             </StackPanel>
 
                             <Border Name="BorderTestFastUpExitSection"
+                                    Visibility="Collapsed"
                                     Background="Transparent"
                                     BorderBrush="Transparent"
                                     BorderThickness="0"
@@ -1656,24 +1841,15 @@
                             </Border>
 
                             <Border Name="BorderTestAutoFishingSection"
-                                    Background="Transparent"
-                                    BorderBrush="Transparent"
-                                    BorderThickness="0"
-                                    Padding="0"
-                                    MinHeight="0"
-                                    Margin="0,16,0,0">
+                                    Style="{StaticResource SectionBorderStyle}">
                                 <StackPanel>
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                    <StackPanel Orientation="Horizontal">
                                         <CheckBox Name="ChkTestAutoFishingEnabled"
                                                   VerticalAlignment="Center"
                                                   Checked="ChkTestAutoFishingEnabled_Changed"
                                                   Unchecked="ChkTestAutoFishingEnabled_Changed"/>
                                         <TextBlock Text="Auto łowienie wędką"
-                                                   FontSize="12"
-                                                   FontWeight="Bold"
-                                                   Margin="10,0,0,0"
-                                                   VerticalAlignment="Center"
-                                                   Foreground="#7FC8FF"/>
+                                                   Style="{StaticResource MainSectionHeaderTextStyle}"/>
                                         <Button Content="?"
                                                 Style="{StaticResource MacroInfoButtonStyle}"
                                                 Margin="8,0,0,0"
@@ -1686,19 +1862,21 @@
                                         </Button>
                                     </StackPanel>
 
-                                    <TextBlock Text="Makro testowe: monitoring ruchu spławika w zaznaczonym obszarze."
-                                               FontSize="11"
-                                               Margin="0,0,0,10"
-                                               Foreground="#92A6C1"
-                                               TextWrapping="Wrap"/>
+                                    <StackPanel Name="PanelTestAutoFishingExpandableContent"
+                                                Margin="0,12,0,0"
+                                                Visibility="Collapsed">
+                                        <TextBlock Text="Makro testowe: monitoring ruchu spławika w zaznaczonym obszarze."
+                                                   FontSize="11"
+                                                   Margin="0,0,0,10"
+                                                   Foreground="#92A6C1"
+                                                   TextWrapping="Wrap"/>
 
-                                    <Border Name="BorderTestAutoFishingContent"
-                                            Background="#161F2B"
-                                            BorderBrush="#4B6283"
-                                            BorderThickness="1"
-                                            CornerRadius="4"
-                                            Padding="10"
-                                            Visibility="Collapsed">
+                                        <Border Name="BorderTestAutoFishingContent"
+                                                Background="#161F2B"
+                                                BorderBrush="#4B6283"
+                                                BorderThickness="1"
+                                                CornerRadius="4"
+                                                Padding="10">
                                         <Grid Name="PanelTestAutoFishingContent">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*"/>
@@ -1833,7 +2011,8 @@
                                                 </StackPanel>
                                             </Border>
                                         </Grid>
-                                    </Border>
+                                        </Border>
+                                    </StackPanel>
                                 </StackPanel>
                             </Border>
                         </StackPanel>
@@ -1851,7 +2030,24 @@
                         </Grid.ColumnDefinitions>
 
                         <StackPanel Grid.Column="0">
-                            <TextBlock Text="Ogólne ustawienia" FontSize="14" FontWeight="Bold" Margin="0,0,0,20" Foreground="White"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+                                <TextBlock Text="Ogólne ustawienia"
+                                           FontSize="14"
+                                           FontWeight="Bold"
+                                           VerticalAlignment="Center"
+                                           Foreground="#7FC8FF"/>
+                                <Button Content="?"
+                                        Style="{StaticResource MacroInfoButtonStyle}"
+                                        Margin="8,0,0,0"
+                                        ToolTipService.InitialShowDelay="100"
+                                        ToolTipService.ShowDuration="120000">
+                                    <Button.ToolTip>
+                                        <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
+                                                 MaxWidth="520"
+                                                 Content="JAK SKONFIGUROWAĆ PROGRAM:&#10;1. Uruchom Minecrafta i wejdź do gry.&#10;2. Kliknij Odśwież przy polu Program gry.&#10;3. Wybierz proces właściwego okna Minecrafta lub BlazingPacka — nie wybieraj launchera.&#10;4. Kliknij Zapisz program. Górny wskaźnik Minecraft Focus zmieni się na zielony, gdy aktywne jest właściwe okno gry.&#10;&#10;HUD (OVERLAY):&#10;Wyświetla na ekranie stan clickerów, kopacza, Auto EQ i CobbleX. Możesz wybrać monitor, narożnik oraz wyłączyć animacje HUD.&#10;&#10;IMPORT / EXPORT:&#10;Exportuj zapisuje pełną konfigurację do pliku JSON. Importuj wczytuje taki plik i ustawia go jako aktywną konfigurację. Program zapisuje bieżące ustawienia automatycznie w %APPDATA%\Minecraft Helper\settings.json."/>
+                                    </Button.ToolTip>
+                                </Button>
+                            </StackPanel>
 
                             <StackPanel Margin="0,0,0,25">
                                 <StackPanel Orientation="Horizontal">
@@ -1876,36 +2072,32 @@
                                          Visibility="Collapsed"/>
                             </StackPanel>
 
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                <TextBlock Text="Ustawienia HUD (overlay)"
-                                           FontSize="12"
-                                           FontWeight="Bold"
-                                           VerticalAlignment="Center"
-                                           Foreground="#7FC8FF"/>
-                                <Button Content="?"
-                                        Style="{StaticResource MacroInfoButtonStyle}"
-                                        Margin="8,0,0,0"
-                                        ToolTipService.InitialShowDelay="100"
-                                        ToolTipService.ShowDuration="120000">
-                                    <Button.ToolTip>
-                                        <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
-                                                 Content="W tej sekcji ustawiasz podgląd (pop-up) informacyjny dotyczący danego makra/binda. Możesz wybrać monitor, na którym ma się wyświetlać, oraz jego pozycję. Można wyłączyć animacje lub cały HUD."/>
-                                    </Button.ToolTip>
-                                </Button>
-                            </StackPanel>
-
-                            <Border Background="#161F2B" BorderBrush="#4B6283" BorderThickness="1" CornerRadius="4" Padding="12" Margin="0,0,0,24">
+                            <Border Name="BorderOverlayHudSection"
+                                    Style="{StaticResource SectionBorderStyle}"
+                                    Margin="0,0,0,24">
                                 <StackPanel>
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                    <StackPanel Orientation="Horizontal">
                                         <CheckBox Name="ChkOverlayHudEnabled"
                                                   VerticalAlignment="Center"
                                                   Checked="ChkOverlaySettings_Changed"
                                                   Unchecked="ChkOverlaySettings_Changed"/>
                                         <TextBlock Text="Panel HUD (overlay)"
-                                                   Margin="10,0,0,0"
-                                                   VerticalAlignment="Center"/>
+                                                   Style="{StaticResource MainSectionHeaderTextStyle}"/>
+                                        <Button Content="?"
+                                                Style="{StaticResource MacroInfoButtonStyle}"
+                                                Margin="8,0,0,0"
+                                                ToolTipService.InitialShowDelay="100"
+                                                ToolTipService.ShowDuration="120000">
+                                            <Button.ToolTip>
+                                                <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
+                                                         Content="HUD to mały panel informacyjny wyświetlany nad grą. Pokazuje aktywne makra, bindy, CPS oraz stan Auto EQ i CobbleX. Po włączeniu wybierz monitor i narożnik ekranu. Opcja Animacje HUD odpowiada tylko za animowane pojawianie się panelu — jej wyłączenie nie wyłącza samego HUD."/>
+                                            </Button.ToolTip>
+                                        </Button>
                                     </StackPanel>
 
+                                    <StackPanel Name="PanelOverlayHudContent"
+                                                Margin="0,12,0,0"
+                                                Visibility="Collapsed">
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                                         <CheckBox Name="ChkOverlayAnimationsEnabled"
                                                   VerticalAlignment="Center"
@@ -1936,12 +2128,13 @@
                                             <ComboBoxItem>Lewy górny</ComboBoxItem>
                                         </ComboBox>
                                     </StackPanel>
+                                    </StackPanel>
                                 </StackPanel>
                             </Border>
 
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
                                 <TextBlock Text="Import/Export ustawień"
-                                           FontSize="12"
+                                           FontSize="13"
                                            FontWeight="Bold"
                                            VerticalAlignment="Center"
                                            Foreground="#7FC8FF"/>
@@ -1952,7 +2145,8 @@
                                         ToolTipService.ShowDuration="120000">
                                     <Button.ToolTip>
                                         <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
-                                                 Content="Ustawienia można przekazywać innym lub zapisywać na komputerze. Domyślnie są zapisywane w %appdata%, w folderze Minecraft Helper."/>
+                                                 MaxWidth="480"
+                                                 Content="Exportuj tworzy plik JSON z pełną konfiguracją programu: bindami, CPS, kopaczem, Auto EQ, CobbleX i HUD. Importuj wczytuje wskazany plik, sprawdza jego ustawienia i zapisuje je jako aktywne. Bieżąca konfiguracja jest również automatycznie zapisywana w %APPDATA%\Minecraft Helper\settings.json."/>
                                     </Button.ToolTip>
                                 </Button>
                             </StackPanel>

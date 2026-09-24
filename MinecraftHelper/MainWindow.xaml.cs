@@ -15,6 +15,7 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Navigation;
 using System.Windows.Threading;
 using System.Windows.Media.Imaging;
@@ -37,16 +38,21 @@ namespace MinecraftHelper
     {
         private readonly SettingsService _settingsService;
         private AppSettings _settings;
+        private readonly bool _isFirstRun;
+        private readonly string _currentAppVersion;
+        private readonly bool _showStartupNotice;
 
         private bool _pendingChanges = false;
         private readonly DispatcherTimer _dirtyTimer;
         private readonly DispatcherTimer _focusTimer;
         private readonly DispatcherTimer _macroTimer;
         private readonly DispatcherTimer _f3AnalysisTimer;
+        private readonly AutoClickScheduler _autoClickScheduler;
 
         private bool _isMinecraftFocused;
         private IntPtr _targetGameWindowHandle = IntPtr.Zero;
         private bool _isLoadingUi = true;
+        private readonly Dictionary<FrameworkElement, bool> _expandableSectionStates = new();
         private bool _isPausedByCursorVisibility;
         private bool _holdMacroRuntimeEnabled;
         private bool _autoLeftRuntimeEnabled;
@@ -113,6 +119,42 @@ namespace MinecraftHelper
         private Kopacz633StrafeDirection _kopacz633StrafeDirection = Kopacz633StrafeDirection.None;
         private int _kopacz633UpwardLegIndex;
         private DateTime _kopacz633MovementLegEndAtUtc = DateTime.UtcNow;
+        private readonly List<CheckBox> _inventoryCleanupSlotCheckBoxes = new List<CheckBox>();
+        private readonly List<CheckBox> _inventoryCleanupItemTypeCheckBoxes = new List<CheckBox>();
+        private readonly List<Drawing.Point> _inventoryCleanupTargets = new List<Drawing.Point>();
+        private InventoryCleanupStage _inventoryCleanupStage = InventoryCleanupStage.None;
+        private InventoryCleanupOwner _inventoryCleanupOwner = InventoryCleanupOwner.None;
+        private DateTime _nextInventoryCleanupAtUtc = DateTime.MaxValue;
+        private DateTime _nextInventoryCleanupStageAtUtc = DateTime.UtcNow;
+        private int _inventoryCleanupTargetIndex;
+        private int _inventoryCleanupDetectionAttempts;
+        private Drawing.Rectangle _inventoryCleanupClientArea = Drawing.Rectangle.Empty;
+        private bool _inventoryCleanupControlDown;
+        private bool _inventoryCleanupQDown;
+        private string _inventoryCleanupLastResult = "Brak poprzedniego skanu";
+        private bool _inventoryCleanupLastResultWarning;
+        private int _inventoryCleanupFullCobblestoneStacks;
+        private int _inventoryCleanupLastFullCobblestoneStacks;
+        private bool _inventoryCleanupCobbleXCommandPending;
+        private bool _inventoryCleanupCobbleXCommandSent;
+        private bool _inventoryCleanupCobbleXCommandFailed;
+        private string _inventoryCleanupPendingCobbleXCommand = string.Empty;
+        private static readonly (string Id, string Label)[] InventoryCleanupItemTypes =
+        {
+            ("diamond", "Diament"),
+            ("gold_ingot", "Złoto"),
+            ("iron_ingot", "Żelazo"),
+            ("obsidian", "Obsydian"),
+            ("apple", "Jabłko"),
+            ("sand", "Piasek"),
+            ("gunpowder", "Proch"),
+            ("emerald", "Emerald"),
+            ("coal", "Węgiel"),
+            ("quartz", "Kwarc"),
+            ("book", "Książka"),
+            ("ender_pearl", "Ender perła"),
+            ("redstone", "Redstone")
+        };
         private DateTime _nextBindyStageAtUtc = DateTime.UtcNow;
         private BindyCommandStage _bindyCommandStage = BindyCommandStage.None;
         private string _bindyPendingCommand = string.Empty;
@@ -280,6 +322,28 @@ namespace MinecraftHelper
             Left
         }
 
+        private enum InventoryCleanupStage
+        {
+            None,
+            WaitForInventory,
+            MoveToSlot,
+            PressDropModifier,
+            PressDropKey,
+            ReleaseDropKeys,
+            CloseInventory,
+            OpenCobbleXChat,
+            TypeCobbleXCommand,
+            SubmitCobbleXCommand,
+            ResumeMining
+        }
+
+        private enum InventoryCleanupOwner
+        {
+            None,
+            Kopacz533,
+            Kopacz633
+        }
+
         private sealed class ProcessTargetOption
         {
             public int ProcessId { get; init; }
@@ -319,12 +383,6 @@ namespace MinecraftHelper
 
         [DllImport("user32.dll")]
         private static extern short GetAsyncKeyState(int vKey);
-
-        [DllImport("user32.dll", SetLastError = true)]
-        private static extern void mouse_event(uint dwFlags, int dx, int dy, uint dwData, UIntPtr dwExtraInfo);
-
-        [DllImport("user32.dll", SetLastError = true)]
-        private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
 
         [DllImport("user32.dll", SetLastError = true)]
         private static extern IntPtr SetWindowsHookEx(int idHook, LowLevelMouseProc lpfn, IntPtr hMod, uint dwThreadId);
@@ -377,17 +435,13 @@ namespace MinecraftHelper
         private const int WM_RBUTTONDOWN = 0x0204;
         private const int WM_RBUTTONUP = 0x0205;
         private const int LLMHF_INJECTED = 0x00000001;
-        private const uint MOUSEEVENTF_MOVE = 0x0001;
-        private const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
-        private const uint MOUSEEVENTF_LEFTUP = 0x0004;
-        private const uint MOUSEEVENTF_RIGHTDOWN = 0x0008;
-        private const uint MOUSEEVENTF_RIGHTUP = 0x0010;
-        private const uint KEYEVENTF_KEYUP = 0x0002;
         private const int CURSOR_SHOWING = 0x00000001;
         private const int VK_1 = 0x31;
         private const int VK_2 = 0x32;
         private const int VK_A = 0x41;
         private const int VK_D = 0x44;
+        private const int VK_E = 0x45;
+        private const int VK_Q = 0x51;
         private const int VK_W = 0x57;
         private const int VK_S = 0x53;
         private const int VK_O = 0x4F;
@@ -395,6 +449,7 @@ namespace MinecraftHelper
         private const int VK_T = 0x54;
         private const int VK_SHIFT = 0x10;
         private const int VK_CONTROL = 0x11;
+        private const int VK_LCONTROL = 0xA2;
         private const int VK_MENU = 0x12;
         private const int VK_RETURN = 0x0D;
         private const int VK_ESCAPE = 0x1B;
@@ -431,6 +486,23 @@ namespace MinecraftHelper
         private const int BindyHudNotificationMs = 2600;
         private const int Kopacz633MsPerBlock = 250;
         private const int HoldLeftTogglePressMinMs = 12;
+        private const int InventoryCleanupMinimumIntervalSeconds = 10;
+        private const int InventoryCleanupMaximumIntervalSeconds = 3600;
+        private const int InventoryCleanupOpenDelayMs = 350;
+        private const int InventoryCleanupDetectionRetryMs = 140;
+        private const int InventoryCleanupMaximumDetectionAttempts = 4;
+        private const int InventoryCleanupCursorSettleMs = 55;
+        private const int InventoryCleanupModifierSettleMs = 100;
+        private const int InventoryCleanupDropKeyHoldMs = 100;
+        private const int InventoryCleanupBetweenDropsMs = 75;
+        private const int InventoryCleanupCloseDelayMs = 120;
+        private const int InventoryCleanupResumeDelayMs = 180;
+        private const int CobbleXDelayAfterCloseInventoryMs = 180;
+        private const int CobbleXDelayAfterOpenChatMs = 180;
+        private const int CobbleXDelayAfterTypeCommandMs = 110;
+        private const int CobbleXDelayAfterSubmitResumeMs = 130;
+        private const int CobbleXMinimumRequiredStacks = 1;
+        private const int CobbleXMaximumRequiredStacks = 27;
 
         [StructLayout(LayoutKind.Sequential)]
         private struct POINT
@@ -493,8 +565,16 @@ namespace MinecraftHelper
             InitializeTrayIcon();
 
             _settingsService = new SettingsService();
+            _isFirstRun = !_settingsService.SettingsFileExists;
             _settings = _settingsService.Load();
             EnsureSettingsConsistency();
+            _currentAppVersion = ReleaseNotesCatalog.CurrentVersion;
+            _showStartupNotice = _isFirstRun
+                || !string.Equals(
+                    _settings.LastAcknowledgedVersion,
+                    _currentAppVersion,
+                    StringComparison.OrdinalIgnoreCase);
+            _autoClickScheduler = new AutoClickScheduler();
 
             _dirtyTimer = new DispatcherTimer
             {
@@ -534,6 +614,8 @@ namespace MinecraftHelper
             _isLoadingUi = true;
             try
             {
+                InitializeInventoryCleanupSlotGrid();
+                InitializeInventoryCleanupItemTypeGrid();
                 LoadToUi();
             }
             finally
@@ -564,6 +646,42 @@ namespace MinecraftHelper
             }
 
             _trayMinimizeBehaviorEnabled = true;
+
+            if (_showStartupNotice)
+            {
+                Dispatcher.BeginInvoke(
+                    new Action(ShowStartupNotice),
+                    DispatcherPriority.ApplicationIdle);
+            }
+        }
+
+        private void ShowStartupNotice()
+        {
+            if (!IsVisible || _isExitRequested)
+                return;
+
+            var dialog = new FirstRunGuideWindow(
+                _isFirstRun,
+                _currentAppVersion,
+                _settings.LastAcknowledgedVersion)
+            {
+                Owner = this
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                try
+                {
+                    _settings.LastAcknowledgedVersion = _currentAppVersion;
+                    _settingsService.Save(_settings);
+                }
+                catch (Exception ex)
+                {
+                    UpdateStatusBar("Nie udało się zapisać potwierdzenia wersji: " + ex.Message, "Red");
+                }
+            }
+
+            Activate();
         }
 
         private void StartMouseHook()
@@ -816,6 +934,7 @@ namespace MinecraftHelper
         private void EnsureSettingsConsistency()
         {
             _settings ??= new AppSettings();
+            _settings.LastAcknowledgedVersion ??= string.Empty;
 
             _settings.MacroLeftButton ??= new MacroButton();
             _settings.MacroRightButton ??= new MacroButton();
@@ -824,8 +943,42 @@ namespace MinecraftHelper
             _settings.AutoLeftButton ??= new MacroButton();
             _settings.AutoRightButton ??= new MacroButton();
 
+            // These legacy modules are intentionally hidden from the streamlined UI.
+            // Force them off so settings imported from an older build cannot run invisibly.
+            _settings.HoldEnabled = false;
+            _settings.TestEntitiesEnabled = false;
+            _settings.TestCustomCaptureEnabled = false;
+            _settings.TestFastUpExitEnabled = false;
+
             _settings.Kopacz533Commands ??= new List<MinerCommand>();
             _settings.Kopacz633Commands ??= new List<MinerCommand>();
+            _settings.InventoryCleanupSlots ??= Enumerable.Range(0, 27).ToList();
+            _settings.InventoryCleanupSlots = _settings.InventoryCleanupSlots
+                .Where(slot => slot >= 0 && slot < 27)
+                .Distinct()
+                .OrderBy(slot => slot)
+                .ToList();
+            HashSet<string> supportedCleanupItemTypes = InventoryCleanupItemTypes
+                .Select(item => item.Id)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            _settings.InventoryCleanupItemTypes ??= InventoryCleanupItemTypes.Select(item => item.Id).ToList();
+            _settings.InventoryCleanupItemTypes = _settings.InventoryCleanupItemTypes
+                .Where(itemId => supportedCleanupItemTypes.Contains(itemId))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (_settings.InventoryCleanupIntervalSeconds <= 0)
+                _settings.InventoryCleanupIntervalSeconds = 120;
+            _settings.InventoryCleanupIntervalSeconds = Math.Clamp(
+                _settings.InventoryCleanupIntervalSeconds,
+                InventoryCleanupMinimumIntervalSeconds,
+                InventoryCleanupMaximumIntervalSeconds);
+            _settings.CobbleXCommand ??= "/cx";
+            if (_settings.CobbleXRequiredFullStacks <= 0)
+                _settings.CobbleXRequiredFullStacks = 9;
+            _settings.CobbleXRequiredFullStacks = Math.Clamp(
+                _settings.CobbleXRequiredFullStacks,
+                CobbleXMinimumRequiredStacks,
+                CobbleXMaximumRequiredStacks);
             _settings.BindyCommands ??= new List<MinerCommand>();
             _settings.BindyEntries ??= new List<BindyEntry>();
             _settings.JablkaZLisciCommand ??= string.Empty;
@@ -1278,6 +1431,7 @@ namespace MinecraftHelper
 
         private void LoadToUi()
         {
+            _autoClickScheduler.Stop();
             UpdateStatusBar("Gotowy", "Green");
 
             _holdMacroRuntimeEnabled = false;
@@ -1347,6 +1501,15 @@ namespace MinecraftHelper
                 CbKopacz633Direction.SelectedIndex = 0;
             UpdateKopaczUpwardInfoVisibility();
 
+            ChkInventoryCleanupEnabled.IsChecked = _settings.InventoryCleanupEnabled;
+            TxtInventoryCleanupIntervalSeconds.Text = _settings.InventoryCleanupIntervalSeconds.ToString(CultureInfo.InvariantCulture);
+            ChkCobbleXEnabled.IsChecked = _settings.CobbleXEnabled;
+            TxtCobbleXCommand.Text = _settings.CobbleXCommand;
+            TxtCobbleXRequiredStacks.Text = _settings.CobbleXRequiredFullStacks.ToString(CultureInfo.InvariantCulture);
+            LoadInventoryCleanupSlotsToUi();
+            LoadInventoryCleanupItemTypesToUi();
+            UpdateInventoryCleanupStatus("Gotowe. Włącz texturepack Minecraft Helper w grze.", "Default");
+
             TxtTargetWindowTitle.Text = _settings.TargetWindowTitle;
             RefreshTargetProcessChoices();
             TxtCurrentWindowTitle.Text = BuildTargetProcessDisplayText();
@@ -1409,6 +1572,307 @@ namespace MinecraftHelper
             UpdateOverlayLayout();
         }
 
+        private void InitializeInventoryCleanupSlotGrid()
+        {
+            PanelInventoryCleanupSlots.Children.Clear();
+            _inventoryCleanupSlotCheckBoxes.Clear();
+
+            for (int slot = 0; slot < 27; slot++)
+            {
+                var checkBox = new CheckBox
+                {
+                    Content = (slot + 1).ToString(CultureInfo.InvariantCulture),
+                    Tag = slot,
+                    Margin = new Thickness(5, 0, 3, 0),
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    HorizontalContentAlignment = HorizontalAlignment.Center,
+                    Foreground = new SolidColorBrush(Color.FromRgb(216, 226, 240)),
+                    FontSize = 11,
+                    FontWeight = FontWeights.SemiBold,
+                    Cursor = Cursors.Hand
+                };
+                var cell = new Border
+                {
+                    Width = 42,
+                    Height = 27,
+                    Margin = new Thickness(2),
+                    CornerRadius = new CornerRadius(3),
+                    BorderThickness = new Thickness(1),
+                    Child = checkBox
+                };
+                checkBox.Checked += InventoryCleanupSlot_Changed;
+                checkBox.Unchecked += InventoryCleanupSlot_Changed;
+                _inventoryCleanupSlotCheckBoxes.Add(checkBox);
+                PanelInventoryCleanupSlots.Children.Add(cell);
+                UpdateInventoryCleanupOptionVisual(checkBox);
+            }
+        }
+
+        private void InitializeInventoryCleanupItemTypeGrid()
+        {
+            PanelInventoryCleanupItemTypes.Children.Clear();
+            _inventoryCleanupItemTypeCheckBoxes.Clear();
+
+            foreach ((string itemId, string label) in InventoryCleanupItemTypes)
+            {
+                var checkBox = new CheckBox
+                {
+                    Content = label,
+                    Tag = itemId,
+                    Margin = new Thickness(7, 0, 4, 0),
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Foreground = new SolidColorBrush(Color.FromRgb(216, 226, 240)),
+                    FontSize = 10.5,
+                    FontWeight = FontWeights.SemiBold,
+                    Cursor = Cursors.Hand
+                };
+                var cell = new Border
+                {
+                    Width = 146,
+                    Height = 27,
+                    Margin = new Thickness(2),
+                    CornerRadius = new CornerRadius(3),
+                    BorderThickness = new Thickness(1),
+                    Child = checkBox
+                };
+                checkBox.Checked += InventoryCleanupItemType_Changed;
+                checkBox.Unchecked += InventoryCleanupItemType_Changed;
+                _inventoryCleanupItemTypeCheckBoxes.Add(checkBox);
+                PanelInventoryCleanupItemTypes.Children.Add(cell);
+                UpdateInventoryCleanupOptionVisual(checkBox);
+            }
+        }
+
+        private void LoadInventoryCleanupSlotsToUi()
+        {
+            var selectedSlots = new HashSet<int>(_settings.InventoryCleanupSlots ?? Enumerable.Range(0, 27));
+            for (int slot = 0; slot < _inventoryCleanupSlotCheckBoxes.Count; slot++)
+                _inventoryCleanupSlotCheckBoxes[slot].IsChecked = selectedSlots.Contains(slot);
+        }
+
+        private void LoadInventoryCleanupItemTypesToUi()
+        {
+            var selectedTypes = new HashSet<string>(
+                _settings.InventoryCleanupItemTypes ?? InventoryCleanupItemTypes.Select(item => item.Id),
+                StringComparer.OrdinalIgnoreCase);
+            foreach (CheckBox checkBox in _inventoryCleanupItemTypeCheckBoxes)
+            {
+                string itemId = checkBox.Tag?.ToString() ?? string.Empty;
+                checkBox.IsChecked = selectedTypes.Contains(itemId);
+            }
+        }
+
+        private HashSet<int> GetSelectedInventoryCleanupSlots()
+        {
+            var slots = new HashSet<int>();
+            for (int slot = 0; slot < _inventoryCleanupSlotCheckBoxes.Count; slot++)
+            {
+                if (_inventoryCleanupSlotCheckBoxes[slot].IsChecked == true)
+                    slots.Add(slot);
+            }
+            return slots;
+        }
+
+        private HashSet<string> GetSelectedInventoryCleanupItemTypes()
+        {
+            var itemTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (CheckBox checkBox in _inventoryCleanupItemTypeCheckBoxes)
+            {
+                if (checkBox.IsChecked == true && checkBox.Tag is string itemId)
+                    itemTypes.Add(itemId);
+            }
+            return itemTypes;
+        }
+
+        private static string GetInventoryCleanupItemLabel(string itemId)
+        {
+            foreach ((string id, string label) in InventoryCleanupItemTypes)
+            {
+                if (string.Equals(id, itemId, StringComparison.OrdinalIgnoreCase))
+                    return label;
+            }
+
+            return itemId;
+        }
+
+        private int GetConfiguredInventoryCleanupIntervalSeconds()
+        {
+            int parsed = ParseNonNegativeInt(TxtInventoryCleanupIntervalSeconds.Text);
+            if (parsed <= 0)
+                parsed = 120;
+            return Math.Clamp(parsed, InventoryCleanupMinimumIntervalSeconds, InventoryCleanupMaximumIntervalSeconds);
+        }
+
+        private int GetConfiguredCobbleXRequiredStacks()
+        {
+            int parsed = ParseNonNegativeInt(TxtCobbleXRequiredStacks.Text);
+            if (parsed <= 0)
+                parsed = 9;
+            return Math.Clamp(parsed, CobbleXMinimumRequiredStacks, CobbleXMaximumRequiredStacks);
+        }
+
+        private string GetConfiguredCobbleXCommand()
+        {
+            return TxtCobbleXCommand.Text.Trim();
+        }
+
+        private void UpdateInventoryCleanupStatus(string message, string colorName)
+        {
+            if (TxtInventoryCleanupStatus == null)
+                return;
+
+            TxtInventoryCleanupStatus.Text = message;
+            TxtInventoryCleanupStatus.Foreground = colorName == "Red"
+                ? new SolidColorBrush(Color.FromRgb(255, 107, 107))
+                : colorName == "Green"
+                    ? new SolidColorBrush(Color.FromRgb(56, 214, 180))
+                    : colorName == "Orange"
+                        ? new SolidColorBrush(Color.FromRgb(251, 191, 36))
+                        : new SolidColorBrush(Color.FromRgb(216, 226, 240));
+        }
+
+        private void InventoryCleanupSlot_Changed(object sender, RoutedEventArgs e)
+        {
+            if (sender is CheckBox checkBox)
+                UpdateInventoryCleanupOptionVisual(checkBox);
+
+            if (!_isLoadingUi)
+                MarkDirty();
+        }
+
+        private void InventoryCleanupItemType_Changed(object sender, RoutedEventArgs e)
+        {
+            if (sender is CheckBox checkBox)
+                UpdateInventoryCleanupOptionVisual(checkBox);
+
+            if (!_isLoadingUi)
+            {
+                RefreshTopTiles();
+                MarkDirty();
+            }
+        }
+
+        private static void UpdateInventoryCleanupOptionVisual(CheckBox checkBox)
+        {
+            if (checkBox.Parent is not Border cell)
+                return;
+
+            bool selected = checkBox.IsChecked == true;
+            cell.Background = new SolidColorBrush(selected
+                ? Color.FromRgb(23, 50, 74)
+                : Color.FromRgb(17, 26, 37));
+            cell.BorderBrush = new SolidColorBrush(selected
+                ? Color.FromRgb(46, 168, 255)
+                : Color.FromRgb(52, 70, 94));
+            cell.Opacity = selected ? 1.0 : 0.72;
+        }
+
+        private void BtnInventoryCleanupSelectAll_Click(object sender, RoutedEventArgs e)
+        {
+            for (int slot = 0; slot < _inventoryCleanupSlotCheckBoxes.Count; slot++)
+                _inventoryCleanupSlotCheckBoxes[slot].IsChecked = true;
+            MarkDirty();
+        }
+
+        private void BtnInventoryCleanupClearSlots_Click(object sender, RoutedEventArgs e)
+        {
+            for (int slot = 0; slot < _inventoryCleanupSlotCheckBoxes.Count; slot++)
+                _inventoryCleanupSlotCheckBoxes[slot].IsChecked = false;
+            MarkDirty();
+        }
+
+        private void BtnInventoryCleanupSelectAllItemTypes_Click(object sender, RoutedEventArgs e)
+        {
+            foreach (CheckBox checkBox in _inventoryCleanupItemTypeCheckBoxes)
+                checkBox.IsChecked = true;
+            MarkDirty();
+        }
+
+        private void BtnInventoryCleanupClearItemTypes_Click(object sender, RoutedEventArgs e)
+        {
+            foreach (CheckBox checkBox in _inventoryCleanupItemTypeCheckBoxes)
+                checkBox.IsChecked = false;
+            MarkDirty();
+        }
+
+        private void BtnInventoryCleanupTest_Click(object sender, RoutedEventArgs e)
+        {
+            HashSet<int> enabledSlots = GetSelectedInventoryCleanupSlots();
+            HashSet<string> enabledItemTypes = GetSelectedInventoryCleanupItemTypes();
+            bool cobbleXEnabled = ChkCobbleXEnabled.IsChecked == true;
+            if (!cobbleXEnabled && enabledSlots.Count == 0)
+            {
+                UpdateInventoryCleanupStatus("Test: zaznacz przynajmniej jeden slot albo włącz CobbleX.", "Orange");
+                return;
+            }
+            if (!cobbleXEnabled && enabledItemTypes.Count == 0)
+            {
+                UpdateInventoryCleanupStatus("Test: zaznacz przynajmniej jeden typ przedmiotu albo włącz CobbleX.", "Orange");
+                return;
+            }
+
+            if (!TryCaptureTargetClient(out Drawing.Bitmap? bitmap, out _))
+            {
+                UpdateInventoryCleanupStatus("Test: nie udało się przechwycić okna gry.", "Red");
+                return;
+            }
+
+            using (Drawing.Bitmap capturedBitmap = bitmap!)
+            {
+                if (!InventoryMarkerDetector.TryDetect(capturedBitmap, enabledSlots, enabledItemTypes, out InventoryMarkerDetection detection))
+                {
+                    UpdateInventoryCleanupStatus("Test: nie znaleziono znaczników GUI. Otwórz ekwipunek, włącz przygotowany texturepack i pozostaw grę widoczną.", "Orange");
+                    return;
+                }
+
+                if (detection.UnknownMarkerSlots.Count > 0)
+                {
+                    UpdateInventoryCleanupStatus("Test: wykryto starą wersję znaczników. Włącz nowy texturepack z rozpoznawaniem typów przedmiotów.", "Orange");
+                    return;
+                }
+
+                string items = detection.Items.Count == 0
+                    ? "brak wybranych przedmiotów"
+                    : string.Join(", ", detection.Items.Select(item => $"{item.Slot + 1} ({GetInventoryCleanupItemLabel(item.ItemId)})"));
+                int requiredCobbleStacks = GetConfiguredCobbleXRequiredStacks();
+                string cobbleResult = cobbleXEnabled
+                    ? $" Cobble 64: {detection.FullCobblestoneSlots.Count}/{requiredCobbleStacks}."
+                    : string.Empty;
+                UpdateInventoryCleanupStatus($"Test OK (GUI x{detection.Layout.Scale}). Do wyrzucenia: {items}.{cobbleResult}", "Green");
+            }
+        }
+
+        private bool TryCaptureTargetClient(out Drawing.Bitmap? bitmap, out Drawing.Rectangle clientArea)
+        {
+            bitmap = null;
+            clientArea = Drawing.Rectangle.Empty;
+            if (_targetGameWindowHandle == IntPtr.Zero || !TryGetWindowClientRectOnScreen(_targetGameWindowHandle, out RECT clientRect))
+                return false;
+
+            int width = clientRect.Right - clientRect.Left;
+            int height = clientRect.Bottom - clientRect.Top;
+            if (width < 320 || height < 240)
+                return false;
+
+            clientArea = new Drawing.Rectangle(clientRect.Left, clientRect.Top, width, height);
+            try
+            {
+                bitmap = new Drawing.Bitmap(width, height, DrawingImaging.PixelFormat.Format32bppArgb);
+                using Drawing.Graphics graphics = Drawing.Graphics.FromImage(bitmap);
+                graphics.CopyFromScreen(clientArea.Left, clientArea.Top, 0, 0, clientArea.Size, Drawing.CopyPixelOperation.SourceCopy);
+                return true;
+            }
+            catch
+            {
+                bitmap?.Dispose();
+                bitmap = null;
+                clientArea = Drawing.Rectangle.Empty;
+                return false;
+            }
+        }
+
         private bool HasCustomCaptureAreaConfigured()
         {
             return _settings.TestCustomCaptureWidth >= MinimumCaptureSelectionSize && _settings.TestCustomCaptureHeight >= MinimumCaptureSelectionSize;
@@ -1445,6 +1909,10 @@ namespace MinecraftHelper
         private void RefreshTestAutoFishingPreview(DateTime now, bool force = false)
         {
             if (ImgTestAutoFishingPreview == null || TxtTestAutoFishingPreviewInfo == null)
+                return;
+            // Do not capture and convert preview frames while the app is hidden.
+            // That work runs on the UI thread and used to stall dispatcher-based input.
+            if (!IsVisible || _isMinimizedToTray || MainTabControl?.SelectedIndex != 3)
                 return;
             if (!HasTestAutoFishingAreaConfigured())
             {
@@ -2224,6 +2692,7 @@ namespace MinecraftHelper
             bool jablkaModeSelected = ChkJablkaZLisciEnabled.IsChecked == true;
             bool kop533ModeSelected = ChkKopacz533Enabled.IsChecked == true;
             bool kop633ModeSelected = ChkKopacz633Enabled.IsChecked == true;
+            bool inventoryCleanupSelected = ChkInventoryCleanupEnabled.IsChecked == true;
             bool testEntitiesModeSelected = ChkTestEntitiesEnabled.IsChecked == true;
             bool fastUpModeSelected = ChkTestFastUpExitEnabled.IsChecked == true;
             bool autoFishingModeSelected = ChkTestAutoFishingEnabled.IsChecked == true;
@@ -2258,6 +2727,12 @@ namespace MinecraftHelper
             bool kop633Visible = kop633ModeSelected && (_kopacz633RuntimeEnabled || _kopacz633CommandStage != Kopacz633CommandStage.None || _kopacz633ResumeMiningPending);
             if (kop633Visible)
                 entries.Add(BuildKopacz633OverlayEntry(now));
+
+            if (inventoryCleanupSelected
+                && (kop533Visible || kop633Visible || _inventoryCleanupStage != InventoryCleanupStage.None))
+            {
+                entries.Add(BuildInventoryCleanupOverlayEntry(now));
+            }
 
             if (fastUpModeSelected && _testFastUpExitRuntimeEnabled)
                 entries.Add(BuildFastUpExitOverlayEntry());
@@ -2438,6 +2913,80 @@ namespace MinecraftHelper
                 commandLine;
 
             return new OverlayHudEntry("KOPACZ 6/3/3", body, OverlayHudTone.Active);
+        }
+
+        private OverlayHudEntry BuildInventoryCleanupOverlayEntry(DateTime now)
+        {
+            int intervalSeconds = GetConfiguredInventoryCleanupIntervalSeconds();
+            int selectedSlots = GetSelectedInventoryCleanupSlots().Count;
+            int selectedItemTypes = GetSelectedInventoryCleanupItemTypes().Count;
+            string state;
+            string progressLine;
+
+            switch (_inventoryCleanupStage)
+            {
+                case InventoryCleanupStage.WaitForInventory:
+                    state = "Otwieranie i skanowanie EQ";
+                    progressLine = $"Próba wykrywania: {Math.Max(1, _inventoryCleanupDetectionAttempts + 1)}/{InventoryCleanupMaximumDetectionAttempts}";
+                    break;
+
+                case InventoryCleanupStage.MoveToSlot:
+                case InventoryCleanupStage.PressDropModifier:
+                case InventoryCleanupStage.PressDropKey:
+                case InventoryCleanupStage.ReleaseDropKeys:
+                    state = "Wyrzucanie pełnych stosów";
+                    int currentTarget = _inventoryCleanupTargets.Count == 0
+                        ? 0
+                        : Math.Min(_inventoryCleanupTargetIndex + 1, _inventoryCleanupTargets.Count);
+                    progressLine = $"Postęp: {currentTarget}/{_inventoryCleanupTargets.Count}";
+                    break;
+
+                case InventoryCleanupStage.CloseInventory:
+                    state = "Zamykanie EQ";
+                    progressLine = $"Wykryte stosy: {_inventoryCleanupTargets.Count}";
+                    break;
+
+                case InventoryCleanupStage.OpenCobbleXChat:
+                case InventoryCleanupStage.TypeCobbleXCommand:
+                case InventoryCleanupStage.SubmitCobbleXCommand:
+                    state = "Tworzenie CobbleX";
+                    progressLine = $"Cobble 64: {_inventoryCleanupFullCobblestoneStacks}/{GetConfiguredCobbleXRequiredStacks()} | komenda: {_inventoryCleanupPendingCobbleXCommand}";
+                    break;
+
+                case InventoryCleanupStage.ResumeMining:
+                    state = "Wznawianie kopania";
+                    progressLine = $"Wyrzucone stosy: {_inventoryCleanupTargets.Count}";
+                    break;
+
+                default:
+                    state = "Czekanie";
+                    if (_nextInventoryCleanupAtUtc == DateTime.MaxValue)
+                    {
+                        progressLine = "Następny skan: po uruchomieniu kopacza";
+                    }
+                    else
+                    {
+                        int remainingSeconds = Math.Max(0, (int)Math.Ceiling((_nextInventoryCleanupAtUtc - now).TotalSeconds));
+                        progressLine = $"Następny skan: za {remainingSeconds}s";
+                    }
+                    break;
+            }
+
+            string cobbleXLine = ChkCobbleXEnabled.IsChecked == true
+                ? $"CobbleX: ON | Cobble 64: {_inventoryCleanupLastFullCobblestoneStacks}/{GetConfiguredCobbleXRequiredStacks()} | Komenda: {GetConfiguredCobbleXCommand()}"
+                : "CobbleX: OFF";
+            string body =
+                $"Stan: {state}\n" +
+                $"{progressLine}\n" +
+                $"Interwał: {intervalSeconds}s | Sloty: {selectedSlots}/27 | Typy: {selectedItemTypes}/{InventoryCleanupItemTypes.Length}\n" +
+                $"{cobbleXLine}\n" +
+                $"Ostatni wynik: {_inventoryCleanupLastResult}";
+
+            bool warning = _inventoryCleanupStage == InventoryCleanupStage.None && _inventoryCleanupLastResultWarning;
+            return new OverlayHudEntry(
+                ChkCobbleXEnabled.IsChecked == true ? "AUTO EQ / COBBLEX" : "AUTO WYRZUCANIE",
+                body,
+                warning ? OverlayHudTone.Warning : OverlayHudTone.Active);
         }
 
         private OverlayHudEntry BuildFastUpExitOverlayEntry()
@@ -2641,6 +3190,7 @@ namespace MinecraftHelper
                 _kopacz533CommandStage != Kopacz533CommandStage.None ||
                 _kopacz633RuntimeEnabled ||
                 _kopacz633CommandStage != Kopacz633CommandStage.None ||
+                _inventoryCleanupStage != InventoryCleanupStage.None ||
                 _testAutoFishingRuntimeEnabled;
             if (!runtimeDataLive)
                 return;
@@ -2660,6 +3210,98 @@ namespace MinecraftHelper
             section.Opacity = enabled ? 1.0 : 0.55;
         }
 
+        private void SetExpandableSectionState(
+            FrameworkElement section,
+            bool expanded)
+        {
+            if (_expandableSectionStates.TryGetValue(section, out bool previousState)
+                && previousState == expanded)
+                return;
+
+            _expandableSectionStates[section] = expanded;
+
+            section.BeginAnimation(FrameworkElement.HeightProperty, null);
+            section.BeginAnimation(UIElement.OpacityProperty, null);
+
+            if (_isLoadingUi || !IsLoaded)
+            {
+                section.Height = double.NaN;
+                section.Opacity = 1.0;
+                section.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
+                return;
+            }
+
+            var easing = new CubicEase { EasingMode = EasingMode.EaseOut };
+            TimeSpan duration = TimeSpan.FromMilliseconds(expanded ? 180 : 140);
+
+            if (expanded)
+            {
+                section.Visibility = Visibility.Visible;
+                section.Height = double.NaN;
+                section.UpdateLayout();
+                double targetHeight = Math.Max(1.0, section.ActualHeight);
+
+                section.Height = 0;
+                section.Opacity = 0;
+
+                var heightAnimation = new DoubleAnimation(0, targetHeight, duration)
+                {
+                    EasingFunction = easing
+                };
+                heightAnimation.Completed += (_, _) =>
+                {
+                    if (!_expandableSectionStates.TryGetValue(section, out bool currentState)
+                        || !currentState)
+                        return;
+
+                    section.BeginAnimation(FrameworkElement.HeightProperty, null);
+                    section.BeginAnimation(UIElement.OpacityProperty, null);
+                    section.Height = double.NaN;
+                    section.Opacity = 1.0;
+                };
+
+                section.BeginAnimation(FrameworkElement.HeightProperty, heightAnimation);
+                section.BeginAnimation(
+                    UIElement.OpacityProperty,
+                    new DoubleAnimation(0, 1, duration) { EasingFunction = easing });
+                return;
+            }
+
+            if (section.Visibility != Visibility.Visible)
+            {
+                section.Height = double.NaN;
+                section.Opacity = 1.0;
+                section.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            double currentHeight = Math.Max(1.0, section.ActualHeight);
+            double currentOpacity = section.Opacity;
+            section.Height = currentHeight;
+
+            var collapseAnimation = new DoubleAnimation(currentHeight, 0, duration)
+            {
+                EasingFunction = easing
+            };
+            collapseAnimation.Completed += (_, _) =>
+            {
+                if (!_expandableSectionStates.TryGetValue(section, out bool currentState)
+                    || currentState)
+                    return;
+
+                section.BeginAnimation(FrameworkElement.HeightProperty, null);
+                section.BeginAnimation(UIElement.OpacityProperty, null);
+                section.Height = double.NaN;
+                section.Opacity = 1.0;
+                section.Visibility = Visibility.Collapsed;
+            };
+
+            section.BeginAnimation(FrameworkElement.HeightProperty, collapseAnimation);
+            section.BeginAnimation(
+                UIElement.OpacityProperty,
+                new DoubleAnimation(currentOpacity, 0, duration) { EasingFunction = easing });
+        }
+
         private void UpdateEnabledStates(object? sender = null, RoutedEventArgs? e = null)
         {
             bool manualOn = ChkMacroManualEnabled.IsChecked ?? false;
@@ -2667,6 +3309,9 @@ namespace MinecraftHelper
             bool holdRightOn = manualOn && ChkHoldRightEnabled.IsChecked == true;
             bool autoLeftOn = ChkAutoLeftEnabled.IsChecked ?? false;
             bool autoRightOn = ChkAutoRightEnabled.IsChecked ?? false;
+
+            SetExpandableSectionState(PanelAutoLeftContent, autoLeftOn);
+            SetExpandableSectionState(PanelAutoRightContent, autoRightOn);
 
             TxtMacroManualKey.IsEnabled = manualOn;
             BtnMacroManualCapture.IsEnabled = manualOn;
@@ -2726,6 +3371,7 @@ namespace MinecraftHelper
             }
 
             bool kop533On = ChkKopacz533Enabled.IsChecked ?? false;
+            SetExpandableSectionState(PanelKopacz533Content, kop533On);
             TxtKopacz533Key.IsEnabled = kop533On;
             BtnKopacz533Capture.IsEnabled = kop533On;
             BtnKopacz533Clear.IsEnabled = kop533On;
@@ -2739,6 +3385,7 @@ namespace MinecraftHelper
             }
 
             bool kop633On = ChkKopacz633Enabled.IsChecked ?? false;
+            SetExpandableSectionState(PanelKopacz633Content, kop633On);
             TxtKopacz633Key.IsEnabled = kop633On;
             BtnKopacz633Capture.IsEnabled = kop633On;
             BtnKopacz633Clear.IsEnabled = kop633On;
@@ -2758,8 +3405,18 @@ namespace MinecraftHelper
             }
             UpdateKopaczUpwardInfoVisibility();
 
+            bool inventoryCleanupOn = ChkInventoryCleanupEnabled.IsChecked == true;
+            SetExpandableSectionState(PanelInventoryCleanupExpandableContent, inventoryCleanupOn);
+            PanelInventoryCleanupContent.IsEnabled = inventoryCleanupOn;
+            bool cobbleXSettingsOn = inventoryCleanupOn && ChkCobbleXEnabled.IsChecked == true;
+            SetExpandableSectionState(PanelCobbleXSettings, cobbleXSettingsOn);
+            PanelCobbleXSettings.IsEnabled = cobbleXSettingsOn;
+            if (!inventoryCleanupOn)
+                ResetInventoryCleanupState(scheduleNext: false);
+
             // JABŁKA Z LIŚCI
             bool jablkaOn = ChkJablkaZLisciEnabled.IsChecked ?? false;
+            SetExpandableSectionState(PanelJablkaContent, jablkaOn);
             TxtJablkaZLisciKey.IsEnabled = jablkaOn;
             BtnJablkaZLisciCapture.IsEnabled = jablkaOn;
             BtnJablkaZLisciClear.IsEnabled = jablkaOn;
@@ -2774,7 +3431,7 @@ namespace MinecraftHelper
             bool bindyOn = ChkBindyEnabled.IsChecked ?? false;
             if (PanelBindyContent != null)
             {
-                PanelBindyContent.Visibility = bindyOn ? Visibility.Visible : Visibility.Collapsed;
+                SetExpandableSectionState(PanelBindyContent, bindyOn);
                 PanelBindyContent.IsEnabled = bindyOn;
             }
             if (PanelBindyCommands != null)
@@ -2785,6 +3442,7 @@ namespace MinecraftHelper
                 ResetBindyRuntimeState();
 
             bool cursorPauseOn = ChkPauseWhenCursorVisible.IsChecked == true;
+            SetExpandableSectionState(PanelCursorPauseContent, cursorPauseOn);
             bool testEntitiesOn = ChkTestEntitiesEnabled?.IsChecked == true;
             bool testCustomOn = testEntitiesOn;
             bool testFastUpOn = ChkTestFastUpExitEnabled?.IsChecked == true;
@@ -2841,8 +3499,8 @@ namespace MinecraftHelper
                 _testFastUpExitRuntimeEnabled = false;
                 ResetTestFastUpExitRuntimeState();
             }
-            if (BorderTestAutoFishingContent != null)
-                BorderTestAutoFishingContent.Visibility = testAutoFishingOn ? Visibility.Visible : Visibility.Collapsed;
+            if (PanelTestAutoFishingExpandableContent != null)
+                SetExpandableSectionState(PanelTestAutoFishingExpandableContent, testAutoFishingOn);
             if (PanelTestAutoFishingContent != null)
                 PanelTestAutoFishingContent.IsEnabled = testAutoFishingOn;
             if (TxtTestAutoFishingBind != null)
@@ -2872,16 +3530,13 @@ namespace MinecraftHelper
             }
             UpdateTestAutoFishingStatusLabel();
 
+            bool overlayHudOn = ChkOverlayHudEnabled.IsChecked == true;
+            SetExpandableSectionState(PanelOverlayHudContent, overlayHudOn);
+            PanelOverlayHudContent.IsEnabled = overlayHudOn;
+
             SetSectionVisualState(BorderManualLeftSection, holdLeftOn);
             SetSectionVisualState(BorderManualRightSection, holdRightOn);
             SetSectionVisualState(BorderManualBindSection, manualOn);
-            SetSectionVisualState(BorderAutoLeftSection, autoLeftOn);
-            SetSectionVisualState(BorderAutoRightSection, autoRightOn);
-            SetSectionVisualState(BorderJablkaSection, jablkaOn);
-            SetSectionVisualState(BorderCursorPauseSection, cursorPauseOn);
-            SetSectionVisualState(BorderKopacz533Section, kop533On);
-            SetSectionVisualState(BorderKopacz633Section, kop633On);
-            SetSectionVisualState(BorderBindySection, bindyOn);
             SetSectionVisualState(BorderTestCustomCaptureSection, testCustomOn);
             SetSectionVisualState(BorderTestFastUpExitSection, true);
 
@@ -4185,6 +4840,16 @@ namespace MinecraftHelper
                 _settings.Kopacz633Direction = "";
             }
 
+            _settings.InventoryCleanupEnabled = ChkInventoryCleanupEnabled.IsChecked == true;
+            _settings.InventoryCleanupIntervalSeconds = GetConfiguredInventoryCleanupIntervalSeconds();
+            _settings.InventoryCleanupSlots = GetSelectedInventoryCleanupSlots().OrderBy(slot => slot).ToList();
+            _settings.InventoryCleanupItemTypes = GetSelectedInventoryCleanupItemTypes()
+                .OrderBy(itemId => itemId, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            _settings.CobbleXEnabled = ChkCobbleXEnabled.IsChecked == true;
+            _settings.CobbleXCommand = GetConfiguredCobbleXCommand();
+            _settings.CobbleXRequiredFullStacks = GetConfiguredCobbleXRequiredStacks();
+
             // JABŁKA Z LIŚCI
             _settings.JablkaZLisciEnabled = ChkJablkaZLisciEnabled.IsChecked ?? false;
             _settings.JablkaZLisciKey = TxtJablkaZLisciKey.Text.Trim();
@@ -5330,7 +5995,9 @@ namespace MinecraftHelper
 
         private bool TryToggleHoldLeftClicking(DateTime now)
         {
-            bool leftDown = IsVirtualKeyDown(VK_LBUTTON);
+            // GetAsyncKeyState also sees our injected clicks. Use the low-level hook
+            // state so the HOLD toggle can only react to a real mouse press.
+            bool leftDown = IsPhysicalMouseButtonDown(VK_LBUTTON);
 
             if (!leftDown)
             {
@@ -5378,7 +6045,7 @@ namespace MinecraftHelper
             if (!_holdRightInjectedButtonDown)
                 return;
 
-            mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, UIntPtr.Zero);
+            NativeInput.SendMouseButton(leftButton: false, down: false);
             _holdRightInjectedButtonDown = false;
         }
 
@@ -5386,13 +6053,16 @@ namespace MinecraftHelper
         {
             if (_isLoadingUi)
             {
+                _autoClickScheduler.Stop();
                 SetAutoLeftDabHold(false);
                 return;
             }
 
             if (_bindCaptureTarget != BindTarget.None || _bindyCaptureEntry != null)
             {
+                _autoClickScheduler.Stop();
                 SetAutoLeftDabHold(false);
+                ReleaseHoldRightInjectedButton();
                 return;
             }
 
@@ -5424,15 +6094,22 @@ namespace MinecraftHelper
 
                 if (holdDown || autoLeftDown || autoRightDown || jablkaDown || kop533Down || kop633Down || testCaptureDown || fastUpDown || autoFishingDown || autoFishingCaptureDown || bindyDown)
                 {
+                    _autoClickScheduler.Stop();
                     SetAutoLeftDabHold(false);
+                    ReleaseHoldRightInjectedButton();
                     return;
                 }
 
                 _suppressBindToggleUntilRelease = false;
             }
 
+            // Do an immediate handle check as well as the slower focus timer. This
+            // prevents even a short burst of input from leaking after Alt+Tab.
+            bool targetWindowFocusedNow = _targetGameWindowHandle != IntPtr.Zero
+                && GetForegroundWindow() == _targetGameWindowHandle;
+
             // Bind toggles can be changed only while Minecraft window has focus.
-            if (!_isMinecraftFocused)
+            if (!_isMinecraftFocused || !targetWindowFocusedNow)
             {
                 // Keep key state in sync to avoid accidental toggle right after refocus.
                 _holdBindWasDown = IsConfiguredBindKeyDown(TxtMacroManualKey.Text);
@@ -5449,6 +6126,7 @@ namespace MinecraftHelper
                 SyncAutoComboStates();
 
                 SetCursorPauseState(false);
+                _autoClickScheduler.Stop();
                 SetAutoLeftDabHold(false);
                 SetKopacz533MiningHold(false);
                 SetKopacz633AttackHold(false);
@@ -5477,7 +6155,8 @@ namespace MinecraftHelper
                 _kopacz533CommandStage != Kopacz533CommandStage.None ||
                 _kopacz633CommandStage != Kopacz633CommandStage.None ||
                 _bindyCommandStage != BindyCommandStage.None ||
-                _testAutoFishingRepairStage != TestAutoFishingRepairStage.None;
+                _testAutoFishingRepairStage != TestAutoFishingRepairStage.None ||
+                _inventoryCleanupStage != InventoryCleanupStage.None;
 
             if (internalCommandTyping)
             {
@@ -5505,6 +6184,11 @@ namespace MinecraftHelper
             if (!internalCommandTyping && IsBindPressed(TxtTestFastUpExitBind.Text, ref _testFastUpExitBindWasDown) && fastUpModeSelected)
             {
                 _testFastUpExitRuntimeEnabled = !_testFastUpExitRuntimeEnabled;
+                if (_testFastUpExitRuntimeEnabled)
+                {
+                    StopClickerRuntimesForExclusivePointerMacro();
+                    StopOtherExclusivePointerMacros(keepFastUp: true);
+                }
                 ResetTestFastUpExitRuntimeState(DateTime.UtcNow);
                 UpdateStatusBar(_testFastUpExitRuntimeEnabled ? "Szybkie wyjście do góry aktywowane" : "Szybkie wyjście do góry wyłączone", "Orange");
                 changed = true;
@@ -5537,6 +6221,8 @@ namespace MinecraftHelper
             if (!internalCommandTyping && IsBindPressed(TxtMacroManualKey.Text, ref _holdBindWasDown) && holdModeSelected)
             {
                 _holdMacroRuntimeEnabled = !_holdMacroRuntimeEnabled;
+                if (_holdMacroRuntimeEnabled)
+                    StopExclusivePointerMacrosForClicker();
                 ResetHoldLeftToggleState(clearToggleEnabled: true);
                 UpdateStatusBar(_holdMacroRuntimeEnabled ? "HOLD aktywowane" : "HOLD wyłączone", "Orange");
                 changed = true;
@@ -5549,7 +6235,11 @@ namespace MinecraftHelper
                 {
                     _autoLeftBindWasDown = IsConfiguredBindKeyDown(TxtAutoLeftKey.Text);
                     if (TryHandleAutoComboToggle(TxtAutoLeftKey.Text, VK_LBUTTON, ref _autoLeftComboTriggerWasDown, ref _autoLeftComboStopWasDown, ref _autoLeftRuntimeEnabled, "AUTO LPM aktywowane (bind + LPM)", "AUTO LPM wyłączone (puszczono LPM)"))
+                    {
+                        if (_autoLeftRuntimeEnabled)
+                            StopExclusivePointerMacrosForClicker();
                         changed = true;
+                    }
                 }
                 else
                 {
@@ -5558,6 +6248,8 @@ namespace MinecraftHelper
                     if (IsBindPressed(TxtAutoLeftKey.Text, ref _autoLeftBindWasDown))
                     {
                         _autoLeftRuntimeEnabled = !_autoLeftRuntimeEnabled;
+                        if (_autoLeftRuntimeEnabled)
+                            StopExclusivePointerMacrosForClicker();
                         UpdateStatusBar(_autoLeftRuntimeEnabled ? "AUTO LPM aktywowane" : "AUTO LPM wyłączone", "Orange");
                         changed = true;
                     }
@@ -5576,7 +6268,11 @@ namespace MinecraftHelper
                 {
                     _autoRightBindWasDown = IsConfiguredBindKeyDown(TxtAutoRightKey.Text);
                     if (TryHandleAutoComboToggle(TxtAutoRightKey.Text, VK_RBUTTON, ref _autoRightComboTriggerWasDown, ref _autoRightComboStopWasDown, ref _autoRightRuntimeEnabled, "AUTO PPM aktywowane (bind + PPM)", "AUTO PPM wyłączone (puszczono PPM)"))
+                    {
+                        if (_autoRightRuntimeEnabled)
+                            StopExclusivePointerMacrosForClicker();
                         changed = true;
+                    }
                 }
                 else
                 {
@@ -5585,6 +6281,8 @@ namespace MinecraftHelper
                     if (IsBindPressed(TxtAutoRightKey.Text, ref _autoRightBindWasDown))
                     {
                         _autoRightRuntimeEnabled = !_autoRightRuntimeEnabled;
+                        if (_autoRightRuntimeEnabled)
+                            StopExclusivePointerMacrosForClicker();
                         UpdateStatusBar(_autoRightRuntimeEnabled ? "AUTO PPM aktywowane" : "AUTO PPM wyłączone", "Orange");
                         changed = true;
                     }
@@ -5608,7 +6306,11 @@ namespace MinecraftHelper
             {
                 _kopacz533RuntimeEnabled = !_kopacz533RuntimeEnabled;
                 if (_kopacz533RuntimeEnabled)
+                {
+                    StopClickerRuntimesForExclusivePointerMacro();
+                    StopOtherExclusivePointerMacros(keepKopacz533: true);
                     StartKopacz533Runtime(DateTime.UtcNow);
+                }
                 else
                 {
                     SetKopacz533MiningHold(false);
@@ -5632,6 +6334,8 @@ namespace MinecraftHelper
                     }
                     else
                     {
+                        StopClickerRuntimesForExclusivePointerMacro();
+                        StopOtherExclusivePointerMacros(keepKopacz633: true);
                         StartKopacz633Runtime(DateTime.UtcNow);
                     }
                 }
@@ -5738,6 +6442,7 @@ namespace MinecraftHelper
             // During internal command sequence (chat open -> type -> enter) ignore cursor pause.
             bool shouldPauseForCursor = pauseWhenCursorVisible
                 && anyCursorPauseMacroRuntimeActive
+                && _inventoryCleanupStage == InventoryCleanupStage.None
                 && !jablkaCommandInProgress
                 && !autoFishingCommandInProgress
                 && IsInventoryCursorVisible();
@@ -5745,6 +6450,7 @@ namespace MinecraftHelper
             SetCursorPauseState(shouldPauseForCursor);
             if (shouldPauseForCursor)
             {
+                _autoClickScheduler.Stop();
                 if (SetAutoLeftDabHold(false))
                     RefreshTopTiles();
                 _nextHoldLeftClickAtUtc = now;
@@ -5779,9 +6485,7 @@ namespace MinecraftHelper
                         RefreshTopTiles();
                     }
 
-                    if (_holdLeftToggleClickingEnabled)
-                        TryPerformClick(ref _nextHoldLeftClickAtUtc, TxtManualLeftMinCps.Text, TxtManualLeftMaxCps.Text, leftButton: true, now, holdPulseMode: false);
-                    else
+                    if (!_holdLeftToggleClickingEnabled)
                         _nextHoldLeftClickAtUtc = now;
                 }
                 else
@@ -5793,7 +6497,7 @@ namespace MinecraftHelper
                 }
 
                 bool rightHoldWasActive = _holdRightRuntimePressActive;
-                bool rightHoldActive = holdRightEnabled && IsPhysicalMouseButtonDown(VK_RBUTTON);
+                bool rightHoldActive = !internalCommandTyping && holdRightEnabled && IsPhysicalMouseButtonDown(VK_RBUTTON);
                 if (rightHoldActive != rightHoldWasActive)
                 {
                     _holdRightRuntimePressActive = rightHoldActive;
@@ -5819,15 +6523,7 @@ namespace MinecraftHelper
                 ResetHoldLeftToggleState(clearToggleEnabled: true);
             }
 
-            if (autoLeftModeSelected && _autoLeftRuntimeEnabled)
-                TryPerformClick(ref _nextAutoLeftClickAtUtc, TxtAutoLeftMinCps.Text, TxtAutoLeftMaxCps.Text, leftButton: true, now, holdPulseMode: false);
-            else
-                _nextAutoLeftClickAtUtc = now;
-
-            if (autoRightModeSelected && _autoRightRuntimeEnabled)
-                TryPerformClick(ref _nextAutoRightClickAtUtc, TxtAutoRightMinCps.Text, TxtAutoRightMaxCps.Text, leftButton: false, now, holdPulseMode: false);
-            else
-                _nextAutoRightClickAtUtc = now;
+            UpdateAutoClickScheduler(holdModeSelected, autoLeftModeSelected, autoRightModeSelected, internalCommandTyping);
 
             if (kop533ModeSelected && _kopacz533RuntimeEnabled)
                 RunKopacz533Tick(now);
@@ -5846,32 +6542,132 @@ namespace MinecraftHelper
                 ResetKopacz633RuntimeState(now);
             }
 
-            if (jablkaModeSelected && _jablkaRuntimeEnabled)
+            if (_inventoryCleanupStage == InventoryCleanupStage.None)
             {
-                if (!TryProcessJablkaCommand(now))
-                    TryPerformJablkaAction(now);
+                if (jablkaModeSelected && _jablkaRuntimeEnabled)
+                {
+                    if (!TryProcessJablkaCommand(now))
+                        TryPerformJablkaAction(now);
+                }
+                else
+                {
+                    ResetJablkaRuntimeState(now);
+                }
+
+                if (bindyModeSelected)
+                    RunBindyTick(now);
+                else
+                    ResetBindyRuntimeState(now);
+
+                if (fastUpModeSelected && _testFastUpExitRuntimeEnabled && !internalCommandTyping)
+                    RunTestFastUpExitTick(now);
+                else
+                    ResetTestFastUpExitRuntimeState(now);
+
+                if (autoFishingModeSelected && _testAutoFishingRuntimeEnabled)
+                    RunTestAutoFishingTick(now);
+                else
+                    ResetTestAutoFishingRuntimeState(now);
             }
-            else
-            {
-                ResetJablkaRuntimeState(now);
-            }
-
-            if (bindyModeSelected)
-                RunBindyTick(now);
-            else
-                ResetBindyRuntimeState(now);
-
-            if (fastUpModeSelected && _testFastUpExitRuntimeEnabled && !internalCommandTyping)
-                RunTestFastUpExitTick(now);
-            else
-                ResetTestFastUpExitRuntimeState(now);
-
-            if (autoFishingModeSelected && _testAutoFishingRuntimeEnabled)
-                RunTestAutoFishingTick(now);
-            else
-                ResetTestAutoFishingRuntimeState(now);
 
             RefreshLiveTopTiles(now);
+        }
+
+        private void UpdateAutoClickScheduler(
+            bool holdModeSelected,
+            bool autoLeftModeSelected,
+            bool autoRightModeSelected,
+            bool internalCommandTyping)
+        {
+            bool leftEnabled = false;
+            int leftMinCps = 1;
+            int leftMaxCps = 1;
+            bool rightEnabled = false;
+            int rightMinCps = 1;
+            int rightMaxCps = 1;
+
+            if (!internalCommandTyping)
+            {
+                if (holdModeSelected
+                    && _holdMacroRuntimeEnabled
+                    && ChkHoldLeftEnabled.IsChecked == true
+                    && _holdLeftToggleClickingEnabled)
+                {
+                    leftEnabled = TryGetCpsRange(
+                        TxtManualLeftMinCps.Text,
+                        TxtManualLeftMaxCps.Text,
+                        out leftMinCps,
+                        out leftMaxCps);
+                }
+                else if (autoLeftModeSelected && _autoLeftRuntimeEnabled)
+                {
+                    leftEnabled = TryGetCpsRange(
+                        TxtAutoLeftMinCps.Text,
+                        TxtAutoLeftMaxCps.Text,
+                        out leftMinCps,
+                        out leftMaxCps);
+                }
+
+                if (autoRightModeSelected && _autoRightRuntimeEnabled)
+                {
+                    rightEnabled = TryGetCpsRange(
+                        TxtAutoRightMinCps.Text,
+                        TxtAutoRightMaxCps.Text,
+                        out rightMinCps,
+                        out rightMaxCps);
+                }
+            }
+
+            _autoClickScheduler.Update(
+                leftEnabled,
+                leftMinCps,
+                leftMaxCps,
+                rightEnabled,
+                rightMinCps,
+                rightMaxCps,
+                _targetGameWindowHandle);
+        }
+
+        private void StopExclusivePointerMacrosForClicker()
+        {
+            StopOtherExclusivePointerMacros();
+        }
+
+        private void StopClickerRuntimesForExclusivePointerMacro()
+        {
+            _autoClickScheduler.Stop();
+            _holdMacroRuntimeEnabled = false;
+            ResetHoldLeftToggleState(clearToggleEnabled: true);
+            _autoLeftRuntimeEnabled = false;
+            _autoRightRuntimeEnabled = false;
+            SetAutoLeftDabHold(false);
+        }
+
+        private void StopOtherExclusivePointerMacros(
+            bool keepKopacz533 = false,
+            bool keepKopacz633 = false,
+            bool keepFastUp = false)
+        {
+            if (!keepKopacz533 && _kopacz533RuntimeEnabled)
+            {
+                _kopacz533RuntimeEnabled = false;
+                SetKopacz533MiningHold(false);
+                ResetKopacz533RuntimeState();
+            }
+
+            if (!keepKopacz633 && _kopacz633RuntimeEnabled)
+            {
+                _kopacz633RuntimeEnabled = false;
+                SetKopacz633AttackHold(false);
+                SetKopacz633StrafeDirection(Kopacz633StrafeDirection.None);
+                ResetKopacz633RuntimeState();
+            }
+
+            if (!keepFastUp && _testFastUpExitRuntimeEnabled)
+            {
+                _testFastUpExitRuntimeEnabled = false;
+                ResetTestFastUpExitRuntimeState();
+            }
         }
 
         private void RunTestFastUpExitTick(DateTime now)
@@ -5885,8 +6681,7 @@ namespace MinecraftHelper
                 {
                     if (now >= _testFastUpExitPlacePulseAtUtc)
                     {
-                        mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, UIntPtr.Zero);
-                        mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, UIntPtr.Zero);
+                        NativeInput.SendMouseClick(leftButton: false, holdPulseMode: true);
                         _testFastUpExitPlacePulseAtUtc = now.AddMilliseconds(FastUpPlacePulseIntervalMs);
                     }
 
@@ -6380,6 +7175,7 @@ namespace MinecraftHelper
         {
             ResetKopacz533RuntimeState(now);
             _kopacz533RuntimeStartedAtUtc = now;
+            ScheduleNextInventoryCleanup(now);
 
             if (TryPeekNextKopacz533Command(out _, out _, out int firstDelaySeconds))
             {
@@ -6420,6 +7216,7 @@ namespace MinecraftHelper
         {
             ResetKopacz633RuntimeState(now);
             _kopacz633RuntimeStartedAtUtc = now;
+            ScheduleNextInventoryCleanup(now);
 
             if (TryPeekNextKopacz633Command(out _, out _, out int firstDelaySeconds))
             {
@@ -6438,6 +7235,357 @@ namespace MinecraftHelper
             _nextRuntimeTileRefreshAtUtc = now;
         }
 
+        private void ScheduleNextInventoryCleanup(DateTime now)
+        {
+            _nextInventoryCleanupAtUtc = ChkInventoryCleanupEnabled.IsChecked == true
+                ? now.AddSeconds(GetConfiguredInventoryCleanupIntervalSeconds())
+                : DateTime.MaxValue;
+        }
+
+        private bool TryRunInventoryCleanup(InventoryCleanupOwner owner, DateTime now)
+        {
+            if (_inventoryCleanupStage != InventoryCleanupStage.None)
+            {
+                if (_inventoryCleanupOwner != owner)
+                    return false;
+
+                ProcessInventoryCleanupStage(now);
+                return true;
+            }
+
+            if (ChkInventoryCleanupEnabled.IsChecked != true || now < _nextInventoryCleanupAtUtc)
+                return false;
+            if (_kopacz533CommandStage != Kopacz533CommandStage.None
+                || _kopacz633CommandStage != Kopacz633CommandStage.None
+                || _jablkaCommandStage != JablkaCommandStage.None
+                || _bindyCommandStage != BindyCommandStage.None
+                || _testAutoFishingRepairStage != TestAutoFishingRepairStage.None)
+                return false;
+
+            bool cobbleXEnabled = ChkCobbleXEnabled.IsChecked == true;
+            HashSet<int> enabledSlots = GetSelectedInventoryCleanupSlots();
+            if (!cobbleXEnabled && enabledSlots.Count == 0)
+            {
+                ScheduleNextInventoryCleanup(now);
+                _inventoryCleanupLastResult = "Pominięto: nie wybrano slotów";
+                _inventoryCleanupLastResultWarning = true;
+                UpdateInventoryCleanupStatus("Pominięto: nie wybrano żadnego slotu.", "Orange");
+                return false;
+            }
+            if (!cobbleXEnabled && GetSelectedInventoryCleanupItemTypes().Count == 0)
+            {
+                ScheduleNextInventoryCleanup(now);
+                _inventoryCleanupLastResult = "Pominięto: nie wybrano typów przedmiotów";
+                _inventoryCleanupLastResultWarning = true;
+                UpdateInventoryCleanupStatus("Pominięto: nie wybrano żadnego typu przedmiotu do wyrzucenia.", "Orange");
+                return false;
+            }
+
+            SetKopacz533MiningHold(false);
+            SetKopacz633AttackHold(false);
+            SetKopacz633StrafeDirection(Kopacz633StrafeDirection.None);
+            ResetJablkaRuntimeState(now);
+            ResetBindyRuntimeState(now);
+            ResetTestFastUpExitRuntimeState(now);
+            ResetTestAutoFishingRuntimeState(now);
+
+            _inventoryCleanupOwner = owner;
+            _inventoryCleanupStage = InventoryCleanupStage.WaitForInventory;
+            _inventoryCleanupDetectionAttempts = 0;
+            _inventoryCleanupTargetIndex = 0;
+            _inventoryCleanupTargets.Clear();
+            _inventoryCleanupClientArea = Drawing.Rectangle.Empty;
+            _inventoryCleanupFullCobblestoneStacks = 0;
+            _inventoryCleanupCobbleXCommandPending = false;
+            _inventoryCleanupCobbleXCommandSent = false;
+            _inventoryCleanupCobbleXCommandFailed = false;
+            _inventoryCleanupPendingCobbleXCommand = string.Empty;
+            SendKeyTap(VK_E);
+            _nextInventoryCleanupStageAtUtc = now.AddMilliseconds(InventoryCleanupOpenDelayMs);
+            UpdateInventoryCleanupStatus("Otwieranie ekwipunku...", "Orange");
+            return true;
+        }
+
+        private void ProcessInventoryCleanupStage(DateTime now)
+        {
+            if (now < _nextInventoryCleanupStageAtUtc)
+                return;
+
+            switch (_inventoryCleanupStage)
+            {
+                case InventoryCleanupStage.WaitForInventory:
+                    DetectInventoryCleanupTargets(now);
+                    return;
+
+                case InventoryCleanupStage.MoveToSlot:
+                    if (_inventoryCleanupTargetIndex >= _inventoryCleanupTargets.Count)
+                    {
+                        _inventoryCleanupStage = InventoryCleanupStage.CloseInventory;
+                        _nextInventoryCleanupStageAtUtc = now.AddMilliseconds(InventoryCleanupBetweenDropsMs);
+                        return;
+                    }
+
+                    Drawing.Point target = _inventoryCleanupTargets[_inventoryCleanupTargetIndex];
+                    NativeInput.SetCursorPosition(target.X, target.Y);
+                    _inventoryCleanupStage = InventoryCleanupStage.PressDropModifier;
+                    _nextInventoryCleanupStageAtUtc = now.AddMilliseconds(InventoryCleanupCursorSettleMs);
+                    return;
+
+                case InventoryCleanupStage.PressDropModifier:
+                    if (!SetInventoryCleanupControl(down: true))
+                    {
+                        AbortInventoryCleanup(now, "Nie udało się nacisnąć lewego Ctrl.");
+                        return;
+                    }
+                    _inventoryCleanupStage = InventoryCleanupStage.PressDropKey;
+                    _nextInventoryCleanupStageAtUtc = now.AddMilliseconds(InventoryCleanupModifierSettleMs);
+                    return;
+
+                case InventoryCleanupStage.PressDropKey:
+                    if (!SetInventoryCleanupQ(down: true))
+                    {
+                        AbortInventoryCleanup(now, "Nie udało się nacisnąć Q.");
+                        return;
+                    }
+                    _inventoryCleanupStage = InventoryCleanupStage.ReleaseDropKeys;
+                    _nextInventoryCleanupStageAtUtc = now.AddMilliseconds(InventoryCleanupDropKeyHoldMs);
+                    return;
+
+                case InventoryCleanupStage.ReleaseDropKeys:
+                    ReleaseInventoryCleanupDropKeys();
+                    _inventoryCleanupTargetIndex++;
+                    _inventoryCleanupStage = _inventoryCleanupTargetIndex < _inventoryCleanupTargets.Count
+                        ? InventoryCleanupStage.MoveToSlot
+                        : InventoryCleanupStage.CloseInventory;
+                    _nextInventoryCleanupStageAtUtc = now.AddMilliseconds(InventoryCleanupBetweenDropsMs);
+                    return;
+
+                case InventoryCleanupStage.CloseInventory:
+                    ReleaseInventoryCleanupDropKeys();
+                    if (!_inventoryCleanupClientArea.IsEmpty)
+                    {
+                        NativeInput.SetCursorPosition(
+                            _inventoryCleanupClientArea.Left + _inventoryCleanupClientArea.Width / 2,
+                            _inventoryCleanupClientArea.Top + _inventoryCleanupClientArea.Height / 2);
+                    }
+                    SendKeyTap(VK_E);
+                    _inventoryCleanupStage = _inventoryCleanupCobbleXCommandPending
+                        ? InventoryCleanupStage.OpenCobbleXChat
+                        : InventoryCleanupStage.ResumeMining;
+                    _nextInventoryCleanupStageAtUtc = now.AddMilliseconds(
+                        _inventoryCleanupCobbleXCommandPending
+                            ? CobbleXDelayAfterCloseInventoryMs
+                            : InventoryCleanupResumeDelayMs);
+                    return;
+
+                case InventoryCleanupStage.OpenCobbleXChat:
+                    SendKeyTap(VK_T);
+                    _inventoryCleanupStage = InventoryCleanupStage.TypeCobbleXCommand;
+                    _nextInventoryCleanupStageAtUtc = now.AddMilliseconds(CobbleXDelayAfterOpenChatMs);
+                    return;
+
+                case InventoryCleanupStage.TypeCobbleXCommand:
+                    if (!SendTextByKeyboard(_inventoryCleanupPendingCobbleXCommand))
+                    {
+                        _inventoryCleanupCobbleXCommandFailed = true;
+                        _inventoryCleanupCobbleXCommandPending = false;
+                        _inventoryCleanupStage = InventoryCleanupStage.ResumeMining;
+                        _nextInventoryCleanupStageAtUtc = now.AddMilliseconds(InventoryCleanupResumeDelayMs);
+                        return;
+                    }
+
+                    _inventoryCleanupStage = InventoryCleanupStage.SubmitCobbleXCommand;
+                    _nextInventoryCleanupStageAtUtc = now.AddMilliseconds(CobbleXDelayAfterTypeCommandMs);
+                    return;
+
+                case InventoryCleanupStage.SubmitCobbleXCommand:
+                    SendKeyTap(VK_RETURN);
+                    _inventoryCleanupCobbleXCommandSent = true;
+                    _inventoryCleanupCobbleXCommandPending = false;
+                    _inventoryCleanupStage = InventoryCleanupStage.ResumeMining;
+                    _nextInventoryCleanupStageAtUtc = now.AddMilliseconds(CobbleXDelayAfterSubmitResumeMs);
+                    return;
+
+                case InventoryCleanupStage.ResumeMining:
+                    int removedStacks = _inventoryCleanupTargets.Count;
+                    int cobbleStacks = _inventoryCleanupFullCobblestoneStacks;
+                    int requiredCobbleStacks = GetConfiguredCobbleXRequiredStacks();
+                    bool cobbleXSent = _inventoryCleanupCobbleXCommandSent;
+                    bool cobbleXFailed = _inventoryCleanupCobbleXCommandFailed;
+                    string cleanupResult = removedStacks == 0
+                        ? "Brak oznaczonych przedmiotów"
+                        : $"Wyrzucono {removedStacks} stosów";
+                    string cobbleResult = cobbleXSent
+                        ? $"wysłano CobbleX ({_inventoryCleanupPendingCobbleXCommand})"
+                        : cobbleXFailed
+                            ? "CobbleX niewysłany: uzupełnij poprawną komendę"
+                            : $"Cobble 64: {cobbleStacks}/{requiredCobbleStacks}";
+                    _inventoryCleanupLastResult = $"{cleanupResult}; {cobbleResult}";
+                    _inventoryCleanupLastResultWarning = cobbleXFailed;
+                    ResetInventoryCleanupState(scheduleNext: true, now);
+                    UpdateInventoryCleanupStatus(
+                        $"Gotowe: {cleanupResult}; {cobbleResult}. Następny skan za {GetConfiguredInventoryCleanupIntervalSeconds()} s.",
+                        cobbleXFailed ? "Orange" : "Green");
+                    return;
+            }
+        }
+
+        private void DetectInventoryCleanupTargets(DateTime now)
+        {
+            _inventoryCleanupDetectionAttempts++;
+            if (!IsInventoryCursorVisible())
+            {
+                RetryOrAbortInventoryCleanup(now, "Gra nie pokazała ekwipunku.");
+                return;
+            }
+
+            if (!TryCaptureTargetClient(out Drawing.Bitmap? bitmap, out Drawing.Rectangle clientArea))
+            {
+                RetryOrAbortInventoryCleanup(now, "Nie udało się przechwycić okna gry.");
+                return;
+            }
+
+            using (Drawing.Bitmap capturedBitmap = bitmap!)
+            {
+                HashSet<int> enabledSlots = GetSelectedInventoryCleanupSlots();
+                HashSet<string> enabledItemTypes = GetSelectedInventoryCleanupItemTypes();
+                if (!InventoryMarkerDetector.TryDetect(capturedBitmap, enabledSlots, enabledItemTypes, out InventoryMarkerDetection detection))
+                {
+                    RetryOrAbortInventoryCleanup(now, "Nie znaleziono znaczników texturepacka.");
+                    return;
+                }
+                if (detection.UnknownMarkerSlots.Count > 0)
+                {
+                    AbortInventoryCleanup(now, "Wykryto starą wersję texturepacka bez rozpoznawania typów. Włącz nową paczkę Minecraft Helper.");
+                    return;
+                }
+
+                _inventoryCleanupClientArea = clientArea;
+                _inventoryCleanupFullCobblestoneStacks = detection.FullCobblestoneSlots.Count;
+                _inventoryCleanupLastFullCobblestoneStacks = _inventoryCleanupFullCobblestoneStacks;
+                int requiredCobbleStacks = GetConfiguredCobbleXRequiredStacks();
+                _inventoryCleanupPendingCobbleXCommand = GetConfiguredCobbleXCommand();
+                _inventoryCleanupCobbleXCommandPending = ChkCobbleXEnabled.IsChecked == true
+                    && _inventoryCleanupFullCobblestoneStacks >= requiredCobbleStacks
+                    && !string.IsNullOrWhiteSpace(_inventoryCleanupPendingCobbleXCommand);
+                _inventoryCleanupCobbleXCommandFailed = ChkCobbleXEnabled.IsChecked == true
+                    && _inventoryCleanupFullCobblestoneStacks >= requiredCobbleStacks
+                    && string.IsNullOrWhiteSpace(_inventoryCleanupPendingCobbleXCommand);
+                _inventoryCleanupTargets.Clear();
+                foreach (int slot in detection.MarkedSlots)
+                {
+                    Drawing.Point relativeCenter = detection.Layout.GetSlotCenter(slot);
+                    _inventoryCleanupTargets.Add(new Drawing.Point(
+                        clientArea.Left + relativeCenter.X,
+                        clientArea.Top + relativeCenter.Y));
+                }
+
+                _inventoryCleanupTargetIndex = 0;
+                if (_inventoryCleanupTargets.Count == 0)
+                {
+                    UpdateInventoryCleanupStatus($"Skan OK (GUI x{detection.Layout.Scale}): brak przedmiotów do wyrzucenia; Cobble 64: {_inventoryCleanupFullCobblestoneStacks}/{requiredCobbleStacks}.", "Green");
+                    _inventoryCleanupStage = InventoryCleanupStage.CloseInventory;
+                    _nextInventoryCleanupStageAtUtc = now.AddMilliseconds(InventoryCleanupCloseDelayMs);
+                }
+                else
+                {
+                    UpdateInventoryCleanupStatus($"Skan OK (GUI x{detection.Layout.Scale}): {_inventoryCleanupTargets.Count} stosów do wyrzucenia; Cobble 64: {_inventoryCleanupFullCobblestoneStacks}/{requiredCobbleStacks}.", "Green");
+                    _inventoryCleanupStage = InventoryCleanupStage.MoveToSlot;
+                    _nextInventoryCleanupStageAtUtc = now;
+                }
+            }
+        }
+
+        private void RetryOrAbortInventoryCleanup(DateTime now, string reason)
+        {
+            if (_inventoryCleanupDetectionAttempts < InventoryCleanupMaximumDetectionAttempts)
+            {
+                _nextInventoryCleanupStageAtUtc = now.AddMilliseconds(InventoryCleanupDetectionRetryMs);
+                return;
+            }
+
+            AbortInventoryCleanup(now, reason + " Sprawdź aktywny texturepack.");
+        }
+
+        private void AbortInventoryCleanup(DateTime now, string reason)
+        {
+            ReleaseInventoryCleanupDropKeys();
+            if (IsInventoryCursorVisible())
+                SendKeyTap(VK_ESCAPE);
+
+            _inventoryCleanupLastResult = "Przerwano: " + reason;
+            _inventoryCleanupLastResultWarning = true;
+            ResetInventoryCleanupState(scheduleNext: true, now);
+            UpdateInventoryCleanupStatus($"Czyszczenie przerwane: {reason}", "Red");
+        }
+
+        private bool SetInventoryCleanupControl(bool down)
+        {
+            if (_inventoryCleanupControlDown == down)
+                return true;
+
+            if (!NativeInput.SendKey(VK_LCONTROL, down))
+                return false;
+
+            _inventoryCleanupControlDown = down;
+            return true;
+        }
+
+        private bool SetInventoryCleanupQ(bool down)
+        {
+            if (_inventoryCleanupQDown == down)
+                return true;
+
+            if (!NativeInput.SendKey(VK_Q, down))
+                return false;
+
+            _inventoryCleanupQDown = down;
+            return true;
+        }
+
+        private void ReleaseInventoryCleanupDropKeys()
+        {
+            if (_inventoryCleanupQDown)
+            {
+                NativeInput.SendKey(VK_Q, down: false);
+                _inventoryCleanupQDown = false;
+            }
+
+            if (_inventoryCleanupControlDown)
+            {
+                NativeInput.SendKey(VK_LCONTROL, down: false);
+                _inventoryCleanupControlDown = false;
+            }
+        }
+
+        private void ResetInventoryCleanupState(bool scheduleNext, DateTime? now = null)
+        {
+            ReleaseInventoryCleanupDropKeys();
+            _inventoryCleanupStage = InventoryCleanupStage.None;
+            _inventoryCleanupOwner = InventoryCleanupOwner.None;
+            _inventoryCleanupTargets.Clear();
+            _inventoryCleanupTargetIndex = 0;
+            _inventoryCleanupDetectionAttempts = 0;
+            _inventoryCleanupClientArea = Drawing.Rectangle.Empty;
+            _inventoryCleanupFullCobblestoneStacks = 0;
+            _inventoryCleanupCobbleXCommandPending = false;
+            _inventoryCleanupCobbleXCommandSent = false;
+            _inventoryCleanupCobbleXCommandFailed = false;
+            _inventoryCleanupPendingCobbleXCommand = string.Empty;
+            _nextInventoryCleanupStageAtUtc = now ?? DateTime.UtcNow;
+
+            if (scheduleNext && ChkInventoryCleanupEnabled.IsChecked == true)
+                ScheduleNextInventoryCleanup(now ?? DateTime.UtcNow);
+            else
+                _nextInventoryCleanupAtUtc = DateTime.MaxValue;
+        }
+
+        private void ResetInventoryCleanupForOwner(InventoryCleanupOwner owner)
+        {
+            if (_inventoryCleanupOwner == owner)
+                ResetInventoryCleanupState(scheduleNext: false);
+        }
+
         private void RunKopacz633Tick(DateTime now)
         {
             if (!IsKopacz633DirectionSelected())
@@ -6446,6 +7594,9 @@ namespace MinecraftHelper
                 SetKopacz633StrafeDirection(Kopacz633StrafeDirection.None);
                 return;
             }
+
+            if (TryRunInventoryCleanup(InventoryCleanupOwner.Kopacz633, now))
+                return;
 
             if (TryProcessKopacz633Command(now))
                 return;
@@ -6530,6 +7681,9 @@ namespace MinecraftHelper
 
         private void RunKopacz533Tick(DateTime now)
         {
+            if (TryRunInventoryCleanup(InventoryCleanupOwner.Kopacz533, now))
+                return;
+
             if (TryProcessKopacz533Command(now))
                 return;
 
@@ -6889,11 +8043,11 @@ namespace MinecraftHelper
             if (enabled)
             {
                 SendKeyDown(VK_SHIFT);
-                mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, UIntPtr.Zero);
+                NativeInput.SendMouseButton(leftButton: true, down: true);
             }
             else
             {
-                mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, UIntPtr.Zero);
+                NativeInput.SendMouseButton(leftButton: true, down: false);
                 SendKeyUp(VK_SHIFT);
             }
 
@@ -6923,9 +8077,9 @@ namespace MinecraftHelper
                 return;
 
             if (enabled)
-                mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, UIntPtr.Zero);
+                NativeInput.SendMouseButton(leftButton: true, down: true);
             else
-                mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, UIntPtr.Zero);
+                NativeInput.SendMouseButton(leftButton: true, down: false);
 
             _kopacz633HoldingAttack = enabled;
         }
@@ -6936,9 +8090,9 @@ namespace MinecraftHelper
                 return;
 
             if (enabled)
-                mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, UIntPtr.Zero);
+                NativeInput.SendMouseButton(leftButton: true, down: true);
             else
-                mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, UIntPtr.Zero);
+                NativeInput.SendMouseButton(leftButton: true, down: false);
 
             _testFastUpExitBreakHoldActive = enabled;
         }
@@ -6949,9 +8103,9 @@ namespace MinecraftHelper
                 return;
 
             if (enabled)
-                mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, UIntPtr.Zero);
+                NativeInput.SendMouseButton(leftButton: false, down: true);
             else
-                mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, UIntPtr.Zero);
+                NativeInput.SendMouseButton(leftButton: false, down: false);
 
             _testFastUpExitPlaceHoldActive = enabled;
         }
@@ -7266,6 +8420,7 @@ namespace MinecraftHelper
             _kopacz533PendingCommandIndex = -1;
             _kopacz533PendingCommand = string.Empty;
             _kopacz533RuntimeStartedAtUtc = now;
+            ResetInventoryCleanupForOwner(InventoryCleanupOwner.Kopacz533);
         }
 
         private void ResetKopacz633RuntimeState()
@@ -7289,6 +8444,7 @@ namespace MinecraftHelper
             _kopacz633MovementLegEndAtUtc = now;
             _kopacz633UpwardLegIndex = 0;
             _kopacz633StrafeDirection = Kopacz633StrafeDirection.None;
+            ResetInventoryCleanupForOwner(InventoryCleanupOwner.Kopacz633);
         }
 
         private static bool TryGetCpsRange(string minText, string maxText, out int minCps, out int maxCps)
@@ -7309,48 +8465,19 @@ namespace MinecraftHelper
             if (max < min)
                 (min, max) = (max, min);
 
-            minCps = min;
-            maxCps = max;
+            minCps = Math.Clamp(min, 1, AutoClickScheduler.MaximumCps);
+            maxCps = Math.Clamp(max, 1, AutoClickScheduler.MaximumCps);
             return true;
         }
 
         private static void SendMouseMoveRelative(int deltaX, int deltaY)
         {
-            if (deltaX == 0 && deltaY == 0)
-                return;
-
-            mouse_event(MOUSEEVENTF_MOVE, deltaX, deltaY, 0, UIntPtr.Zero);
+            NativeInput.SendMouseMoveRelative(deltaX, deltaY);
         }
 
         private static void SendMouseClick(bool leftButton, bool holdPulseMode)
         {
-            if (leftButton)
-            {
-                if (holdPulseMode)
-                {
-                    // While physical LMB is held, emit release->press pulse for extra click.
-                    mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, UIntPtr.Zero);
-                    mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, UIntPtr.Zero);
-                }
-                else
-                {
-                    mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, UIntPtr.Zero);
-                    mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, UIntPtr.Zero);
-                }
-                return;
-            }
-
-            if (holdPulseMode)
-            {
-                // While physical RMB is held, emit release->press pulse for extra click.
-                mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, UIntPtr.Zero);
-                mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, UIntPtr.Zero);
-            }
-            else
-            {
-                mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, UIntPtr.Zero);
-                mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, UIntPtr.Zero);
-            }
+            NativeInput.SendMouseClick(leftButton, holdPulseMode);
         }
 
         private static void SendKeyTap(int virtualKey)
@@ -7361,14 +8488,12 @@ namespace MinecraftHelper
 
         private static void SendKeyDown(int virtualKey)
         {
-            byte vk = (byte)(virtualKey & 0xFF);
-            keybd_event(vk, 0, 0, UIntPtr.Zero);
+            NativeInput.SendKey(virtualKey, down: true);
         }
 
         private static void SendKeyUp(int virtualKey)
         {
-            byte vk = (byte)(virtualKey & 0xFF);
-            keybd_event(vk, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+            NativeInput.SendKey(virtualKey, down: false);
         }
 
         private void UpdateStatusBar(string message, string colorName)
@@ -7418,6 +8543,7 @@ namespace MinecraftHelper
                 ResetBindyRuntimeState();
 
             UpdateEnabledStates();
+            RefreshTopTiles();
             MarkDirty();
         }
 
@@ -7426,6 +8552,7 @@ namespace MinecraftHelper
             if (_isLoadingUi)
                 return;
 
+            UpdateEnabledStates();
             UpdateOverlayLayout();
             RefreshOverlayHud(DateTime.UtcNow);
             MarkDirty();
@@ -7659,6 +8786,7 @@ namespace MinecraftHelper
             if (ChkPauseWhenCursorVisible.IsChecked != true)
                 SetCursorPauseState(false);
 
+            UpdateEnabledStates();
             RefreshTopTiles();
             MarkDirty();
         }
@@ -7686,6 +8814,38 @@ namespace MinecraftHelper
                 ChkKopacz533Enabled.IsChecked = false;
             }
             UpdateEnabledStates();
+            MarkDirty();
+        }
+
+        private void ChkInventoryCleanupEnabled_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_isLoadingUi)
+                return;
+
+            if (ChkInventoryCleanupEnabled.IsChecked != true)
+            {
+                ResetInventoryCleanupState(scheduleNext: false);
+                UpdateInventoryCleanupStatus("Automatyczne wyrzucanie jest wyłączone.", "Default");
+            }
+            else
+            {
+                _nextInventoryCleanupAtUtc = DateTime.UtcNow.AddSeconds(GetConfiguredInventoryCleanupIntervalSeconds());
+                UpdateInventoryCleanupStatus("Gotowe. Czyszczenie uruchomi się podczas pracy kopacza.", "Green");
+            }
+
+            UpdateEnabledStates();
+            RefreshTopTiles();
+            MarkDirty();
+        }
+
+        private void ChkCobbleXEnabled_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_isLoadingUi)
+                return;
+
+            UpdateEnabledStates();
+            RefreshTopTiles();
+            RefreshOverlayHud(DateTime.UtcNow);
             MarkDirty();
         }
 
@@ -7832,7 +8992,23 @@ namespace MinecraftHelper
             _focusTimer.Stop();
             _macroTimer.Stop();
             _f3AnalysisTimer.Stop();
+            _autoClickScheduler.Dispose();
+
+            // Release every injected state before removing the physical-mouse hook.
+            // This also covers closing the app while HOLD PPM is active.
+            ResetHoldLeftToggleState(clearToggleEnabled: true);
+            SetKopacz533MiningHold(false);
+            SetKopacz633AttackHold(false);
+            SetKopacz633StrafeDirection(Kopacz633StrafeDirection.None);
+            SetAutoLeftDabHold(false);
+            ResetInventoryCleanupState(scheduleNext: false);
+            _testFastUpExitRuntimeEnabled = false;
+            ResetTestFastUpExitRuntimeState();
+            _testAutoFishingRuntimeEnabled = false;
+            ResetTestAutoFishingRuntimeState();
+            ResetBindyRuntimeState();
             StopMouseHook();
+
             if (_overlayHud != null)
             {
                 _overlayHud.Close();
@@ -7843,15 +9019,6 @@ namespace MinecraftHelper
                 _f3TesseractEngine?.Dispose();
                 _f3TesseractEngine = null;
             }
-            SetKopacz533MiningHold(false);
-            SetKopacz633AttackHold(false);
-            SetKopacz633StrafeDirection(Kopacz633StrafeDirection.None);
-            SetAutoLeftDabHold(false);
-            _testFastUpExitRuntimeEnabled = false;
-            ResetTestFastUpExitRuntimeState();
-            _testAutoFishingRuntimeEnabled = false;
-            ResetTestAutoFishingRuntimeState();
-            ResetBindyRuntimeState();
             base.OnClosed(e);
         }
     }
