@@ -27,7 +27,9 @@ namespace MinecraftHelper
                     "Przycisk minimalizacji pozostawia aplikację na pasku zadań, a zamknięcie przyciskiem X przenosi ją do zasobnika i wyświetla powiadomienie.",
                     "Każde otwarcie EQ tworzy osobną, rozwijaną sesję logu z kolorowym statusem i listą wyrzuconych przedmiotów.",
                     "AUTO PPM oraz HOLD PPM nie mogą zostać uruchomione, gdy Minecraft pokazuje kursor ekwipunku, chatu lub innego GUI.",
-                    "HUD pokazuje czas pracy, historię skanów EQ i wyrzucania podczas kopania oraz czas bieżącej sesji łowienia."
+                    "HUD pokazuje czas pracy, historię skanów EQ i wyrzucania podczas kopania oraz czas bieżącej sesji łowienia.",
+                    "Poprawiono precyzję AUTO LPM, AUTO PPM i HOLD PPM — ustawione 20 CPS nie traci już szybkości przez opóźnienia timera.",
+                    "Poprawiono rozpoznawanie kursora w trybie pełnoekranowym — przezroczysty kursor rozgrywki nie blokuje makra, a otwarte GUI nadal je zatrzymuje."
                 }),
             new AppReleaseNotes(
                 "1.1.0",

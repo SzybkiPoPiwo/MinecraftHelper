@@ -386,6 +386,8 @@ namespace MinecraftHelper
         private static readonly Brush TileOffBrush = new SolidColorBrush(Color.FromRgb(255, 107, 107));
         private static readonly Brush TileTimeBrush = new SolidColorBrush(Color.FromRgb(245, 200, 96));
         private static readonly Brush TileValueBrush = new SolidColorBrush(Color.FromRgb(127, 200, 255));
+        private static readonly object CursorAppearanceCacheLock = new object();
+        private static readonly Dictionary<IntPtr, bool> CursorBlankAppearanceCache = new Dictionary<IntPtr, bool>();
 
         [DllImport("user32.dll")]
         private static extern IntPtr GetForegroundWindow();
@@ -419,9 +421,6 @@ namespace MinecraftHelper
         private static extern bool GetCursorInfo(out CURSORINFO pci);
 
         [DllImport("user32.dll")]
-        private static extern bool GetClipCursor(out RECT lpRect);
-
-        [DllImport("user32.dll")]
         private static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
 
         [DllImport("user32.dll")]
@@ -429,6 +428,22 @@ namespace MinecraftHelper
 
         [DllImport("user32.dll")]
         private static extern bool GetCursorPos(out POINT lpPoint);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool DrawIconEx(
+            IntPtr hdc,
+            int xLeft,
+            int yTop,
+            IntPtr hIcon,
+            int cxWidth,
+            int cyWidth,
+            uint istepIfAniCur,
+            IntPtr hbrFlickerFreeDraw,
+            uint diFlags);
+
+        [DllImport("user32.dll")]
+        private static extern int GetSystemMetrics(int nIndex);
 
         [DllImport("dwmapi.dll")]
         private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
@@ -451,6 +466,9 @@ namespace MinecraftHelper
         private const int WM_RBUTTONUP = 0x0205;
         private const int LLMHF_INJECTED = 0x00000001;
         private const int CURSOR_SHOWING = 0x00000001;
+        private const int SM_CXCURSOR = 13;
+        private const int SM_CYCURSOR = 14;
+        private const uint DI_NORMAL = 0x0003;
         private const int VK_1 = 0x31;
         private const int VK_2 = 0x32;
         private const int VK_A = 0x41;
@@ -5880,9 +5898,9 @@ namespace MinecraftHelper
             TxtCursorPauseStatus.Foreground = new SolidColorBrush(Color.FromRgb(56, 214, 180));
         }
 
-        private static bool IsCursorCurrentlyVisible()
+        private static bool TryGetVisibleCursorInfo(out CURSORINFO cursorInfo)
         {
-            CURSORINFO cursorInfo = new CURSORINFO
+            cursorInfo = new CURSORINFO
             {
                 cbSize = Marshal.SizeOf<CURSORINFO>()
             };
@@ -5895,45 +5913,94 @@ namespace MinecraftHelper
 
         private bool IsInventoryCursorVisible()
         {
-            if (!IsCursorCurrentlyVisible())
+            if (!TryGetVisibleCursorInfo(out CURSORINFO cursorInfo))
                 return false;
 
-            if (_targetGameWindowHandle != IntPtr.Zero && IsCursorClippedToWindowClient(_targetGameWindowHandle))
+            // LWJGL 2 keeps the Windows cursor technically "visible" while gameplay
+            // is active, but replaces it with a fully transparent cursor. This is
+            // especially noticeable in fullscreen and must not be treated as GUI.
+            if (IsCursorVisuallyBlank(cursorInfo.hCursor))
                 return false;
 
             return true;
         }
 
-        private static bool IsCursorClippedToWindowClient(IntPtr windowHandle)
+        private static bool IsCursorVisuallyBlank(IntPtr cursorHandle)
         {
-            if (windowHandle == IntPtr.Zero)
-                return false;
-            if (!GetClipCursor(out RECT clipRect))
-                return false;
-            if (!GetClientRect(windowHandle, out RECT clientRect))
+            if (cursorHandle == IntPtr.Zero)
                 return false;
 
-            POINT topLeft = new POINT { X = clientRect.Left, Y = clientRect.Top };
-            POINT bottomRight = new POINT { X = clientRect.Right, Y = clientRect.Bottom };
-
-            if (!ClientToScreen(windowHandle, ref topLeft))
-                return false;
-            if (!ClientToScreen(windowHandle, ref bottomRight))
-                return false;
-
-            RECT clientRectOnScreen = new RECT
+            lock (CursorAppearanceCacheLock)
             {
-                Left = topLeft.X,
-                Top = topLeft.Y,
-                Right = bottomRight.X,
-                Bottom = bottomRight.Y
-            };
+                if (CursorBlankAppearanceCache.TryGetValue(cursorHandle, out bool cached))
+                    return cached;
+            }
 
-            const int tolerance = 4;
-            return Math.Abs(clipRect.Left - clientRectOnScreen.Left) <= tolerance
-                && Math.Abs(clipRect.Top - clientRectOnScreen.Top) <= tolerance
-                && Math.Abs(clipRect.Right - clientRectOnScreen.Right) <= tolerance
-                && Math.Abs(clipRect.Bottom - clientRectOnScreen.Bottom) <= tolerance;
+            bool isBlank = DetectBlankCursor(cursorHandle);
+            lock (CursorAppearanceCacheLock)
+            {
+                if (CursorBlankAppearanceCache.Count >= 32)
+                    CursorBlankAppearanceCache.Clear();
+                CursorBlankAppearanceCache[cursorHandle] = isBlank;
+            }
+
+            return isBlank;
+        }
+
+        private static bool DetectBlankCursor(IntPtr cursorHandle)
+        {
+            int width = Math.Clamp(GetSystemMetrics(SM_CXCURSOR), 1, 128);
+            int height = Math.Clamp(GetSystemMetrics(SM_CYCURSOR), 1, 128);
+
+            return !CursorChangesBackground(cursorHandle, width, height, Drawing.Color.Black)
+                && !CursorChangesBackground(cursorHandle, width, height, Drawing.Color.White);
+        }
+
+        private static bool CursorChangesBackground(
+            IntPtr cursorHandle,
+            int width,
+            int height,
+            Drawing.Color background)
+        {
+            using var bitmap = new Drawing.Bitmap(width, height, DrawingImaging.PixelFormat.Format32bppArgb);
+            using Drawing.Graphics graphics = Drawing.Graphics.FromImage(bitmap);
+            graphics.Clear(background);
+
+            IntPtr hdc = graphics.GetHdc();
+            bool drawn;
+            try
+            {
+                drawn = DrawIconEx(
+                    hdc,
+                    0,
+                    0,
+                    cursorHandle,
+                    width,
+                    height,
+                    0,
+                    IntPtr.Zero,
+                    DI_NORMAL);
+            }
+            finally
+            {
+                graphics.ReleaseHdc(hdc);
+            }
+
+            // If Windows refuses to render the cursor, keep the safety pause enabled.
+            if (!drawn)
+                return true;
+
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    Drawing.Color pixel = bitmap.GetPixel(x, y);
+                    if (pixel.R != background.R || pixel.G != background.G || pixel.B != background.B)
+                        return true;
+                }
+            }
+
+            return false;
         }
 
         private void SetCursorPauseState(bool paused)
@@ -6670,8 +6737,9 @@ namespace MinecraftHelper
 
                 if (holdRightEnabled && rightHoldActive)
                 {
-                    if (TryPerformClick(ref _nextHoldRightClickAtUtc, TxtManualRightMinCps.Text, TxtManualRightMaxCps.Text, leftButton: false, now, holdPulseMode: true))
-                        _holdRightInjectedButtonDown = true;
+                    // HOLD PPM is emitted by AutoClickScheduler together with the
+                    // regular clickers. The UI timer is not precise enough for 20 CPS.
+                    _holdRightInjectedButtonDown = true;
                 }
                 else
                 {
@@ -6749,6 +6817,7 @@ namespace MinecraftHelper
             bool rightEnabled = false;
             int rightMinCps = 1;
             int rightMaxCps = 1;
+            bool rightHoldPulseMode = false;
 
             if (!internalCommandTyping)
             {
@@ -6772,7 +6841,19 @@ namespace MinecraftHelper
                         out leftMaxCps);
                 }
 
-                if (autoRightModeSelected && _autoRightRuntimeEnabled)
+                if (holdModeSelected
+                    && _holdMacroRuntimeEnabled
+                    && ChkHoldRightEnabled.IsChecked == true
+                    && _holdRightRuntimePressActive)
+                {
+                    rightEnabled = TryGetCpsRange(
+                        TxtManualRightMinCps.Text,
+                        TxtManualRightMaxCps.Text,
+                        out rightMinCps,
+                        out rightMaxCps);
+                    rightHoldPulseMode = true;
+                }
+                else if (autoRightModeSelected && _autoRightRuntimeEnabled)
                 {
                     rightEnabled = TryGetCpsRange(
                         TxtAutoRightMinCps.Text,
@@ -6789,6 +6870,7 @@ namespace MinecraftHelper
                 rightEnabled,
                 rightMinCps,
                 rightMaxCps,
+                rightHoldPulseMode,
                 _targetGameWindowHandle);
         }
 

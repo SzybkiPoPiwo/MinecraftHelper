@@ -68,6 +68,7 @@ W tej zakładce znajdują się funkcje związane z klikaniem oraz ich zabezpiecz
 - `AUTO LPM` automatycznie wykonuje lewe kliknięcia.
 - `AUTO PPM` automatycznie wykonuje prawe kliknięcia.
 - `AUTO PPM` i `HOLD PPM` nie uruchomią się, gdy Minecraft pokazuje kursor ekwipunku, chatu albo innego GUI. Bind zostanie zignorowany i pojawi się ostrzeżenie.
+- Tryb pełnoekranowy jest obsługiwany: przezroczysty kursor używany przez grę nie jest mylony z kursorem otwartego GUI.
 - Zakres minimalnego i maksymalnego CPS określa szybkość klikania.
 - W trybie klasycznym ustawiony bind włącza clicker, a kolejne naciśnięcie go wyłącza.
 - Tryb combo pozwala osobno ustawić przycisk rozpoczynający i zatrzymujący działanie.
@@ -252,6 +253,8 @@ Jeżeli działają makra lub Kopacz, zamknięcie okna przyciskiem `X` pozostawia
 - Przycisk minimalizacji pozostawia aplikację na pasku zadań. Przycisk `X` ukrywa ją w zasobniku systemowym obok zegara i wyświetla powiadomienie.
 - Menu ikony w zasobniku otrzymało pełny ciemny motyw, łącznie z podświetleniem, separatorem i opcją zakończenia programu.
 - AUTO PPM i HOLD PPM nie uruchamiają się przy widocznym kursorze Minecrafta.
+- Poprawiono harmonogram AUTO LPM, AUTO PPM i HOLD PPM, aby ustawiona wartość CPS nie spadała przez opóźnienia timera systemowego.
+- Poprawiono wykrywanie kursora w trybie pełnoekranowym — makro działa podczas rozgrywki, ale nadal zatrzymuje się po otwarciu EQ, czatu lub innego GUI.
 - Rozszerzono dane HUD dla kopania i automatycznego łowienia o czas sesji oraz aktualne statystyki.
 
 ## Zmiany w wersji 1.1.0
