@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:MinecraftHelper"
         mc:Ignorable="d"
-        Title="Minecraft Helper 1.1.0" Height="980" Width="1600"
+        Title="Minecraft Helper 1.1.1" Height="980" Width="1600"
         Icon="Assets/app.ico"
         Background="#0F141D" Foreground="#E8EEF8">
 
@@ -748,7 +748,7 @@
                                                 ToolTipService.ShowDuration="120000">
                                             <Button.ToolTip>
                                                 <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
-                                                         Content="Aktywacja makra polega na trzymaniu PPM. Makro stawia bloki z ustawioną liczbą CPS. Wyłącza się po puszczeniu PPM."/>
+                                                         Content="Aktywacja makra polega na trzymaniu PPM. Makro stawia bloki z ustawioną liczbą CPS. Wyłącza się po puszczeniu PPM. Ze względów bezpieczeństwa nie można uruchomić PPM, gdy Minecraft pokazuje kursor ekwipunku, chatu lub innego GUI."/>
                                             </Button.ToolTip>
                                         </Button>
                                     </StackPanel>
@@ -898,7 +898,7 @@
                                             <Button.ToolTip>
                                                 <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
                                                          MaxWidth="520"
-                                                         Content="JAK USTAWIĆ AUTO PPM:&#10;1. Zaznacz tę sekcję, aby włączyć moduł. Samo zaznaczenie nie uruchamia klikania.&#10;2. Kliknij pole Klawisz, naciśnij wybrany bind, a następnie kliknij Zapisz.&#10;3. Ustaw minimalny i maksymalny CPS, np. 8–12. Program losuje tempo kliknięć w tym zakresie.&#10;&#10;TRYB KLASYCZNY:&#10;Naciśnij zapisany bind raz, aby rozpocząć AUTO PPM. Naciśnij go ponownie, aby zatrzymać.&#10;&#10;TRYB KOMBINACJI:&#10;Włącz opcję Tryb kombinacji. Naciśnij zapisany bind razem z fizycznym PPM i trzymaj PPM. Puszczenie PPM zatrzymuje clicker.&#10;&#10;Clicker działa tylko wtedy, gdy wybrane okno Minecrafta ma fokus."/>
+                                                         Content="JAK USTAWIĆ AUTO PPM:&#10;1. Zaznacz tę sekcję, aby włączyć moduł. Samo zaznaczenie nie uruchamia klikania.&#10;2. Kliknij pole Klawisz, naciśnij wybrany bind, a następnie kliknij Zapisz.&#10;3. Ustaw minimalny i maksymalny CPS, np. 8–12. Program losuje tempo kliknięć w tym zakresie.&#10;&#10;TRYB KLASYCZNY:&#10;Naciśnij zapisany bind raz, aby rozpocząć AUTO PPM. Naciśnij go ponownie, aby zatrzymać.&#10;&#10;TRYB KOMBINACJI:&#10;Włącz opcję Tryb kombinacji. Naciśnij zapisany bind razem z fizycznym PPM i trzymaj PPM. Puszczenie PPM zatrzymuje clicker.&#10;&#10;BEZPIECZEŃSTWO:&#10;AUTO PPM nie uruchomi się, gdy Minecraft pokazuje kursor ekwipunku, chatu lub innego GUI.&#10;&#10;Clicker działa tylko wtedy, gdy wybrane okno Minecrafta ma fokus."/>
                                             </Button.ToolTip>
                                         </Button>
                                     </StackPanel>
@@ -1209,7 +1209,7 @@
                                             <Button.ToolTip>
                                                 <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
                                                          MaxWidth="520"
-                                                         Content="JAK TO USTAWIĆ:&#10;1. W zakładce Ustawienia wybierz proces właściwego okna Minecrafta, nie launchera.&#10;2. Włącz paczkę MinecraftHelper AutoEQ + CobbleX (1.8.8) i ustaw ją nad paczką Default. Wyłącz starsze paczki Minecraft Helper.&#10;3. W ustawieniach obrazu Minecrafta ustaw GUI Scale: Large.&#10;4. Zostaw domyślne sterowanie: E = ekwipunek, Q = wyrzucanie, T = czat. Lewy Ctrl nie może być zajęty przez inny skrót.&#10;5. Ustaw odstęp między skanami, wybierz typy przedmiotów do wyrzucania oraz sloty 1–27.&#10;6. Otwórz ekwipunek w grze i użyj przycisku Test wykrywania. Program powinien znaleźć okno EQ i rozpoznać kolorowe znaczniki na przedmiotach.&#10;&#10;JAK TO DZIAŁA:&#10;Funkcja działa tylko podczas pracy Kopacza 5/3/3 albo 6/3/3. Co ustawiony czas program otwiera EQ, skanuje wybrane pola i wyrzuca zawartość oznaczonych slotów przez lewy Ctrl + Q. Hotbar, pancerz i crafting są zawsze pomijane. Na czas skanu kopanie oraz zaplanowane komendy są wstrzymywane.&#10;&#10;Gra musi być widoczna, aktywna i niezasłonięta innym oknem."/>
+                                                         Content="JAK TO USTAWIĆ:&#10;1. W zakładce Ustawienia wybierz proces właściwego okna Minecrafta, nie launchera.&#10;2. Włącz paczkę MinecraftHelper AutoEQ + CobbleX (1.8.8) i ustaw ją nad paczką Default. Wyłącz starsze paczki Minecraft Helper.&#10;3. W ustawieniach obrazu Minecrafta ustaw GUI Scale: Large.&#10;4. Zostaw domyślne sterowanie: E = ekwipunek, Q = wyrzucanie, T = czat. Lewy Ctrl nie może być zajęty przez inny skrót.&#10;5. Ustaw odstęp między skanami, wybierz typy przedmiotów do wyrzucania oraz sloty 1–27.&#10;6. Otwórz ekwipunek w grze i użyj przycisku Test wykrywania. Program powinien znaleźć okno EQ i rozpoznać kolorowe znaczniki na przedmiotach.&#10;&#10;JAK TO DZIAŁA:&#10;Funkcja działa tylko podczas pracy Kopacza 5/3/3 albo 6/3/3. Co ustawiony czas program otwiera EQ, odsuwa kursor poza GUI, czeka na zniknięcie podpowiedzi i skanuje wybrane pola. Oznaczone stosy wyrzuca przez lewy Ctrl + Q, po czym ponownie skanuje otwarte EQ. Wykonuje maksymalnie 3 przebiegi, aby znaleźć również przedmioty wcześniej zasłonięte przez kursor. Hotbar, pancerz i crafting są zawsze pomijane. Na czas skanu kopanie oraz zaplanowane komendy są wstrzymywane.&#10;&#10;Gra musi być widoczna, aktywna i niezasłonięta innym oknem."/>
                                             </Button.ToolTip>
                                         </Button>
                                     </StackPanel>
@@ -1354,6 +1354,25 @@
                                        FontWeight="Bold"
                                        Margin="0,0,0,14"
                                        Foreground="#7FC8FF"/>
+
+                            <Button Name="BtnMiningLogs"
+                                    Content="Logi kopania"
+                                    Height="34"
+                                    Margin="0,0,0,7"
+                                    FontWeight="Bold"
+                                    Click="BtnMiningLogs_Click"
+                                    ToolTip="Pokazuje historię utworzonych CobbleXów oraz liczbę sztuk i stosów wyrzuconych przez Auto EQ."/>
+
+                            <TextBlock Name="TxtMiningLogsSummary"
+                                       Text="CobbleX: 0  •  Wyrzucone: 0 szt. / 0 stosów"
+                                       TextWrapping="Wrap"
+                                       FontSize="10"
+                                       Foreground="#92A6C1"
+                                       Margin="0,0,0,14"/>
+
+                            <Border BorderBrush="#34465E"
+                                    BorderThickness="0,1,0,0"
+                                    Margin="0,0,0,14"/>
 
                             <TextBlock Text="Kilof 5/3/3 niszczy się po ok. 35 minutach. Optymalnie ustaw 30 minut (1800 sekund)."
                                        TextWrapping="Wrap"

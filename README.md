@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <strong>Windows 10/11</strong> · <strong>Minecraft 1.8.8</strong> · <strong>bez Forge i modów</strong> · <strong>wersja 1.1.0</strong>
+  <strong>Windows 10/11</strong> · <strong>Minecraft 1.8.8</strong> · <strong>bez Forge i modów</strong> · <strong>wersja 1.1.1</strong>
 </p>
 
 <p align="center">
@@ -50,7 +50,7 @@ Przy pierwszym uruchomieniu pojawi się okno powitalne. Po aktualizacji programu
 | `Kopacz` | Automatyczne kopanie, harmonogram komend, czyszczenie ekwipunku i tworzenie CobbleX. |
 | `BINDY` | Własne skróty, które wpisują i wysyłają przygotowane komendy na czacie. |
 | `Experimental` | Funkcje testowe, obecnie automatyczne łowienie. |
-| `Ustawienia` | Wybór procesu Minecrafta, konfiguracja HUD oraz import i eksport ustawień. |
+| `Ustawienia` | Wybór procesu Minecrafta, konfiguracja HUD, import i eksport ustawień oraz działanie aplikacji w tle. |
 
 ## PVP
 
@@ -67,6 +67,7 @@ W tej zakładce znajdują się funkcje związane z klikaniem oraz ich zabezpiecz
 
 - `AUTO LPM` automatycznie wykonuje lewe kliknięcia.
 - `AUTO PPM` automatycznie wykonuje prawe kliknięcia.
+- `AUTO PPM` i `HOLD PPM` nie uruchomią się, gdy Minecraft pokazuje kursor ekwipunku, chatu albo innego GUI. Bind zostanie zignorowany i pojawi się ostrzeżenie.
 - Zakres minimalnego i maksymalnego CPS określa szybkość klikania.
 - W trybie klasycznym ustawiony bind włącza clicker, a kolejne naciśnięcie go wyłącza.
 - Tryb combo pozwala osobno ustawić przycisk rozpoczynający i zatrzymujący działanie.
@@ -100,6 +101,8 @@ Po zaznaczeniu wybranego trybu rozwiną się jego ustawienia. Ustaw bind, kierun
 ### Auto EQ — automatyczne czyszczenie ekwipunku
 
 Auto EQ otwiera ekwipunek w ustalonych odstępach, rozpoznaje oznaczone przedmioty i wyrzuca całe stosy z wybranych pól przez `lewy Ctrl + Q`.
+
+Przed skanem program odsuwa kursor poza GUI, aby nazwa przedmiotu nie zasłoniła sąsiednich pól. Po wyrzucaniu ponownie sprawdza otwarty ekwipunek i w razie potrzeby wykonuje maksymalnie trzy przebiegi. Dzięki temu wynik obejmuje przedmioty faktycznie usunięte, a nie tylko wykonane próby naciśnięcia skrótu.
 
 Program sprawdza tylko 27 pól głównego ekwipunku. Hotbar, pancerz i crafting są zawsze pomijane. Zaznaczony typ przedmiotu oznacza „wyrzucaj”, a odznaczony „zawsze zostaw”. Na czas skanowania i wyrzucania pozostałe akcje Kopacza czekają.
 
@@ -145,6 +148,30 @@ Program liczy zwykły cobblestone z widoczną liczbą `64`. Gotowy CobbleX bez l
 
 Aktualny stan Auto EQ, licznik cobblestone i wynik ostatniego skanu mogą być pokazane w HUD.
 
+### Logi kopania
+
+Przycisk `Logi kopania` po prawej stronie zakładki Kopacz otwiera historię działania Auto EQ i CobbleX. Każde automatyczne otwarcie ekwipunku tworzy osobną sesję — także wtedy, gdy nie było nic do wyrzucenia albo skan został przerwany. Otwarta sesja pojawia się od razu i aktualizuje się po zakończeniu skanowania. Kliknięcie wiersza rozwija jego szczegóły. Program zapisuje:
+
+- datę i dokładną godzinę zdarzenia,
+- liczbę utworzonych CobbleXów,
+- liczbę faktycznie wyrzuconych sztuk i stosów,
+- osobny, kolorowy status zakończenia lub przerwania,
+- podział wyrzuconych przedmiotów według rozpoznanego typu wraz z liczbą sztuk i stosów,
+- liczbę przebiegów skanowania oraz przedmioty pozostałe po ostatnim przebiegu,
+- tryb Kopacza, który uruchomił czyszczenie.
+
+Kolory pozwalają szybko odczytać wynik: zielony oznacza poprawne zakończenie, żółty trwającą sesję lub ostrzeżenie, czerwony przerwanie, niebieski informacje o skanie i przedmiotach, a złoty operacje CobbleX. Rozwinięty wpis pozostaje otwarty także podczas aktualizacji danych.
+
+Historia ma wyszukiwarkę działającą po dacie, godzinie, trybie Kopacza, statusie, nazwie przedmiotu, komendzie CobbleX i treści szczegółów. Przycisk `Zapisz raport` eksportuje aktualnie widoczne — również przefiltrowane — wpisy do pliku CSV albo TXT. Okno zapisu domyślnie otwiera Pulpit.
+
+Logi są przechowywane niezależnie od ustawień aplikacji w:
+
+```text
+%APPDATA%\Minecraft Helper\mining-logs.json
+```
+
+Wpisy utworzone przez starszą wersję mechanizmu mogą zawierać tylko liczbę stosów. Program oznacza je jako stare dane zamiast przedstawiać niedokładną liczbę sztuk.
+
 ## BINDY
 
 <p align="center">
@@ -174,6 +201,8 @@ Zakładka zawiera funkcje będące nadal w fazie testów. Mogą wymagać dokład
 
 `Auto łowienie wędką` obserwuje zaznaczony fragment ekranu, wykrywa ruch czerwonej końcówki spławika, zwija wędkę po potwierdzonym braniu i może ponowić rzut. Najlepszy efekt daje zaznaczenie małego obszaru bezpośrednio wokół spławika.
 
+Po włączeniu HUD panel łowienia pokazuje godzinę rozpoczęcia i czas trwania sesji, bieżący etap detekcji, położenie spławika, liczbę brań oraz czas od ostatniego złowienia.
+
 ## Ustawienia i HUD
 
 <p align="center">
@@ -190,6 +219,7 @@ To tutaj należy rozpocząć konfigurację programu:
 - `Zapisz program` zapamiętuje wybrane okno gry.
 - `Panel HUD (overlay)` pokazuje stan uruchomionych funkcji na ekranie.
 - HUD pozwala wybrać monitor, narożnik oraz wyłączyć animacje.
+- Podczas kopania HUD aktualizuje etap pracy, godzinę startu, czas działania, bieżący skan EQ oraz łączne wyniki wyrzucania i tworzenia CobbleX.
 - `Eksportuj` zapisuje kopię konfiguracji, a `Importuj` przywraca ją z pliku JSON.
 
 Ustawienia zapisują się automatycznie w:
@@ -199,6 +229,30 @@ Ustawienia zapisują się automatycznie w:
 ```
 
 Nie wybieraj procesu launchera. Wskaż właściwe okno Minecrafta lub używanego klienta po wejściu do gry.
+
+### Minimalizacja i ikona w zasobniku
+
+- Przycisk minimalizacji pozostawia aplikację widoczną na pasku zadań.
+- Przycisk `X` nie kończy programu — ukrywa okno w zasobniku systemowym obok zegara i pokazuje krótkie powiadomienie.
+- Dwukrotne kliknięcie ikony przywraca główne okno.
+- Menu pod prawym przyciskiem myszy pozwala wybrać `Pokaż aplikację` albo `Zakończ aplikację`.
+- Menu zasobnika korzysta z ciemnego motywu zgodnego z pozostałą częścią interfejsu.
+
+Jeżeli działają makra lub Kopacz, zamknięcie okna przyciskiem `X` pozostawia aplikację uruchomioną w tle. Aby całkowicie ją wyłączyć, użyj opcji `Zakończ aplikację` z menu ikony.
+
+## Zmiany w wersji 1.1.1
+
+- Dodano trwałe logi kopania, w których każde automatyczne otwarcie EQ tworzy osobną sesję aktualizowaną na żywo.
+- Dodano rozwijane szczegóły sesji, kolorowe statusy oraz dokładny podział wyrzuconych typów na sztuki i stosy.
+- Dodano wyszukiwanie po dacie, trybie, statusie i przedmiotach oraz eksport przefiltrowanego raportu do CSV lub TXT.
+- Poprawiono licznik wyrzucania: program odczytuje liczebność stosów i potwierdza wynik ponownym skanem EQ.
+- Dodano automatyczne odsuwanie kursora poza ekwipunek, aby tooltip nie zasłaniał przedmiotów.
+- Auto EQ może wykonać do trzech przebiegów skanowania i wyrzucania.
+- Okno potwierdzenia usunięcia logów korzysta teraz z ciemnego motywu aplikacji.
+- Przycisk minimalizacji pozostawia aplikację na pasku zadań. Przycisk `X` ukrywa ją w zasobniku systemowym obok zegara i wyświetla powiadomienie.
+- Menu ikony w zasobniku otrzymało pełny ciemny motyw, łącznie z podświetleniem, separatorem i opcją zakończenia programu.
+- AUTO PPM i HOLD PPM nie uruchamiają się przy widocznym kursorze Minecrafta.
+- Rozszerzono dane HUD dla kopania i automatycznego łowienia o czas sesji oraz aktualne statystyki.
 
 ## Zmiany w wersji 1.1.0
 
@@ -225,7 +279,7 @@ Jeżeli zauważysz błąd, problem z konfiguracją albo masz propozycję nowej f
 Najprościej uruchomić instalator:
 
 ```text
-MinecraftHelper-Setup-1.1.0.exe
+MinecraftHelper-Setup-1.1.1.exe
 ```
 
 Instalator działa dla bieżącego użytkownika, nie wymaga osobnej instalacji .NET 8, może utworzyć skrót na pulpicie i dodaje standardowy deinstalator Windows.
@@ -269,10 +323,10 @@ dotnet run --project MinecraftHelper/MinecraftHelper.csproj
 ### Budowanie instalatora
 
 ```powershell
-.\scripts\build-installer.ps1 -Version 1.1.0 -Rid win-x64 -SelfContained:$true -Clean
+.\scripts\build-installer.ps1 -Version 1.1.1 -Rid win-x64 -SelfContained:$true -Clean
 ```
 
-Wynik zostanie zapisany w `artifacts/installer/MinecraftHelper-Setup-1.1.0.exe`.
+Wynik zostanie zapisany w `artifacts/installer/MinecraftHelper-Setup-1.1.1.exe`.
 
 ### Odtworzenie paczki zasobów
 
@@ -289,7 +343,6 @@ Planowane kierunki dalszego rozwoju:
 - obsługa nowszych wersji Minecrafta,
 - możliwość zminimalizowania Minecrafta i dalszego kopania w tle,
 - zdalna obsługa własnego klienta Minecraft za pomocą telefonu,
-- zbieranie logów podczas kopania,
 - odczytywanie i prezentowanie informacji z czatu,
 - automatyczne ponowne łączenie z serwerem (`auto reconnect`).
 

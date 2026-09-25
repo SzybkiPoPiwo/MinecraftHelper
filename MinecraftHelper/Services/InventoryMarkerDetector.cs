@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.Globalization;
 using System.Runtime.InteropServices;
 
 namespace MinecraftHelper.Services
@@ -31,7 +32,7 @@ namespace MinecraftHelper.Services
         public IReadOnlyList<int> FullCobblestoneSlots { get; init; } = Array.Empty<int>();
     }
 
-    internal readonly record struct DetectedInventoryItem(int Slot, string ItemId);
+    internal readonly record struct DetectedInventoryItem(int Slot, string ItemId, int Quantity);
 
     internal static class InventoryMarkerDetector
     {
@@ -62,6 +63,22 @@ namespace MinecraftHelper.Services
             "#...#.#####...",
             "#...#.....#...",
             ".###......#..."
+        };
+
+        // Bright foreground pixels of Minecraft 1.8.8's five-pixel-wide number glyphs.
+        // Stack labels are right-aligned in the lower-right corner of the 16x16 icon.
+        private static readonly string[][] StackCountDigitGlyphs =
+        {
+            new[] { ".###.", "#...#", "#..##", "#.#.#", "##..#", "#...#", ".###." },
+            new[] { "..#..", ".##..", "..#..", "..#..", "..#..", "..#..", ".###." },
+            new[] { ".###.", "#...#", "....#", "...#.", "..#..", ".#...", "#####" },
+            new[] { ".###.", "#...#", "....#", "..##.", "....#", "#...#", ".###." },
+            new[] { "...##", "..#.#", ".#..#", "#...#", "#####", "....#", "....#" },
+            new[] { "#####", "#....", "####.", "....#", "....#", "#...#", ".###." },
+            new[] { "..##.", ".#...", "#....", "####.", "#...#", "#...#", ".###." },
+            new[] { "#####", "....#", "...#.", "..#..", ".#...", ".#...", ".#..." },
+            new[] { ".###.", "#...#", "#...#", ".###.", "#...#", "#...#", ".###." },
+            new[] { ".###.", "#...#", "#...#", ".####", "....#", "...#.", ".##.." }
         };
 
         private static readonly MarkerColor M = new MarkerColor(255, 0, 255);
@@ -140,10 +157,12 @@ namespace MinecraftHelper.Services
                 int row = slot / 9;
                 int itemX = layout.Left + (SlotStartX + column * SlotStep) * layout.Scale;
                 int itemY = layout.Top + (SlotStartY + row * SlotStep) * layout.Scale;
+                int detectedQuantity = 0;
                 if (LooksLikeCobblestone(pixels, itemX, itemY, layout.Scale)
                     && MatchesStackCount64(pixels, itemX, itemY, layout.Scale))
                 {
                     fullCobblestoneSlots.Add(slot);
+                    detectedQuantity = 64;
                 }
 
                 if (enabledSlots != null && !enabledSlots.Contains(slot))
@@ -155,8 +174,11 @@ namespace MinecraftHelper.Services
                 {
                     if (enabledItemTypes == null || enabledItemTypes.Contains(itemId))
                     {
+                        if (detectedQuantity == 0)
+                            detectedQuantity = DetectStackCount(pixels, itemX, itemY, layout.Scale);
+
                         markedSlots.Add(slot);
-                        detectedItems.Add(new DetectedInventoryItem(slot, itemId));
+                        detectedItems.Add(new DetectedInventoryItem(slot, itemId, detectedQuantity));
                     }
                 }
                 else if (MatchesScaledPatternNear(pixels, markerX, markerY, layout.Scale, LegacyItemMarker))
@@ -331,6 +353,86 @@ namespace MinecraftHelper.Services
             }
 
             return false;
+        }
+
+        private static int DetectStackCount(PixelReader pixels, int itemX, int itemY, int scale)
+        {
+            if (MatchesStackCount64(pixels, itemX, itemY, scale))
+                return 64;
+
+            int bestCount = 1;
+            int bestScore = int.MinValue;
+            double bestHitRatio = 0;
+            for (int count = 2; count < 64; count++)
+            {
+                string digits = count.ToString(CultureInfo.InvariantCulture);
+                int logicalStartX = 17 - digits.Length * 6;
+                int logicalWidth = digits.Length * 6 - 1;
+
+                for (int physicalOffsetY = -2; physicalOffsetY <= 2; physicalOffsetY++)
+                {
+                    for (int physicalOffsetX = -2; physicalOffsetX <= 2; physicalOffsetX++)
+                    {
+                        int expectedPixels = 0;
+                        int matchedPixels = 0;
+                        int unexpectedBrightPixels = 0;
+
+                        for (int row = 0; row < 7; row++)
+                        {
+                            for (int column = 0; column < logicalWidth; column++)
+                            {
+                                bool expected = IsExpectedStackCountPixel(digits, row, column);
+                                int x = itemX + (logicalStartX + column) * scale + scale / 2 + physicalOffsetX;
+                                int y = itemY + (9 + row) * scale + scale / 2 + physicalOffsetY;
+                                bool bright = pixels.IsNeutralInRange(x, y, 190, 255, 24);
+
+                                if (expected)
+                                {
+                                    expectedPixels++;
+                                    if (bright)
+                                        matchedPixels++;
+                                }
+                                else if (bright)
+                                {
+                                    unexpectedBrightPixels++;
+                                }
+                            }
+                        }
+
+                        if (expectedPixels == 0)
+                            continue;
+
+                        double hitRatio = matchedPixels / (double)expectedPixels;
+                        int score = matchedPixels * 5
+                            - (expectedPixels - matchedPixels) * 6
+                            - unexpectedBrightPixels * 2;
+                        if (score > bestScore
+                            || (score == bestScore && hitRatio > bestHitRatio))
+                        {
+                            bestHitRatio = hitRatio;
+                            bestScore = score;
+                            bestCount = count;
+                        }
+                    }
+                }
+            }
+
+            // No number is drawn for a single item. A fairly strict threshold prevents
+            // bright pixels in an item texture from being mistaken for a stack label.
+            return bestHitRatio >= 0.78 && bestScore > 0 ? bestCount : 1;
+        }
+
+        private static bool IsExpectedStackCountPixel(string digits, int row, int combinedColumn)
+        {
+            int digitIndex = combinedColumn / 6;
+            int columnInDigit = combinedColumn % 6;
+            if (digitIndex < 0 || digitIndex >= digits.Length || columnInDigit >= 5)
+                return false;
+
+            int digit = digits[digitIndex] - '0';
+            return digit >= 0
+                && digit < StackCountDigitGlyphs.Length
+                && StackCountDigitGlyphs[digit][row][columnInDigit] == '#';
         }
 
         private static bool TryMatchItemMarker(

@@ -99,7 +99,7 @@ artifacts\publish\win-x64\MinecraftHelper.exe
 Zainstaluj Inno Setup 6, zamknij działające kopie Minecraft Helper i uruchom:
 
 ```powershell
-.\scripts\build-installer.ps1 -Version 1.1.0 -Rid win-x64 -SelfContained $true -Clean
+.\scripts\build-installer.ps1 -Version 1.1.1 -Rid win-x64 -SelfContained $true -Clean
 ```
 
 Jeżeli PowerShell blokuje lokalny skrypt, możesz zezwolić na jego wykonanie tylko w bieżącym oknie terminala:
@@ -111,7 +111,7 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 Następnie ponownie uruchom skrypt budowania. Wynik znajdzie się w:
 
 ```text
-artifacts\installer\MinecraftHelper-Setup-1.1.0.exe
+artifacts\installer\MinecraftHelper-Setup-1.1.1.exe
 ```
 
 Parametr `-Clean` usuwa wyłącznie wcześniejsze wyniki z `artifacts/publish/<RID>` i `artifacts/installer`, po czym buduje je od początku.
@@ -121,7 +121,7 @@ Parametr `-Clean` usuwa wyłącznie wcześniejsze wyniki z `artifacts/publish/<R
 Oblicz sumę SHA-256 własnego pliku:
 
 ```powershell
-Get-FileHash .\artifacts\installer\MinecraftHelper-Setup-1.1.0.exe -Algorithm SHA256
+Get-FileHash .\artifacts\installer\MinecraftHelper-Setup-1.1.1.exe -Algorithm SHA256
 ```
 
 Przed udostępnieniem programu warto również:

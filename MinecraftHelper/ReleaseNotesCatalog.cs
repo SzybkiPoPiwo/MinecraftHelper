@@ -15,6 +15,21 @@ namespace MinecraftHelper
         private static readonly AppReleaseNotes[] Releases =
         {
             new AppReleaseNotes(
+                "1.1.1",
+                "Logi kopania i dokładniejsze Auto EQ",
+                new[]
+                {
+                    "Dodano trwałe logi kopania z liczbą utworzonych CobbleXów oraz wyrzuconych sztuk i stosów.",
+                    "Dodano wyszukiwanie w historii oraz eksport aktualnie widocznych wpisów do raportu CSV lub TXT.",
+                    "Poprawiono liczenie wyrzuconych przedmiotów — wynik jest potwierdzany ponownym skanem ekwipunku i uwzględnia liczebność stosów.",
+                    "Auto EQ odsuwa kursor poza ekwipunek i wykonuje do trzech przebiegów, aby tooltip nie zasłaniał przedmiotów.",
+                    "Ujednolicono wygląd komunikatu usuwania historii z ciemnym motywem aplikacji.",
+                    "Przycisk minimalizacji pozostawia aplikację na pasku zadań, a zamknięcie przyciskiem X przenosi ją do zasobnika i wyświetla powiadomienie.",
+                    "Każde otwarcie EQ tworzy osobną, rozwijaną sesję logu z kolorowym statusem i listą wyrzuconych przedmiotów.",
+                    "AUTO PPM oraz HOLD PPM nie mogą zostać uruchomione, gdy Minecraft pokazuje kursor ekwipunku, chatu lub innego GUI.",
+                    "HUD pokazuje czas pracy, historię skanów EQ i wyrzucania podczas kopania oraz czas bieżącej sesji łowienia."
+                }),
+            new AppReleaseNotes(
                 "1.1.0",
                 "Auto EQ, CobbleX i poprawki interfejsu",
                 new[]
@@ -34,7 +49,7 @@ namespace MinecraftHelper
             {
                 Version? version = typeof(ReleaseNotesCatalog).Assembly.GetName().Version;
                 if (version == null)
-                    return "1.1.0";
+                    return "1.1.1";
 
                 return $"{version.Major}.{version.Minor}.{Math.Max(0, version.Build)}";
             }
