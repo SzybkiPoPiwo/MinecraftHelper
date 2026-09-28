@@ -5,7 +5,13 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:MinecraftHelper"
         mc:Ignorable="d"
-        Title="Minecraft Helper 1.1.1" Height="980" Width="1600"
+        Title="Minecraft Helper 1.1.2"
+        Width="1280"
+        Height="820"
+        MinWidth="1050"
+        MinHeight="680"
+        WindowStartupLocation="CenterScreen"
+        UseLayoutRounding="True"
         Icon="Assets/app.ico"
         Background="#0F141D" Foreground="#E8EEF8">
 
@@ -262,6 +268,48 @@
             <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
 
+        <Style x:Key="SlotGridCheckBoxStyle" TargetType="CheckBox">
+            <Setter Property="Width" Value="36"/>
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="Margin" Value="2"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Background" Value="#1E2A39"/>
+            <Setter Property="BorderBrush" Value="#3E536E"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Foreground" Value="#D8E2F0"/>
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Border x:Name="SlotBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="SlotBorder" Property="Background" Value="#24364A"/>
+                                <Setter TargetName="SlotBorder" Property="BorderBrush" Value="#5E7A9F"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="SlotBorder" Property="Background" Value="#102A40"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- Styl dla TextBlock -->
         <Style TargetType="TextBlock">
             <Setter Property="Foreground" Value="#CFDBEB"/>
@@ -447,6 +495,106 @@
             <Setter Property="Background" Value="Transparent"/>
         </Style>
 
+        <!-- Kompaktowe zakładki używane wewnątrz sekcji. Nagłówek i zawartość
+             tworzą jedną, zamkniętą ramkę zamiast urywać się pod przyciskiem. -->
+        <Style x:Key="SectionTabItemStyle" TargetType="TabItem">
+            <Setter Property="Foreground" Value="#92A6C1"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Padding" Value="15,8"/>
+            <Setter Property="Margin" Value="0,0,3,0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Grid SnapsToDevicePixels="True">
+                            <Border x:Name="TabHeaderBorder"
+                                    Background="#1E2A39"
+                                    BorderBrush="#34465E"
+                                    BorderThickness="1"
+                                    CornerRadius="4"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter ContentSource="Header"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"
+                                                  RecognizesAccessKey="True"/>
+                            </Border>
+                            <Border x:Name="SelectedRightEdge"
+                                    Width="2"
+                                    Margin="0,3,1,3"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Stretch"
+                                    Panel.ZIndex="3"
+                                    Background="{StaticResource AccentBrush}"
+                                    CornerRadius="1"
+                                    IsHitTestVisible="False"
+                                    Visibility="Collapsed"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="TabHeaderBorder" Property="Background" Value="#263A50"/>
+                                <Setter TargetName="TabHeaderBorder" Property="BorderBrush" Value="#6A8CB5"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="TabHeaderBorder" Property="Background" Value="#152437"/>
+                                <Setter TargetName="TabHeaderBorder" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                                <Setter TargetName="TabHeaderBorder" Property="BorderThickness" Value="1"/>
+                                <Setter TargetName="SelectedRightEdge" Property="Visibility" Value="Visible"/>
+                                <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+                                <Setter Property="FontWeight" Value="Bold"/>
+                                <Setter Property="Panel.ZIndex" Value="2"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.55"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SectionTabControlStyle" TargetType="TabControl">
+            <Setter Property="Background" Value="#121C29"/>
+            <Setter Property="BorderBrush" Value="#4B6283"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="ItemContainerStyle" Value="{StaticResource SectionTabItemStyle}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabControl">
+                        <Grid KeyboardNavigation.TabNavigation="Local"
+                              SnapsToDevicePixels="True">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <TabPanel Grid.Row="0"
+                                      Margin="0,0,0,6"
+                                      Panel.ZIndex="1"
+                                      IsItemsHost="True"/>
+                            <Border x:Name="TabContentBorder"
+                                    Grid.Row="1"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="6"
+                                    Padding="10"
+                                    SnapsToDevicePixels="True">
+                                <ContentPresenter x:Name="PART_SelectedContentHost"
+                                                  ContentSource="SelectedContent"
+                                                  SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
+                            </Border>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="TabContentBorder" Property="BorderBrush" Value="#5B789D"/>
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                <Setter TargetName="TabContentBorder" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- Wspólny wygląd tytułów głównych, rozwijanych sekcji -->
         <Style x:Key="MainSectionHeaderTextStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="13"/>
@@ -458,12 +606,21 @@
 
         <!-- Styl dla ramek sekcji -->
         <Style TargetType="Border" x:Key="SectionBorderStyle">
-            <Setter Property="Background" Value="#161F2B"/>
-            <Setter Property="BorderBrush" Value="#3E536E"/>
+            <Setter Property="Background" Value="#151F2C"/>
+            <Setter Property="BorderBrush" Value="#465D7A"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="15"/>
-            <Setter Property="CornerRadius" Value="4"/>
-            <Setter Property="Margin" Value="0,0,0,15"/>
+            <Setter Property="Padding" Value="12"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="BorderBrush" Value="#58769B"/>
+                </Trigger>
+                <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                    <Setter Property="BorderBrush" Value="#2EA8FF"/>
+                </Trigger>
+            </Style.Triggers>
         </Style>
     </Window.Resources>
 
@@ -473,18 +630,18 @@
         <Border DockPanel.Dock="Top" Background="#1E2A39" BorderBrush="#34465E" BorderThickness="0,0,0,1">
             <TextBlock Name="TxtStatusBar"
                        Text="Gotowy"
-                       Margin="15,8"
+                       Margin="12,6"
                        FontSize="12"
                        FontWeight="SemiBold"
                        Foreground="#38D6B4"/>
         </Border>
 
         <!-- PANEL GŁÓWNY (NAZWA OKNA + STATUSY) -->
-        <Border DockPanel.Dock="Top" Background="#161F2B" BorderBrush="#34465E" BorderThickness="0,0,0,1" Padding="15,12">
+        <Border DockPanel.Dock="Top" Background="#161F2B" BorderBrush="#34465E" BorderThickness="0,0,0,1" Padding="12,8">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="12"/>
+                    <RowDefinition Height="8"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
@@ -525,7 +682,7 @@
                             <Setter Property="Background" Value="{StaticResource TileBg}"/>
                             <Setter Property="BorderBrush" Value="{StaticResource TileBorder}"/>
                             <Setter Property="BorderThickness" Value="1"/>
-                            <Setter Property="Padding" Value="10"/>
+                            <Setter Property="Padding" Value="8"/>
                             <Setter Property="CornerRadius" Value="3"/>
                             <Setter Property="Margin" Value="0,0,6,0"/>
                         </Style>
@@ -625,9 +782,9 @@
         </Border>
 
         <!-- STATUS FOCUS/ZAPIS (Środkowy pasek) -->
-        <Border DockPanel.Dock="Top" Background="#0F141D" BorderBrush="#34465E" BorderThickness="0,0,0,1" Padding="15,8">
-            <StackPanel>
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+        <Border DockPanel.Dock="Top" Background="#0F141D" BorderBrush="#34465E" BorderThickness="0,0,0,1" Padding="12,6">
+            <StackPanel Orientation="Horizontal">
+                <StackPanel Orientation="Horizontal" Margin="0,0,34,0">
                     <Ellipse Name="EllMinecraftFocus" Width="10" Height="10" Fill="#FF6B6B" VerticalAlignment="Center" Margin="0,0,10,0"/>
                     <TextBlock Text="Minecraft Focus:" Width="120" Foreground="#CFDBEB"/>
                     <TextBlock Name="TxtMinecraftFocus" Text="✗ Nie" FontWeight="Bold" Foreground="#FF6B6B"/>
@@ -642,13 +799,13 @@
         </Border>
 
         <!-- ZAKŁADKI (TAB CONTROL) -->
-        <TabControl Name="MainTabControl" DockPanel.Dock="Top" Background="Transparent" BorderThickness="0" Margin="10">
+        <TabControl Name="MainTabControl" DockPanel.Dock="Top" Background="Transparent" BorderThickness="0" Margin="8">
             <TabControl.Resources>
                 <Style TargetType="TabItem">
                     <Setter Property="Template">
                         <Setter.Value>
                             <ControlTemplate TargetType="TabItem">
-                                <Border Name="Border" Background="#1E2A39" BorderBrush="#34465E" BorderThickness="1,1,1,0" Margin="0,0,4,0" Padding="20,10" CornerRadius="4,4,0,0">
+                                <Border Name="Border" Background="#1E2A39" BorderBrush="#34465E" BorderThickness="1,1,1,0" Margin="0,0,4,0" Padding="16,7" CornerRadius="4,4,0,0">
                                     <ContentPresenter x:Name="ContentSite" VerticalAlignment="Center" HorizontalAlignment="Center" ContentSource="Header" RecognizesAccessKey="True"/>
                                 </Border>
                                 <ControlTemplate.Triggers>
@@ -1047,17 +1204,27 @@
 
             <!-- ========== KOPACZ ========== -->
             <TabItem Header="Kopacz">
-                <Grid Margin="10,20">
+                <Grid Margin="6,10">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="1*"/>
-                        <ColumnDefinition Width="250"/>
+                        <ColumnDefinition Width="220"/>
                     </Grid.ColumnDefinitions>
 
                     <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
                         <StackPanel>
-                            <TextBlock Text="Wybierz opcję kopania:" FontSize="14" FontWeight="Bold" Margin="0,0,0,15" Foreground="White"/>
+                            <TextBlock Text="Kanał kopania" FontSize="13" FontWeight="Bold" Margin="0,0,0,8" Foreground="White"/>
 
-                            <Border Name="BorderKopacz533Section" Style="{StaticResource SectionBorderStyle}">
+                            <TabControl Name="KopaczChannelTabs"
+                                        Style="{StaticResource SectionTabControlStyle}"
+                                        Margin="0,0,0,8"
+                                        Background="#0F141D"
+                                        Width="{Binding ViewportWidth, RelativeSource={RelativeSource AncestorType={x:Type ScrollViewer}}}"
+                                        MaxWidth="1120"
+                                        HorizontalAlignment="Left">
+                                <TabItem Header="Kopacz 5/3/3">
+                            <Border Name="BorderKopacz533Section"
+                                    Style="{StaticResource SectionBorderStyle}"
+                                    Margin="0,10,0,0">
                                 <StackPanel>
                                     <StackPanel Orientation="Horizontal">
                                         <CheckBox Name="ChkKopacz533Enabled"
@@ -1108,7 +1275,12 @@
                                 </StackPanel>
                             </Border>
 
-                            <Border Name="BorderKopacz633Section" Style="{StaticResource SectionBorderStyle}">
+                                </TabItem>
+                                <TabItem Header="Kopacz 6/3/3">
+
+                            <Border Name="BorderKopacz633Section"
+                                    Style="{StaticResource SectionBorderStyle}"
+                                    Margin="0,10,0,0">
                                 <StackPanel>
                                     <StackPanel Orientation="Horizontal">
                                         <CheckBox Name="ChkKopacz633Enabled"
@@ -1192,7 +1364,14 @@
                                 </StackPanel>
                             </Border>
 
-                            <Border Name="BorderInventoryCleanupSection" Style="{StaticResource SectionBorderStyle}">
+                                </TabItem>
+                            </TabControl>
+
+                            <Border Name="BorderInventoryCleanupSection"
+                                    Style="{StaticResource SectionBorderStyle}"
+                                    Width="{Binding ViewportWidth, RelativeSource={RelativeSource AncestorType={x:Type ScrollViewer}}}"
+                                    MaxWidth="1120"
+                                    HorizontalAlignment="Left">
                                 <StackPanel>
                                     <StackPanel Orientation="Horizontal">
                                         <CheckBox Name="ChkInventoryCleanupEnabled"
@@ -1209,136 +1388,185 @@
                                             <Button.ToolTip>
                                                 <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
                                                          MaxWidth="520"
-                                                         Content="JAK TO USTAWIĆ:&#10;1. W zakładce Ustawienia wybierz proces właściwego okna Minecrafta, nie launchera.&#10;2. Włącz paczkę MinecraftHelper AutoEQ + CobbleX (1.8.8) i ustaw ją nad paczką Default. Wyłącz starsze paczki Minecraft Helper.&#10;3. W ustawieniach obrazu Minecrafta ustaw GUI Scale: Large.&#10;4. Zostaw domyślne sterowanie: E = ekwipunek, Q = wyrzucanie, T = czat. Lewy Ctrl nie może być zajęty przez inny skrót.&#10;5. Ustaw odstęp między skanami, wybierz typy przedmiotów do wyrzucania oraz sloty 1–27.&#10;6. Otwórz ekwipunek w grze i użyj przycisku Test wykrywania. Program powinien znaleźć okno EQ i rozpoznać kolorowe znaczniki na przedmiotach.&#10;&#10;JAK TO DZIAŁA:&#10;Funkcja działa tylko podczas pracy Kopacza 5/3/3 albo 6/3/3. Co ustawiony czas program otwiera EQ, odsuwa kursor poza GUI, czeka na zniknięcie podpowiedzi i skanuje wybrane pola. Oznaczone stosy wyrzuca przez lewy Ctrl + Q, po czym ponownie skanuje otwarte EQ. Wykonuje maksymalnie 3 przebiegi, aby znaleźć również przedmioty wcześniej zasłonięte przez kursor. Hotbar, pancerz i crafting są zawsze pomijane. Na czas skanu kopanie oraz zaplanowane komendy są wstrzymywane.&#10;&#10;Gra musi być widoczna, aktywna i niezasłonięta innym oknem."/>
+                                                         Content="JAK TO USTAWIĆ:&#10;1. W zakładce Ustawienia wybierz proces właściwego okna Minecrafta, nie launchera.&#10;2. Włącz paczkę MinecraftHelper AutoEQ + CobbleX (1.8.8) i ustaw ją nad paczką Default. Wyłącz starsze paczki Minecraft Helper.&#10;3. W ustawieniach obrazu Minecrafta ustaw GUI Scale: Large.&#10;4. Zostaw domyślne sterowanie: E = ekwipunek, Q = wyrzucanie, T = czat. Lewy Ctrl nie może być zajęty przez inny skrót. Przy automatycznym jedzeniu klawisze 1 i 2 muszą wybierać odpowiednie sloty hotbara.&#10;5. Ustaw odstęp między skanami, wybierz sloty 1–27 oraz jeden z trybów: wybrane typy albo osobne „Wszystko poza cobblestone”.&#10;6. Otwórz ekwipunek w grze i użyj przycisku Test wykrywania. Program powinien znaleźć okno EQ i rozpoznać zawartość slotów.&#10;&#10;JAK TO DZIAŁA:&#10;Funkcja działa tylko podczas pracy Kopacza 5/3/3 albo 6/3/3. Co ustawiony czas program otwiera EQ, odsuwa kursor poza GUI, czeka na zniknięcie podpowiedzi i skanuje wybrane pola. W zwykłym trybie wyrzuca tylko zaznaczone typy. Osobny tryb „Wszystko poza cobblestone” opróżnia wybrane sloty ze wszystkich wykrytych przedmiotów, ale chroni rozpoznany szary lub różowy cobblestone. Stosy wyrzuca przez lewy Ctrl + Q, po czym ponownie skanuje otwarte EQ. Wykonuje maksymalnie 3 przebiegi. Hotbar, pancerz i crafting są zawsze pomijane. Na czas skanu kopanie oraz zaplanowane komendy są wstrzymywane. Opcjonalnie po całej sekwencji program zjada jedzenie ze slotu 2 i wraca na narzędzie w slocie 1.&#10;&#10;Gra musi być widoczna, aktywna i niezasłonięta innym oknem."/>
                                             </Button.ToolTip>
                                         </Button>
                                     </StackPanel>
 
                                     <StackPanel Name="PanelInventoryCleanupExpandableContent"
-                                                Margin="0,10,0,0"
+                                                Margin="0,8,0,0"
                                                 Visibility="Collapsed">
-                                        <TextBlock Text="Podczas pracy kopacza program co ustawiony czas otwiera EQ, rozpoznaje znaczniki z paczki i wyrzuca wybrane przedmioty z głównych 27 slotów."
+                                        <TextBlock Text="Wymagane: aktualna paczka Minecraft Helper, GUI Scale: Large oraz domyślne E / Q / T."
                                                    TextWrapping="Wrap"
-                                                   FontSize="11"
-                                                   Foreground="#A8BAD3"
-                                                   Margin="0,0,0,10"/>
-
-                                        <Border Background="#111A25"
-                                                BorderBrush="#34465E"
-                                                BorderThickness="1"
-                                                CornerRadius="4"
-                                                Padding="10,8"
-                                                Margin="0,0,0,12">
-                                            <StackPanel>
-                                                <TextBlock Text="Zanim uruchomisz"
-                                                           FontSize="11"
-                                                           FontWeight="Bold"
-                                                           Foreground="#7FC8FF"
-                                                           Margin="0,0,0,5"/>
-                                                <TextBlock Text="Włącz paczkę MinecraftHelper AutoEQ + CobbleX (1.8.8) nad Default, wybierz proces gry w Ustawieniach i pozostaw klawisze E, Q oraz T na ustawieniach domyślnych. Szczegółowa instrukcja znajduje się pod przyciskiem ?."
-                                                           FontSize="10.5"
-                                                           Foreground="#CFDBEB"
-                                                           TextWrapping="Wrap"
-                                                           LineHeight="16"/>
-                                            </StackPanel>
-                                        </Border>
+                                                   FontSize="10"
+                                                   Foreground="#F5C860"
+                                                   Margin="0,0,0,8"/>
 
                                         <StackPanel Name="PanelInventoryCleanupContent">
-                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                                                <TextBlock Text="Skanuj ekwipunek co:" Width="150" VerticalAlignment="Center"/>
-                                                <TextBox Name="TxtInventoryCleanupIntervalSeconds"
-                                                         Width="80"
-                                                         TextChanged="AnyTextBox_TextChanged"/>
-                                                <TextBlock Text=" sekund" VerticalAlignment="Center" Foreground="#92A6C1"/>
-                                            </StackPanel>
+                                            <TabControl Name="InventoryCleanupTabs"
+                                                        Style="{StaticResource SectionTabControlStyle}"
+                                                        Margin="0,0,0,8">
+                                                <TabItem Header="Ogólne">
+                                                    <StackPanel Margin="8,10,8,6">
+                                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                                            <TextBlock Text="Skanuj EQ co:" Width="105" VerticalAlignment="Center"/>
+                                                            <TextBox Name="TxtInventoryCleanupIntervalSeconds"
+                                                                     Width="70"
+                                                                     TextChanged="AnyTextBox_TextChanged"/>
+                                                            <TextBlock Text=" sekund" VerticalAlignment="Center" Foreground="#92A6C1"/>
+                                                        </StackPanel>
 
-                                            <Border Background="#111A25"
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="10"/>
+                                                                <ColumnDefinition Width="*"/>
+                                                            </Grid.ColumnDefinitions>
+
+                                                            <Border Grid.Column="0"
+                                                                    Background="#111A25"
+                                                                    BorderBrush="#34465E"
+                                                                    BorderThickness="1"
+                                                                    CornerRadius="4"
+                                                                    Padding="10">
+                                                                <StackPanel>
+                                                                    <CheckBox Name="ChkCobbleXEnabled"
+                                                                              Content="Twórz CobbleX po skanie EQ"
+                                                                              FontWeight="SemiBold"
+                                                                              Checked="ChkCobbleXEnabled_Changed"
+                                                                              Unchecked="ChkCobbleXEnabled_Changed"/>
+                                                                    <StackPanel Name="PanelCobbleXSettings"
+                                                                                Margin="0,8,0,0"
+                                                                                Visibility="Collapsed">
+                                                                        <WrapPanel Margin="0,0,0,6">
+                                                                            <TextBlock Text="Komenda:" Margin="0,0,7,0" VerticalAlignment="Center"/>
+                                                                            <TextBox Name="TxtCobbleXCommand"
+                                                                                     Width="120"
+                                                                                     TextChanged="AnyTextBox_TextChanged"/>
+                                                                            <TextBlock Text="Stacki 64:" Margin="12,0,7,0" VerticalAlignment="Center"/>
+                                                                            <TextBox Name="TxtCobbleXRequiredStacks"
+                                                                                     Width="48"
+                                                                                     TextChanged="AnyTextBox_TextChanged"/>
+                                                                        </WrapPanel>
+                                                                        <TextBlock Text="Komenda jest wysyłana po zamknięciu EQ, gdy jest wystarczająco dużo pełnych stacków cobblestone."
+                                                                                   TextWrapping="Wrap"
+                                                                                   FontSize="10"
+                                                                                   Foreground="#92A6C1"/>
+                                                                    </StackPanel>
+                                                                </StackPanel>
+                                                            </Border>
+
+                                                            <Border Grid.Column="2"
+                                                                    Background="#111A25"
+                                                                    BorderBrush="#34465E"
+                                                                    BorderThickness="1"
+                                                                    CornerRadius="4"
+                                                                    Padding="10">
+                                                                <StackPanel>
+                                                                    <CheckBox Name="ChkInventoryCleanupEatAfterCleanup"
+                                                                              Content="Zjedz mięso po Auto EQ"
+                                                                              FontWeight="SemiBold"
+                                                                              Checked="ChkInventoryCleanupEatAfterCleanup_Changed"
+                                                                              Unchecked="ChkInventoryCleanupEatAfterCleanup_Changed"/>
+                                                                    <TextBlock Text="Slot 2 → PPM przez 4 s → powrót na slot 1."
+                                                                               TextWrapping="Wrap"
+                                                                               FontSize="10"
+                                                                               Foreground="#92A6C1"
+                                                                               Margin="24,6,0,0"/>
+                                                                </StackPanel>
+                                                            </Border>
+                                                        </Grid>
+                                                    </StackPanel>
+                                                </TabItem>
+
+                                                <TabItem Header="Przedmioty">
+                                                    <StackPanel Margin="8,10,8,6">
+                                                        <Border Background="#161F2B"
+                                                                BorderBrush="#4B6283"
+                                                                BorderThickness="1"
+                                                                CornerRadius="4"
+                                                                Padding="9"
+                                                                MaxWidth="620"
+                                                                HorizontalAlignment="Left"
+                                                                Margin="0,0,0,8">
+                                                            <StackPanel>
+                                                                <CheckBox Name="ChkInventoryCleanupAllItemTypes"
+                                                                          Content="Wyrzucaj wszystko poza cobblestone"
+                                                                          Checked="ChkInventoryCleanupAllItemTypes_Changed"
+                                                                          Unchecked="ChkInventoryCleanupAllItemTypes_Changed"/>
+                                                                <TextBlock Text="Wyrzuca wszystkie rozpoznane przedmioty z wybranych slotów. Szary i różowy cobblestone pozostają w EQ; hotbar jest pomijany."
+                                                                           FontSize="10"
+                                                                           Foreground="#92A6C1"
+                                                                           TextWrapping="Wrap"
+                                                                           Margin="24,5,0,0"/>
+                                                            </StackPanel>
+                                                        </Border>
+                                                        <UniformGrid Name="PanelInventoryCleanupItemTypes"
+                                                                     Columns="4"
+                                                                     MaxWidth="620"
+                                                                     HorizontalAlignment="Left"
+                                                                     Margin="0,0,0,6"/>
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <Button Name="BtnInventoryCleanupSelectAllItemTypes"
+                                                                    Content="Zaznacz wszystkie"
+                                                                    Width="125"
+                                                                    Click="BtnInventoryCleanupSelectAllItemTypes_Click"/>
+                                                            <Button Name="BtnInventoryCleanupClearItemTypes"
+                                                                    Content="Wyczyść wybór"
+                                                                    Width="115"
+                                                                    Margin="8,0,0,0"
+                                                                    Click="BtnInventoryCleanupClearItemTypes_Click"/>
+                                                        </StackPanel>
+                                                    </StackPanel>
+                                                </TabItem>
+
+                                                <TabItem Header="Sloty EQ">
+                                                    <StackPanel Margin="8,10,8,6">
+                                                        <TextBlock Text="Skanowane sloty głównego EQ (1–27)"
+                                                                   FontSize="11"
+                                                                   FontWeight="Bold"
+                                                                   Foreground="#A8BAD3"
+                                                                   Margin="0,0,0,6"/>
+                                                        <Border Background="#101722"
+                                                                BorderBrush="#4B6283"
+                                                                BorderThickness="1"
+                                                                CornerRadius="4"
+                                                                Padding="5"
+                                                                Width="389"
+                                                                HorizontalAlignment="Left"
+                                                                Margin="0,0,0,8">
+                                                            <UniformGrid Name="PanelInventoryCleanupSlots"
+                                                                         Rows="3"
+                                                                         Columns="9"/>
+                                                        </Border>
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <Button Content="Zaznacz wszystkie"
+                                                                    Width="120"
+                                                                    Click="BtnInventoryCleanupSelectAll_Click"/>
+                                                            <Button Content="Wyczyść wybór"
+                                                                    Width="105"
+                                                                    Margin="8,0,0,0"
+                                                                    Click="BtnInventoryCleanupClearSlots_Click"/>
+                                                            <Button Content="Test wykrywania"
+                                                                    Width="115"
+                                                                    Margin="8,0,0,0"
+                                                                    Click="BtnInventoryCleanupTest_Click"/>
+                                                        </StackPanel>
+                                                    </StackPanel>
+                                                </TabItem>
+                                            </TabControl>
+
+                                            <Border Background="#101722"
                                                     BorderBrush="#34465E"
                                                     BorderThickness="1"
                                                     CornerRadius="4"
-                                                    Padding="10,8"
-                                                    Margin="0,0,0,12">
-                                                <StackPanel>
-                                                    <CheckBox Name="ChkCobbleXEnabled"
-                                                              Content="Automatycznie twórz CobbleX po skanie EQ"
-                                                              FontWeight="SemiBold"
-                                                              Checked="ChkCobbleXEnabled_Changed"
-                                                              Unchecked="ChkCobbleXEnabled_Changed"/>
-                                                    <StackPanel Name="PanelCobbleXSettings"
-                                                                Margin="0,8,0,0"
-                                                                Visibility="Collapsed">
-                                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,7">
-                                                            <TextBlock Text="Komenda:" Width="105" VerticalAlignment="Center"/>
-                                                            <TextBox Name="TxtCobbleXCommand"
-                                                                     Width="155"
-                                                                     TextChanged="AnyTextBox_TextChanged"/>
-                                                            <TextBlock Text="Pełne stacki 64:" Margin="18,0,8,0" VerticalAlignment="Center"/>
-                                                            <TextBox Name="TxtCobbleXRequiredStacks"
-                                                                     Width="55"
-                                                                     TextChanged="AnyTextBox_TextChanged"/>
-                                                        </StackPanel>
-                                                        <TextBlock Text="Po wyrzuceniu program zamyka EQ i wysyła komendę, gdy wykryje wymaganą liczbę pełnych stacków zwykłego cobblestone. Gotowy CobbleX bez napisu 64, mossy i wariant enchantowany nie są liczone."
-                                                                   TextWrapping="Wrap"
-                                                                   FontSize="10"
-                                                                   Foreground="#92A6C1"/>
-                                                    </StackPanel>
-                                                </StackPanel>
+                                                    Padding="8">
+                                                <TextBlock Name="TxtInventoryCleanupStatus"
+                                                           Text="Gotowe do testu."
+                                                           TextWrapping="Wrap"
+                                                           FontSize="10.5"
+                                                           Foreground="#D8E2F0"/>
                                             </Border>
-
-                                            <TextBlock Text="Przedmioty do wyrzucenia:"
-                                                       FontSize="11"
-                                                       FontWeight="Bold"
-                                                       Foreground="#A8BAD3"
-                                                       Margin="0,0,0,2"/>
-                                            <TextBlock Text="Zaznaczone = wyrzucaj zawartość slotu. Odznaczone = zawsze zostaw."
-                                                       FontSize="10"
-                                                       Foreground="#7F93AE"
-                                                       Margin="0,0,0,6"/>
-                                            <UniformGrid Name="PanelInventoryCleanupItemTypes"
-                                                         Columns="4"
-                                                         Width="600"
-                                                         HorizontalAlignment="Left"
-                                                         Margin="0,0,0,6"/>
-                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                                <Button Content="Wyrzucaj wszystkie typy"
-                                                        Width="155"
-                                                        Click="BtnInventoryCleanupSelectAllItemTypes_Click"/>
-                                                <Button Content="Zostaw wszystkie"
-                                                        Width="125"
-                                                        Margin="8,0,0,0"
-                                                        Click="BtnInventoryCleanupClearItemTypes_Click"/>
-                                            </StackPanel>
-
-                                            <TextBlock Text="Skanowane sloty głównego EQ (1–27):"
-                                                       FontSize="11"
-                                                       FontWeight="Bold"
-                                                       Foreground="#A8BAD3"
-                                                       Margin="0,0,0,6"/>
-                                            <UniformGrid Name="PanelInventoryCleanupSlots"
-                                                         Columns="9"
-                                                         Width="414"
-                                                         HorizontalAlignment="Left"
-                                                         Margin="0,0,0,10"/>
-
-                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                                                <Button Content="Zaznacz wszystkie"
-                                                        Width="125"
-                                                        Click="BtnInventoryCleanupSelectAll_Click"/>
-                                                <Button Content="Wyczyść wybór"
-                                                        Width="110"
-                                                        Margin="8,0,0,0"
-                                                        Click="BtnInventoryCleanupClearSlots_Click"/>
-                                                <Button Content="Test wykrywania"
-                                                        Width="120"
-                                                        Margin="8,0,0,0"
-                                                        Click="BtnInventoryCleanupTest_Click"/>
-                                            </StackPanel>
-
-                                            <TextBlock Name="TxtInventoryCleanupStatus"
-                                                       Text="Gotowe do testu."
-                                                       TextWrapping="Wrap"
-                                                       FontSize="11"
-                                                       Foreground="#D8E2F0"/>
                                         </StackPanel>
                                     </StackPanel>
                                 </StackPanel>
@@ -1346,7 +1574,7 @@
                         </StackPanel>
                     </ScrollViewer>
 
-                    <Border Grid.Column="1" Background="#161F2B" BorderBrush="#4B6283" BorderThickness="1" Padding="15" Margin="20,0,0,0" VerticalAlignment="Top" CornerRadius="4">
+                    <Border Grid.Column="1" Background="#161F2B" BorderBrush="#4B6283" BorderThickness="1" Padding="12" Margin="12,0,0,0" VerticalAlignment="Top" CornerRadius="4">
                         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                         <StackPanel>
                             <TextBlock Text="Informacje kopacza"
@@ -1856,6 +2084,184 @@
                                         </Border>
                                     </Grid>
                                     </Border>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Name="BorderAutoReconnectSection"
+                                    Style="{StaticResource SectionBorderStyle}">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <CheckBox Name="ChkAutoReconnectEnabled"
+                                                  VerticalAlignment="Center"
+                                                  Checked="ChkAutoReconnectEnabled_Changed"
+                                                  Unchecked="ChkAutoReconnectEnabled_Changed"/>
+                                        <TextBlock Text="Auto reconnect + kontrola kopania"
+                                                   Style="{StaticResource MainSectionHeaderTextStyle}"/>
+                                        <Button Content="?"
+                                                Style="{StaticResource MacroInfoButtonStyle}"
+                                                Margin="8,0,0,0"
+                                                ToolTipService.InitialShowDelay="100"
+                                                ToolTipService.ShowDuration="120000">
+                                            <Button.ToolTip>
+                                                <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
+                                                         MaxWidth="560"
+                                                         Content="Funkcja testowa współpracująca z Auto EQ. Jeżeli zaplanowane czyszczenie trzykrotnie nie zdoła otworzyć ekwipunku, uruchamiany jest pełny flow reconnectu przez Direct Connect. Jeżeli otwarte EQ nie zawiera znacznika diamentowego kilofa, program wykonuje profil /home i kończy właściwego Kopacza. Kontrola nie otwiera dodatkowo EQ pomiędzy cyklami Auto EQ. Nieznany ekran oraz komunikat o banie zatrzymują automat."/>
+                                            </Button.ToolTip>
+                                        </Button>
+                                    </StackPanel>
+
+                                    <StackPanel Name="PanelAutoReconnectContent"
+                                                Margin="0,12,0,0"
+                                                Visibility="Collapsed">
+                                        <TextBlock Text="Wymaga włączonego Auto EQ, aktualnej paczki Minecraft Helper ze znacznikiem diamentowego kilofa, etykietami [MH] oraz GUI Scale: Large. Testuj przy widocznym i aktywnym oknie gry."
+                                                   Margin="0,0,0,10"
+                                                   FontSize="11"
+                                                   Foreground="#F5C860"
+                                                   TextWrapping="Wrap"/>
+
+                                        <Border Background="#161F2B"
+                                                BorderBrush="#4B6283"
+                                                BorderThickness="1"
+                                                CornerRadius="4"
+                                                Padding="10">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                                                    <Grid Margin="0,0,0,8">
+                                                        <TextBlock Text="Profile serwerów"
+                                                                   FontWeight="Bold"
+                                                                   FontSize="12"
+                                                                   Foreground="#7FC8FF"
+                                                                   VerticalAlignment="Center"/>
+                                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                                            <Button Content="+ Dodaj serwer"
+                                                                    Width="120"
+                                                                    Margin="0,0,7,0"
+                                                                    Click="BtnAutoReconnectAddProfile_Click"/>
+                                                            <Button Content="Edytuj"
+                                                                    Width="78"
+                                                                    Background="#243244"
+                                                                    BorderBrush="#4B6283"
+                                                                    BorderThickness="1"
+                                                                    Margin="0,0,7,0"
+                                                                    Click="BtnAutoReconnectEditProfile_Click"/>
+                                                            <Button Content="Usuń"
+                                                                    Width="70"
+                                                                    Background="#512433"
+                                                                    Click="BtnAutoReconnectDeleteProfile_Click"/>
+                                                        </StackPanel>
+                                                    </Grid>
+
+                                                    <TextBlock Text="Wybierz profil używany podczas odzyskiwania połączenia:"
+                                                               FontSize="10.5"
+                                                               Foreground="#92A6C1"
+                                                               Margin="0,0,0,7"/>
+                                                    <WrapPanel Name="PanelAutoReconnectServerProfiles"
+                                                               Margin="0,0,0,10"/>
+
+                                                    <Border Background="#101722"
+                                                            BorderBrush="#4B6283"
+                                                            BorderThickness="1"
+                                                            CornerRadius="4"
+                                                            Padding="11">
+                                                        <StackPanel>
+                                                            <TextBlock Name="TxtAutoReconnectSelectedProfileName"
+                                                                       Text="Brak profilu"
+                                                                       FontSize="13"
+                                                                       FontWeight="Bold"
+                                                                       Foreground="#38D6B4"
+                                                                       Margin="0,0,0,8"/>
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="145"/>
+                                                                    <ColumnDefinition Width="*"/>
+                                                                </Grid.ColumnDefinitions>
+                                                                <TextBlock Text="Adres:" Foreground="#92A6C1"/>
+                                                                <TextBlock Name="TxtAutoReconnectSelectedProfileAddress"
+                                                                           Grid.Column="1"
+                                                                           TextWrapping="Wrap"/>
+                                                            </Grid>
+                                                            <Grid Margin="0,5,0,0">
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="145"/>
+                                                                    <ColumnDefinition Width="*"/>
+                                                                </Grid.ColumnDefinitions>
+                                                                <TextBlock Text="Powrót do home:" Foreground="#92A6C1"/>
+                                                                <TextBlock Name="TxtAutoReconnectSelectedProfileHome"
+                                                                           Grid.Column="1"
+                                                                           TextWrapping="Wrap"/>
+                                                            </Grid>
+                                                            <Grid Margin="0,5,0,0">
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="145"/>
+                                                                    <ColumnDefinition Width="*"/>
+                                                                </Grid.ColumnDefinitions>
+                                                                <TextBlock Text="Czasy:" Foreground="#92A6C1"/>
+                                                                <TextBlock Name="TxtAutoReconnectSelectedProfileTiming"
+                                                                           Grid.Column="1"
+                                                                           TextWrapping="Wrap"/>
+                                                            </Grid>
+                                                        </StackPanel>
+                                                    </Border>
+
+                                                    <!-- Pola zgodności ze starszym settings.json. Edycja odbywa się w oknie profilu. -->
+                                                    <StackPanel Visibility="Collapsed">
+                                                        <ComboBox Name="CbAutoReconnectProfile" SelectionChanged="AutoReconnectSetting_Changed">
+                                                            <ComboBoxItem Content="GUI" Tag="Arivi"/>
+                                                            <ComboBoxItem Content="Bez GUI" Tag="Standard"/>
+                                                        </ComboBox>
+                                                        <TextBox Name="TxtAutoReconnectServerAddress"/>
+                                                        <TextBox Name="TxtAutoReconnectHomeCommand"/>
+                                                        <TextBox Name="TxtAutoReconnectHomeSlot"/>
+                                                        <TextBox Name="TxtAutoReconnectJoinDelay"/>
+                                                        <TextBox Name="TxtAutoReconnectTeleportDelay"/>
+                                                        <TextBox Name="TxtAutoReconnectWatchdogSeconds"/>
+                                                        <TextBox Name="TxtAutoReconnectMaxAttempts"/>
+                                                        <UniformGrid Name="PanelAutoReconnectHomeSlots" Rows="3" Columns="9"/>
+                                                    </StackPanel>
+                                                </StackPanel>
+
+                                                <StackPanel Grid.Column="1">
+                                                    <TextBlock Text="Testowanie etapami"
+                                                               FontWeight="Bold"
+                                                               Foreground="#7FC8FF"
+                                                               Margin="0,0,0,8"/>
+                                                    <WrapPanel Margin="0,0,0,8">
+                                                        <Button Content="Rozpoznaj ekran"
+                                                                Width="135"
+                                                                Margin="0,0,8,8"
+                                                                Click="BtnAutoReconnectRecognize_Click"/>
+                                                        <Button Content="Sprawdź EQ"
+                                                                Width="110"
+                                                                Margin="0,0,8,8"
+                                                                Click="BtnAutoReconnectCheckInventory_Click"/>
+                                                        <Button Content="Test /home"
+                                                                Width="100"
+                                                                Margin="0,0,8,8"
+                                                                Click="BtnAutoReconnectTestHome_Click"/>
+                                                        <Button Content="Pełny reconnect"
+                                                                Width="125"
+                                                                Margin="0,0,8,8"
+                                                                Click="BtnAutoReconnectStart_Click"/>
+                                                        <Button Content="STOP"
+                                                                Width="85"
+                                                                Margin="0,0,8,8"
+                                                                Background="#6B2636"
+                                                                Click="BtnAutoReconnectStop_Click"/>
+                                                    </WrapPanel>
+                                                    <TextBlock Name="TxtAutoReconnectStatus"
+                                                               Text="Gotowe do testu."
+                                                               Foreground="#92A6C1"
+                                                               FontSize="11"
+                                                               TextWrapping="Wrap"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </StackPanel>
                                 </StackPanel>
                             </Border>
 

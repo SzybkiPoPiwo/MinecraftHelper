@@ -25,6 +25,30 @@ namespace MinecraftHelper.Models
         public string Command { get; set; } = "";
     }
 
+    public class AutoReconnectServerProfile
+    {
+        public string Id { get; set; } = "";
+        public string Name { get; set; } = "Nowy serwer";
+        public string ServerAddress { get; set; } = "";
+        public string HomeCommand { get; set; } = "/home";
+        public bool HomeHasGui { get; set; } = true;
+        public int HomeGuiDelaySeconds { get; set; } = 1;
+        public int HomeGuiRows { get; set; } = 3;
+        public int HomeGuiColumns { get; set; } = 9;
+        public int HomeGuiSlot { get; set; } = 11;
+        public int JoinDelaySeconds { get; set; } = 8;
+        public int TeleportDelaySeconds { get; set; } = 10;
+        public int WatchdogSeconds { get; set; } = 60;
+        public int MaxAttempts { get; set; } = 3;
+        public bool MissingPickaxeRecoveryEnabled { get; set; } = true;
+        public string MissingPickaxeHomeCommand { get; set; } = "";
+        public bool? MissingPickaxeHomeHasGui { get; set; }
+        public int MissingPickaxeHomeGuiDelaySeconds { get; set; } = -1;
+        public int MissingPickaxeHomeGuiRows { get; set; }
+        public int MissingPickaxeHomeGuiColumns { get; set; }
+        public int MissingPickaxeHomeGuiSlot { get; set; }
+    }
+
     public class AppSettings
     {
         public string LastAcknowledgedVersion { get; set; } = "";
@@ -58,6 +82,8 @@ namespace MinecraftHelper.Models
         public List<MinerCommand> Kopacz633Commands { get; set; } = new List<MinerCommand>();
         public bool InventoryCleanupEnabled { get; set; }
         public int InventoryCleanupIntervalSeconds { get; set; } = 120;
+        public bool InventoryCleanupDiscardAllItemTypes { get; set; }
+        public bool InventoryCleanupEatAfterCleanup { get; set; }
         public List<int> InventoryCleanupSlots { get; set; } = new List<int>
         {
             0, 1, 2, 3, 4, 5, 6, 7, 8,
@@ -110,6 +136,22 @@ namespace MinecraftHelper.Models
         public int TestAutoFishingCaptureHeight { get; set; }
         public string TestAutoFishingRepairCommand { get; set; } = "";
         public int TestAutoFishingRepairEverySeconds { get; set; }
+        public bool AutoReconnectEnabled { get; set; }
+        public string AutoReconnectProfile { get; set; } = "Arivi";
+        public string AutoReconnectServerAddress { get; set; } = "";
+        public string AutoReconnectHomeCommand { get; set; } = "/home";
+        public int AutoReconnectHomeSlot { get; set; } = 11;
+        public int AutoReconnectJoinDelaySeconds { get; set; } = 8;
+        public int AutoReconnectTeleportDelaySeconds { get; set; } = 10;
+        public int AutoReconnectWatchdogSeconds { get; set; } = 60;
+        public int AutoReconnectMaxAttempts { get; set; } = 3;
+        public bool AutoReconnectHomeHasGui { get; set; } = true;
+        public int AutoReconnectHomeGuiDelaySeconds { get; set; } = 1;
+        public int AutoReconnectHomeGuiRows { get; set; } = 3;
+        public int AutoReconnectHomeGuiColumns { get; set; } = 9;
+        public bool AutoReconnectMissingPickaxeRecoveryEnabled { get; set; } = true;
+        public string AutoReconnectSelectedServerProfileId { get; set; } = "";
+        public List<AutoReconnectServerProfile> AutoReconnectServerProfiles { get; set; } = new List<AutoReconnectServerProfile>();
         public bool OverlayHudEnabled { get; set; }
         public bool OverlayAnimationsEnabled { get; set; }
         public int OverlayMonitorIndex { get; set; }

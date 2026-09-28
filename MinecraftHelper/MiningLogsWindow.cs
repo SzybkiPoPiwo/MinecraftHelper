@@ -38,6 +38,12 @@ namespace MinecraftHelper
         private Button _saveReportButton = null!;
         private Button _clearHistoryButton = null!;
         private IReadOnlyList<MiningLogEntry> _visibleEntries = Array.Empty<MiningLogEntry>();
+        private IReadOnlyList<MiningHistoryGroup> _visibleGroups = Array.Empty<MiningHistoryGroup>();
+
+        private sealed record MiningHistoryGroup(
+            MiningLogEntry Root,
+            IReadOnlyList<MiningLogEntry> Children,
+            bool IsMiningRun);
 
         public MiningLogsWindow(MiningLogService logService)
         {
@@ -70,7 +76,7 @@ namespace MinecraftHelper
             _cobbleXValue = BuildSummaryValue();
             _discardedValue = BuildSummaryValue();
             _periodValue = BuildSummaryValue(fontSize: 13);
-            AddSummaryCard(summaryGrid, 0, "SESJE EQ / UTWORZONE COBBLEX", _cobbleXValue, new Thickness(0, 0, 7, 0));
+            AddSummaryCard(summaryGrid, 0, "KOPANIE / EQ / COBBLEX", _cobbleXValue, new Thickness(0, 0, 7, 0));
             AddSummaryCard(summaryGrid, 1, "WYRZUCONE PRZEDMIOTY", _discardedValue, new Thickness(7, 0, 7, 0));
             AddSummaryCard(summaryGrid, 2, "ZAKRES HISTORII", _periodValue, new Thickness(7, 0, 0, 0));
             Grid.SetRow(summaryGrid, 1);
@@ -150,7 +156,7 @@ namespace MinecraftHelper
             });
             panel.Children.Add(new TextBlock
             {
-                Text = "Każde automatyczne otwarcie EQ tworzy osobną sesję. Kliknij wiersz, aby rozwinąć listę wyrzuconych przedmiotów, przebiegi skanowania i wynik CobbleX. Starsze wpisy oznaczone * nie zawierają dokładnej liczby sztuk.",
+                Text = "Jedno uruchomienie Kopacza tworzy nadrzędną sesję. Rozwiń ją, aby zobaczyć kolejne otwarcia EQ i zdarzenia Auto Reconnect; następnie kliknij wybrany wpis, aby sprawdzić pełne dane. Starsze wpisy oznaczone * pozostają dostępne osobno.",
                 Margin = new Thickness(0, 5, 0, 0),
                 FontSize = 12,
                 Foreground = Brush(146, 166, 193),
@@ -303,7 +309,7 @@ namespace MinecraftHelper
         private void RefreshView()
         {
             MiningLogSummary summary = _logService.GetSummary();
-            _cobbleXValue.Text = $"{summary.InventorySessions:N0} skanów EQ\n{summary.CobbleXCreated:N0} CobbleX";
+            _cobbleXValue.Text = $"{summary.MiningRuns:N0} sesji kopania\n{summary.InventorySessions:N0} EQ • {summary.CobbleXCreated:N0} CobbleX";
             int exactStacks = Math.Max(0, summary.DiscardedStacks - summary.LegacyDiscardedStacks);
             _discardedValue.Text = $"{summary.DiscardedItems:N0} szt.\n{exactStacks:N0} stosów";
             if (summary.LegacyDiscardedStacks > 0)
@@ -319,12 +325,50 @@ namespace MinecraftHelper
         {
             IReadOnlyList<MiningLogEntry> allEntries = _logService.GetEntriesNewestFirst();
             string query = _searchBox?.Text?.Trim() ?? string.Empty;
-            _visibleEntries = string.IsNullOrWhiteSpace(query)
-                ? allEntries
-                : allEntries.Where(entry => EntryMatchesSearch(entry, query)).ToList();
+            var runs = allEntries
+                .Where(entry => entry.Kind == MiningLogKinds.MiningRun)
+                .ToList();
+            var runIds = runs
+                .Where(run => !string.IsNullOrWhiteSpace(run.SessionId))
+                .Select(run => run.SessionId)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var groups = new List<MiningHistoryGroup>();
+            foreach (MiningLogEntry run in runs)
+            {
+                List<MiningLogEntry> allChildren = allEntries
+                    .Where(entry => entry.Kind != MiningLogKinds.MiningRun
+                        && !string.IsNullOrWhiteSpace(entry.MiningRunId)
+                        && string.Equals(entry.MiningRunId, run.SessionId, StringComparison.OrdinalIgnoreCase))
+                    .OrderBy(entry => entry.Timestamp)
+                    .ToList();
+
+                bool runMatches = string.IsNullOrWhiteSpace(query) || EntryMatchesSearch(run, query);
+                List<MiningLogEntry> visibleChildren = string.IsNullOrWhiteSpace(query) || runMatches
+                    ? allChildren
+                    : allChildren.Where(entry => EntryMatchesSearch(entry, query)).ToList();
+                if (runMatches || visibleChildren.Count > 0)
+                    groups.Add(new MiningHistoryGroup(run, visibleChildren, IsMiningRun: true));
+            }
+
+            IEnumerable<MiningLogEntry> standaloneEntries = allEntries.Where(entry =>
+                entry.Kind != MiningLogKinds.MiningRun
+                && (string.IsNullOrWhiteSpace(entry.MiningRunId) || !runIds.Contains(entry.MiningRunId)));
+            if (!string.IsNullOrWhiteSpace(query))
+                standaloneEntries = standaloneEntries.Where(entry => EntryMatchesSearch(entry, query));
+            groups.AddRange(standaloneEntries.Select(entry =>
+                new MiningHistoryGroup(entry, Array.Empty<MiningLogEntry>(), IsMiningRun: false)));
+
+            _visibleGroups = groups
+                .OrderByDescending(group => group.Root.Timestamp)
+                .ToList();
+            _visibleEntries = _visibleGroups
+                .SelectMany(group => group.IsMiningRun
+                    ? new[] { group.Root }.Concat(group.Children)
+                    : new[] { group.Root })
+                .ToList();
 
             if (_resultCount != null)
-                _resultCount.Text = $"Wyświetlono {_visibleEntries.Count:N0} z {allEntries.Count:N0}";
+                _resultCount.Text = $"{_visibleGroups.Count:N0} sesji/wpisów • {_visibleEntries.Count:N0} zdarzeń";
             if (_clearFilterButton != null)
                 _clearFilterButton.IsEnabled = !string.IsNullOrWhiteSpace(query);
             if (_saveReportButton != null)
@@ -333,12 +377,12 @@ namespace MinecraftHelper
                 _clearHistoryButton.IsEnabled = allEntries.Count > 0;
 
             _entriesPanel.Children.Clear();
-            if (_visibleEntries.Count == 0)
+            if (_visibleGroups.Count == 0)
             {
                 _entriesPanel.Children.Add(new TextBlock
                 {
                     Text = allEntries.Count == 0
-                        ? "Brak zapisanych sesji. Historia pojawi się przy pierwszym automatycznym otwarciu EQ."
+                        ? "Brak zapisanych sesji. Historia pojawi się po pierwszym uruchomieniu Kopacza."
                         : "Brak wpisów pasujących do wyszukiwania.",
                     Margin = new Thickness(18, 24, 18, 24),
                     HorizontalAlignment = HorizontalAlignment.Center,
@@ -349,8 +393,13 @@ namespace MinecraftHelper
                 return;
             }
 
-            for (int index = 0; index < _visibleEntries.Count; index++)
-                _entriesPanel.Children.Add(BuildHistoryRow(_visibleEntries[index], index));
+            for (int index = 0; index < _visibleGroups.Count; index++)
+            {
+                MiningHistoryGroup group = _visibleGroups[index];
+                _entriesPanel.Children.Add(group.IsMiningRun
+                    ? BuildMiningRunRow(group.Root, group.Children, index)
+                    : BuildHistoryRow(group.Root, index, nested: false));
+            }
         }
 
         private static bool EntryMatchesSearch(MiningLogEntry entry, string query)
@@ -363,20 +412,159 @@ namespace MinecraftHelper
                 eventLabel,
                 countLabel,
                 entry.Owner ?? string.Empty,
+                entry.EventType ?? string.Empty,
+                entry.CleanupMode ?? string.Empty,
                 GetStatusLabel(entry),
                 entry.Details ?? string.Empty,
+                entry.EndDetails ?? string.Empty,
                 entry.CobbleXCommand ?? string.Empty,
+                string.Join(" ", entry.SelectedSlots ?? new List<int>()),
+                string.Join(" ", entry.SelectedItemTypes ?? new List<string>()),
                 string.Join(" ", (entry.Items ?? new List<MiningLogItemDetail>()).Select(item => $"{item.Label} {item.ItemId} {item.ItemCount} {item.StackCount}")));
             string[] terms = query.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             return terms.All(term => searchable.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0);
         }
 
-        private UIElement BuildHistoryRow(MiningLogEntry entry, int index)
+        private UIElement BuildMiningRunRow(
+            MiningLogEntry run,
+            IReadOnlyList<MiningLogEntry> children,
+            int index)
         {
-            bool isSession = entry.Kind == MiningLogKinds.InventorySession;
+            Brush rowBackground = index % 2 == 0 ? Brush(17, 29, 43) : Brush(20, 34, 50);
+            Grid row = BuildHistoryGrid();
+            row.Children.Add(BuildCell(run.Timestamp.LocalDateTime.ToString("dd.MM.yyyy  HH:mm:ss"), 0, FontWeights.Normal, Brush(207, 219, 235)));
+            row.Children.Add(BuildCell(
+                string.IsNullOrWhiteSpace(run.Owner) ? "Sesja kopania" : $"Sesja kopania • {run.Owner}",
+                1,
+                FontWeights.Bold,
+                Brush(127, 200, 255),
+                wrap: true));
+
+            int inventoryCount = children.Count(entry => entry.Kind == MiningLogKinds.InventorySession);
+            int discardedItems = children
+                .Where(entry => entry.Kind == MiningLogKinds.InventorySession)
+                .Sum(entry => Math.Max(0, entry.ItemCount));
+            int cobbleX = children.Count(entry => entry.Kind == MiningLogKinds.InventorySession && entry.CobbleXCreated);
+            row.Children.Add(BuildCell(
+                $"{inventoryCount:N0} EQ • {discardedItems:N0} szt.\n{cobbleX:N0} CobbleX",
+                2,
+                FontWeights.Bold,
+                Brush(56, 214, 180),
+                wrap: true));
+            row.Children.Add(BuildCell(GetStatusLabel(run), 3, FontWeights.SemiBold, GetStatusBrush(run), wrap: true));
+
+            var arrow = new TextBlock
+            {
+                Text = "▶",
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                Foreground = Brush(127, 200, 255),
+                FontSize = 12
+            };
+            Grid.SetColumn(arrow, 4);
+            row.Children.Add(arrow);
+
+            string entryKey = GetEntryKey(run);
+            bool initiallyExpanded = _expandedEntryKeys.Contains(entryKey);
+            var childrenPanel = new StackPanel
+            {
+                Visibility = initiallyExpanded ? Visibility.Visible : Visibility.Collapsed
+            };
+            arrow.Text = initiallyExpanded ? "▼" : "▶";
+
+            var sessionInfo = new TextBlock
+            {
+                Text = BuildMiningRunSummary(run, children),
+                TextWrapping = TextWrapping.Wrap,
+                FontSize = 11,
+                Foreground = Brush(168, 186, 211),
+                Margin = new Thickness(12, 9, 12, 9)
+            };
+            childrenPanel.Children.Add(new Border
+            {
+                Background = Brush(13, 23, 35),
+                BorderBrush = Brush(46, 168, 255),
+                BorderThickness = new Thickness(3, 0, 0, 0),
+                Margin = new Thickness(18, 0, 0, 0),
+                Child = sessionInfo
+            });
+
+            if (children.Count == 0)
+            {
+                childrenPanel.Children.Add(new TextBlock
+                {
+                    Text = "Ta sesja nie zawiera jeszcze otwarć EQ ani zdarzeń automatyzacji.",
+                    Foreground = Brush(146, 166, 193),
+                    FontStyle = FontStyles.Italic,
+                    Margin = new Thickness(42, 12, 16, 12)
+                });
+            }
+            else
+            {
+                for (int childIndex = 0; childIndex < children.Count; childIndex++)
+                    childrenPanel.Children.Add(BuildHistoryRow(children[childIndex], childIndex, nested: true));
+            }
+
+            var toggle = new Button
+            {
+                Content = row,
+                HorizontalContentAlignment = HorizontalAlignment.Stretch,
+                VerticalContentAlignment = VerticalAlignment.Stretch,
+                Padding = new Thickness(0),
+                Style = CreateHistoryRowButtonStyle(rowBackground),
+                ToolTip = "Kliknij, aby pokazać otwarcia EQ i zdarzenia tej sesji kopania."
+            };
+            toggle.Click += (_, __) =>
+            {
+                bool expand = childrenPanel.Visibility != Visibility.Visible;
+                childrenPanel.Visibility = expand ? Visibility.Visible : Visibility.Collapsed;
+                arrow.Text = expand ? "▼" : "▶";
+                if (expand)
+                    _expandedEntryKeys.Add(entryKey);
+                else
+                    _expandedEntryKeys.Remove(entryKey);
+            };
+
+            var content = new StackPanel();
+            content.Children.Add(toggle);
+            content.Children.Add(childrenPanel);
+            return new Border
+            {
+                BorderBrush = Brush(58, 82, 112),
+                BorderThickness = new Thickness(0, 0, 0, 1),
+                Child = content
+            };
+        }
+
+        private static string BuildMiningRunSummary(
+            MiningLogEntry run,
+            IReadOnlyList<MiningLogEntry> children)
+        {
+            int inventoryCount = children.Count(entry => entry.Kind == MiningLogKinds.InventorySession);
+            int automationCount = children.Count(entry => entry.Kind == MiningLogKinds.AutomationEvent);
+            int discardedItems = children
+                .Where(entry => entry.Kind == MiningLogKinds.InventorySession)
+                .Sum(entry => Math.Max(0, entry.ItemCount));
+            int discardedStacks = children
+                .Where(entry => entry.Kind == MiningLogKinds.InventorySession)
+                .Sum(MiningLogService.GetDiscardedStackCount);
+            string duration = run.CompletedAt.HasValue
+                ? FormatDuration(run.CompletedAt.Value - run.Timestamp)
+                : FormatDuration(DateTimeOffset.Now - run.Timestamp) + " (trwa)";
+            string configuration = string.IsNullOrWhiteSpace(run.Details) ? "Brak zapisanego opisu konfiguracji." : run.Details;
+            string ending = string.IsNullOrWhiteSpace(run.EndDetails) ? string.Empty : $"\nZakończenie: {run.EndDetails}";
+            return $"Start: {run.Timestamp.LocalDateTime:dd.MM.yyyy HH:mm:ss} • Czas: {duration} • "
+                + $"EQ: {inventoryCount:N0} • Automatyzacje: {automationCount:N0} • "
+                + $"Wyrzucono: {discardedItems:N0} szt. / {discardedStacks:N0} stos.\n{configuration}{ending}";
+        }
+
+        private UIElement BuildHistoryRow(MiningLogEntry entry, int index, bool nested)
+        {
             bool isCobbleX = entry.Kind == MiningLogKinds.CobbleXCreated || entry.CobbleXCreated;
             Brush rowBackground = index % 2 == 0 ? Brush(16, 26, 39) : Brush(19, 31, 46);
-            Brush eventBrush = isCobbleX ? Brush(245, 200, 96) : Brush(127, 200, 255);
+            Brush eventBrush = entry.Kind == MiningLogKinds.AutomationEvent
+                ? Brush(188, 145, 255)
+                : isCobbleX ? Brush(245, 200, 96) : Brush(127, 200, 255);
             Brush statusBrush = GetStatusBrush(entry);
 
             Grid row = BuildHistoryGrid();
@@ -398,7 +586,7 @@ namespace MinecraftHelper
 
             string entryKey = GetEntryKey(entry);
             bool initiallyExpanded = _expandedEntryKeys.Contains(entryKey);
-            UIElement details = BuildHistoryDetails(entry, isSession);
+            UIElement details = BuildHistoryDetails(entry);
             details.Visibility = initiallyExpanded ? Visibility.Visible : Visibility.Collapsed;
             arrow.Text = initiallyExpanded ? "▼" : "▶";
 
@@ -430,6 +618,7 @@ namespace MinecraftHelper
             {
                 BorderBrush = Brush(48, 68, 95),
                 BorderThickness = new Thickness(0, 0, 0, 1),
+                Margin = nested ? new Thickness(18, 0, 0, 0) : new Thickness(0),
                 Child = content
             };
         }
@@ -460,8 +649,23 @@ namespace MinecraftHelper
 
         private static string GetEventLabel(MiningLogEntry entry)
         {
+            if (entry.Kind == MiningLogKinds.MiningRun)
+                return string.IsNullOrWhiteSpace(entry.Owner) ? "Sesja kopania" : $"Sesja kopania • {entry.Owner}";
             if (entry.Kind == MiningLogKinds.InventorySession)
                 return string.IsNullOrWhiteSpace(entry.Owner) ? "Skan EQ" : $"Skan EQ • {entry.Owner}";
+            if (entry.Kind == MiningLogKinds.AutomationEvent)
+            {
+                return entry.EventType switch
+                {
+                    MiningLogEventTypes.AutoReconnectStarted => "Auto Reconnect • start",
+                    MiningLogEventTypes.AutoReconnectFinished => "Auto Reconnect • wynik",
+                    MiningLogEventTypes.HealthCheckStarted => "Kontrola kopania • start",
+                    MiningLogEventTypes.HealthCheckFinished => "Kontrola kopania • wynik",
+                    MiningLogEventTypes.MissingPickaxeRecovery => "Brak kilofa • powrót do home",
+                    MiningLogEventTypes.MissingPickaxeRecoveryFinished => "Powrót do home • wynik",
+                    _ => "Zdarzenie automatyzacji"
+                };
+            }
             return entry.Kind == MiningLogKinds.CobbleXCreated ? "Utworzono CobbleX" : "Stary wpis wyrzucania*";
         }
 
@@ -469,6 +673,10 @@ namespace MinecraftHelper
         {
             if (entry.Kind == MiningLogKinds.CobbleXCreated)
                 return $"{Math.Max(0, entry.Count):N0} szt.";
+            if (entry.Kind == MiningLogKinds.MiningRun)
+                return "Folder sesji";
+            if (entry.Kind == MiningLogKinds.AutomationEvent)
+                return "Automatyzacja";
             if (entry.Kind == MiningLogKinds.InventorySession)
             {
                 if (entry.Status == MiningLogStatuses.InProgress)
@@ -485,6 +693,35 @@ namespace MinecraftHelper
 
         private static string GetStatusLabel(MiningLogEntry entry)
         {
+            if (entry.Kind == MiningLogKinds.MiningRun)
+            {
+                string duration = entry.CompletedAt.HasValue
+                    ? FormatDuration(entry.CompletedAt.Value - entry.Timestamp)
+                    : FormatDuration(DateTimeOffset.Now - entry.Timestamp);
+                return entry.Status switch
+                {
+                    MiningLogStatuses.Completed => $"Zakończono • {duration}",
+                    MiningLogStatuses.Aborted => $"Przerwano • {duration}",
+                    MiningLogStatuses.Interrupted => $"Niedokończono • {duration}",
+                    _ => $"Kopanie trwa • {duration}"
+                };
+            }
+            if (entry.Kind == MiningLogKinds.AutomationEvent)
+            {
+                if (entry.EventType is MiningLogEventTypes.AutoReconnectStarted
+                    or MiningLogEventTypes.HealthCheckStarted
+                    or MiningLogEventTypes.MissingPickaxeRecovery)
+                {
+                    return "Uruchomiono";
+                }
+                return entry.Status switch
+                {
+                    MiningLogStatuses.InProgress => "Rozpoczęto",
+                    MiningLogStatuses.Aborted => "Błąd / zatrzymano",
+                    MiningLogStatuses.Interrupted => "Niedokończono",
+                    _ => "Wykonano"
+                };
+            }
             if (entry.Kind != MiningLogKinds.InventorySession)
                 return "Wpis starszego formatu";
 
@@ -500,6 +737,15 @@ namespace MinecraftHelper
 
         private static Brush GetStatusBrush(MiningLogEntry entry)
         {
+            if (entry.Kind == MiningLogKinds.MiningRun || entry.Kind == MiningLogKinds.AutomationEvent)
+            {
+                return entry.Status switch
+                {
+                    MiningLogStatuses.Completed => Brush(56, 214, 180),
+                    MiningLogStatuses.InProgress => Brush(251, 191, 36),
+                    _ => Brush(255, 107, 107)
+                };
+            }
             if (entry.Kind != MiningLogKinds.InventorySession)
                 return Brush(146, 166, 193);
             if (entry.Status == MiningLogStatuses.Completed && entry.RemainingStacks == 0)
@@ -509,19 +755,29 @@ namespace MinecraftHelper
             return Brush(255, 107, 107);
         }
 
-        private static UIElement BuildHistoryDetails(MiningLogEntry entry, bool isSession)
+        private static UIElement BuildHistoryDetails(MiningLogEntry entry)
         {
+            bool isSession = entry.Kind == MiningLogKinds.InventorySession;
+            bool isAutomation = entry.Kind == MiningLogKinds.AutomationEvent;
             var panel = new StackPanel();
             panel.Children.Add(new TextBlock
             {
-                Text = isSession ? "SZCZEGÓŁY SESJI EQ" : "SZCZEGÓŁY STAREGO WPISU",
+                Text = isSession
+                    ? "SZCZEGÓŁY OTWARCIA EQ"
+                    : isAutomation
+                        ? "SZCZEGÓŁY AUTOMATYZACJI"
+                        : "SZCZEGÓŁY STAREGO WPISU",
                 FontSize = 10,
                 FontWeight = FontWeights.Bold,
                 Foreground = Brush(127, 200, 255),
                 Margin = new Thickness(0, 0, 0, 9)
             });
 
-            AddDetailLine(panel, "Otwarcie EQ", entry.Timestamp.LocalDateTime.ToString("dd.MM.yyyy HH:mm:ss"), Brush(207, 219, 235));
+            AddDetailLine(
+                panel,
+                isSession ? "Otwarcie EQ" : "Data zdarzenia",
+                entry.Timestamp.LocalDateTime.ToString("dd.MM.yyyy HH:mm:ss"),
+                Brush(207, 219, 235));
             if (entry.CompletedAt.HasValue)
             {
                 AddDetailLine(panel, "Zakończenie", entry.CompletedAt.Value.LocalDateTime.ToString("dd.MM.yyyy HH:mm:ss"), Brush(207, 219, 235));
@@ -534,6 +790,33 @@ namespace MinecraftHelper
 
             if (isSession)
             {
+                string cleanupMode = entry.CleanupMode switch
+                {
+                    "all-except-cobblestone" => "Wszystko poza cobblestone",
+                    "selected-items" => "Tylko wybrane typy",
+                    _ => "Starsza sesja — brak zapisanej konfiguracji"
+                };
+                AddDetailLine(panel, "Tryb wyrzucania", cleanupMode, Brush(245, 200, 96));
+                if (entry.SelectedSlots is { Count: > 0 })
+                    AddDetailLine(panel, "Skanowane sloty", string.Join(", ", entry.SelectedSlots), Brush(127, 200, 255));
+                if (entry.CleanupMode == "selected-items")
+                {
+                    AddDetailLine(
+                        panel,
+                        "Wybrane przedmioty",
+                        entry.SelectedItemTypes is { Count: > 0 }
+                            ? string.Join(", ", entry.SelectedItemTypes)
+                            : "Brak zapisanej listy",
+                        Brush(127, 200, 255));
+                }
+                AddDetailLine(panel, "CobbleX włączony", entry.CobbleXEnabled ? "Tak" : "Nie", entry.CobbleXEnabled ? Brush(56, 214, 180) : Brush(146, 166, 193));
+                AddDetailLine(
+                    panel,
+                    "Jedzenie po EQ",
+                    entry.EatAfterCleanup
+                        ? entry.EatingCompleted ? "Wykonano — slot 2, PPM 4 s, powrót na slot 1" : "Włączone, ale nie zakończono"
+                        : "Wyłączone",
+                    entry.EatingCompleted ? Brush(56, 214, 180) : entry.EatAfterCleanup ? Brush(251, 191, 36) : Brush(146, 166, 193));
                 AddDetailLine(panel, "Przebiegi EQ", Math.Max(0, entry.DropPasses).ToString("N0"), Brush(127, 200, 255));
                 AddDetailLine(panel, "Pozostałe stosy", Math.Max(0, entry.RemainingStacks).ToString("N0"), entry.RemainingStacks > 0 ? Brush(251, 191, 36) : Brush(56, 214, 180));
 
@@ -767,12 +1050,14 @@ namespace MinecraftHelper
             builder.AppendLine("Raport Minecraft Helper - logi kopania");
             builder.AppendLine($"Wygenerowano;{EscapeCsv(DateTime.Now.ToString("dd.MM.yyyy HH:mm:ss"))}");
             builder.AppendLine($"Widoczne wpisy;{entries.Count}");
+            builder.AppendLine($"Sesje kopania;{entries.Count(entry => entry.Kind == MiningLogKinds.MiningRun)}");
+            builder.AppendLine($"Zdarzenia automatyzacji;{entries.Count(entry => entry.Kind == MiningLogKinds.AutomationEvent)}");
             builder.AppendLine($"Utworzone CobbleX;{cobbleX}");
             builder.AppendLine($"Wyrzucone przedmioty (dokładne);{discardedItems}");
             builder.AppendLine($"Wyrzucone stosy (dokładne);{exactStacks}");
             builder.AppendLine($"Stare stosy bez liczby sztuk;{legacyStacks}");
             builder.AppendLine();
-            builder.AppendLine("Data i godzina;Zdarzenie;Status;Sztuki;Stosy;CobbleX;Szczegóły");
+            builder.AppendLine("Data i godzina;ID sesji kopania;Rodzaj;Kopacz / właściciel;Zdarzenie;Status;Sztuki;Stosy;CobbleX;Szczegóły");
             foreach (MiningLogEntry entry in entries)
             {
                 bool isLegacyCobbleX = entry.Kind == MiningLogKinds.CobbleXCreated;
@@ -785,7 +1070,11 @@ namespace MinecraftHelper
                 string cobbleXValue = isLegacyCobbleX
                     ? Math.Max(0, entry.Count).ToString()
                     : entry.CobbleXCreated ? "1" : "0";
+                string miningRunId = entry.Kind == MiningLogKinds.MiningRun ? entry.SessionId : entry.MiningRunId;
                 builder.Append(EscapeCsv(entry.Timestamp.LocalDateTime.ToString("dd.MM.yyyy HH:mm:ss"))).Append(';')
+                    .Append(EscapeCsv(miningRunId)).Append(';')
+                    .Append(EscapeCsv(entry.Kind)).Append(';')
+                    .Append(EscapeCsv(entry.Owner)).Append(';')
                     .Append(EscapeCsv(GetEventLabel(entry))).Append(';')
                     .Append(EscapeCsv(GetStatusLabel(entry))).Append(';')
                     .Append(EscapeCsv(items)).Append(';')
@@ -804,6 +1093,8 @@ namespace MinecraftHelper
             builder.AppendLine("MINECRAFT HELPER - RAPORT Z LOGÓW KOPANIA");
             builder.AppendLine($"Wygenerowano: {DateTime.Now:dd.MM.yyyy HH:mm:ss}");
             builder.AppendLine($"Widoczne wpisy: {entries.Count:N0}");
+            builder.AppendLine($"Sesje kopania: {entries.Count(entry => entry.Kind == MiningLogKinds.MiningRun):N0}");
+            builder.AppendLine($"Zdarzenia automatyzacji: {entries.Count(entry => entry.Kind == MiningLogKinds.AutomationEvent):N0}");
             builder.AppendLine($"Utworzone CobbleX: {cobbleX:N0}");
             builder.AppendLine($"Wyrzucone przedmioty: {discardedItems:N0} szt. z {exactStacks:N0} stosów");
             if (legacyStacks > 0)
@@ -812,8 +1103,10 @@ namespace MinecraftHelper
 
             foreach (MiningLogEntry entry in entries)
             {
+                string miningRunId = entry.Kind == MiningLogKinds.MiningRun ? entry.SessionId : entry.MiningRunId;
                 builder.Append('[').Append(entry.Timestamp.LocalDateTime.ToString("dd.MM.yyyy HH:mm:ss")).Append("] ")
                     .Append(GetEventLabel(entry)).Append(" | ")
+                    .Append("Sesja: ").Append(string.IsNullOrWhiteSpace(miningRunId) ? "starszy wpis" : miningRunId).Append(" | ")
                     .Append(GetStatusLabel(entry)).Append(" | ")
                     .Append(GetCountLabel(entry).Replace('\n', ' ')).Append(" | ")
                     .Append(BuildReportDetails(entry));
@@ -848,6 +1141,8 @@ namespace MinecraftHelper
             var parts = new List<string>();
             if (!string.IsNullOrWhiteSpace(entry.Details))
                 parts.Add(entry.Details.Trim());
+            if (!string.IsNullOrWhiteSpace(entry.EndDetails))
+                parts.Add("Zakończenie: " + entry.EndDetails.Trim());
             if (entry.Items is { Count: > 0 })
             {
                 parts.Add("Przedmioty: " + string.Join(", ", entry.Items.Select(item =>
@@ -855,10 +1150,31 @@ namespace MinecraftHelper
             }
             if (entry.Kind == MiningLogKinds.InventorySession)
             {
+                string cleanupMode = entry.CleanupMode == "all-except-cobblestone"
+                    ? "wszystko poza cobblestone"
+                    : entry.CleanupMode == "selected-items"
+                        ? "wybrane typy"
+                        : "brak danych (stary wpis)";
+                parts.Add($"Tryb wyrzucania: {cleanupMode}.");
+                if (entry.SelectedSlots is { Count: > 0 })
+                    parts.Add("Sloty: " + string.Join(",", entry.SelectedSlots) + ".");
+                if (entry.SelectedItemTypes is { Count: > 0 })
+                    parts.Add("Wybrane typy: " + string.Join(", ", entry.SelectedItemTypes) + ".");
+                parts.Add(entry.EatAfterCleanup
+                    ? entry.EatingCompleted ? "Jedzenie po EQ: wykonano." : "Jedzenie po EQ: nie zakończono."
+                    : "Jedzenie po EQ: wyłączone.");
                 parts.Add($"Przebiegi: {Math.Max(0, entry.DropPasses)}; pozostało: {Math.Max(0, entry.RemainingStacks)} stos.");
                 parts.Add(entry.CobbleXCreated
                     ? $"CobbleX: utworzono ({entry.CobbleXCommand}); Cobble 64: {entry.FullCobblestoneStacks}/{entry.RequiredCobblestoneStacks}"
                     : $"CobbleX: nie utworzono; Cobble 64: {entry.FullCobblestoneStacks}/{entry.RequiredCobblestoneStacks}");
+            }
+            else if (entry.Kind == MiningLogKinds.MiningRun && entry.CompletedAt.HasValue)
+            {
+                parts.Add($"Czas sesji: {FormatDuration(entry.CompletedAt.Value - entry.Timestamp)}.");
+            }
+            else if (entry.Kind == MiningLogKinds.AutomationEvent && !string.IsNullOrWhiteSpace(entry.EventType))
+            {
+                parts.Add($"Typ automatyzacji: {entry.EventType}.");
             }
 
             return string.Join(" ", parts);

@@ -15,6 +15,21 @@ namespace MinecraftHelper
         private static readonly AppReleaseNotes[] Releases =
         {
             new AppReleaseNotes(
+                "1.1.2",
+                "Auto Reconnect, rozbudowany Kopacz i nowe logi",
+                new[]
+                {
+                    "Dodano konfigurowalne profile Auto Reconnect z adresem Direct Connect, komendą powrotu, opcjonalnym GUI /home, wyborem pola oraz czasami oczekiwania.",
+                    "Po odzyskaniu połączenia program wznawia ten sam tryb Kopacza 5/3/3 lub 6/3/3, który działał przed rozłączeniem.",
+                    "Kontrola kilofa działa podczas zaplanowanego Auto EQ i może uruchomić oddzielnie skonfigurowany powrót do home po wykryciu problemu.",
+                    "Rozbudowano Auto EQ o niezależny tryb wyrzucania całej zawartości, wybór typów i slotów oraz opcjonalne jedzenie mięsa ze slotu 2.",
+                    "Przebudowano logi kopania: jedno uruchomienie Kopacza tworzy nadrzędną sesję, a kolejne skany EQ i zdarzenia automatyzacji są dostępne w rozwijanych szczegółach.",
+                    "Logi zapisują tryb wyrzucania, wyniki przedmiotów i stosów, CobbleX, jedzenie oraz przebieg Auto Reconnect; raporty CSV i TXT zawierają nowe dane sesji.",
+                    "Uporządkowano sekcję Kopacza, dodano czytelne obramowania kart i zakładek, zmniejszono domyślne okno oraz wyśrodkowano je przy uruchomieniu.",
+                    "Dodano blokadę uruchomienia drugiej kopii Minecraft Helper i poprawiono obsługę wejścia, aby działające GUI nie powodowało przycięć podczas gwałtownych ruchów myszy.",
+                    "AUTO LPM i AUTO PPM nie przechwytują bindów przy widocznym kursorze Minecrafta; ograniczenie nie zatrzymuje pozostałych modułów."
+                }),
+            new AppReleaseNotes(
                 "1.1.1",
                 "Logi kopania i dokładniejsze Auto EQ",
                 new[]
@@ -51,7 +66,7 @@ namespace MinecraftHelper
             {
                 Version? version = typeof(ReleaseNotesCatalog).Assembly.GetName().Version;
                 if (version == null)
-                    return "1.1.1";
+                    return "1.1.2";
 
                 return $"{version.Major}.{version.Minor}.{Math.Max(0, version.Build)}";
             }

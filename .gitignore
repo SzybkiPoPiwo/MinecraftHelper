@@ -409,5 +409,6 @@ FodyWeavers.xsd
 
 # Local and generated Minecraft resource-pack directories.
 # Keep the ready-to-use MinecraftHelper_AutoEQ_CobbleX_1.8.8.zip in Git.
+/MinecraftHelper_AutoEQ_CobbleX_1.8.8_ORIGINAL_BACKUP.zip
 /Old_Default_1.8.8/
 /MinecraftHelper_AutoEQ_CobbleX_1.8.8/

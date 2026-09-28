@@ -14,6 +14,7 @@ namespace MinecraftHelper.Services
         public const int MaximumCps = 100;
 
         private readonly object _sync = new object();
+        private readonly MacroDiagnosticsService _diagnostics;
         private readonly Random _random = new Random();
         private readonly ClickChannel _left = new ClickChannel(leftButton: true);
         private readonly ClickChannel _right = new ClickChannel(leftButton: false);
@@ -31,8 +32,9 @@ namespace MinecraftHelper.Services
         [DllImport("winmm.dll", ExactSpelling = true)]
         private static extern uint timeEndPeriod(uint periodMilliseconds);
 
-        public AutoClickScheduler()
+        public AutoClickScheduler(MacroDiagnosticsService diagnostics)
         {
+            _diagnostics = diagnostics;
             _left.Timer = new Timer(OnTimer, _left, Timeout.Infinite, Timeout.Infinite);
             _right.Timer = new Timer(OnTimer, _right, Timeout.Infinite, Timeout.Infinite);
         }
@@ -47,6 +49,13 @@ namespace MinecraftHelper.Services
             bool rightHoldPulseMode,
             IntPtr targetWindow)
         {
+            bool effectiveLeftEnabled;
+            int effectiveLeftMinCps;
+            int effectiveLeftMaxCps;
+            bool effectiveRightEnabled;
+            int effectiveRightMinCps;
+            int effectiveRightMaxCps;
+            bool effectiveRightHoldPulseMode;
             lock (_sync)
             {
                 if (_disposed)
@@ -55,7 +64,24 @@ namespace MinecraftHelper.Services
                 UpdateChannel(_left, leftEnabled, leftMinCps, leftMaxCps, holdPulseMode: false, targetWindow);
                 UpdateChannel(_right, rightEnabled, rightMinCps, rightMaxCps, rightHoldPulseMode, targetWindow);
                 UpdateTimerResolutionState();
+                effectiveLeftEnabled = _left.Enabled;
+                effectiveLeftMinCps = _left.MinCps;
+                effectiveLeftMaxCps = _left.MaxCps;
+                effectiveRightEnabled = _right.Enabled;
+                effectiveRightMinCps = _right.MinCps;
+                effectiveRightMaxCps = _right.MaxCps;
+                effectiveRightHoldPulseMode = _right.HoldPulseMode;
             }
+
+            _diagnostics.UpdateMacroState(
+                effectiveLeftEnabled,
+                effectiveLeftMinCps,
+                effectiveLeftMaxCps,
+                effectiveRightEnabled,
+                effectiveRightMinCps,
+                effectiveRightMaxCps,
+                effectiveRightHoldPulseMode,
+                targetWindow);
         }
 
         public void Stop()
@@ -145,12 +171,18 @@ namespace MinecraftHelper.Services
             if (state is not ClickChannel channel)
                 return;
 
+            int generation;
+            long intervalTicks;
+            long plannedTimestamp;
+            IntPtr targetWindow;
+            bool leftButton;
+            bool holdPulseMode;
             lock (_sync)
             {
                 if (_disposed || !channel.Enabled || channel.Timer == null)
                     return;
 
-                int generation = channel.Generation;
+                generation = channel.Generation;
                 long nowTimestamp = Stopwatch.GetTimestamp();
                 if (channel.NextClickTimestamp > nowTimestamp)
                 {
@@ -161,32 +193,47 @@ namespace MinecraftHelper.Services
                 int cps = channel.MinCps == channel.MaxCps
                     ? channel.MinCps
                     : _random.Next(channel.MinCps, channel.MaxCps + 1);
-                long intervalTicks = Math.Max(1, (long)Math.Round(Stopwatch.Frequency / (double)cps));
+                intervalTicks = Math.Max(1, (long)Math.Round(Stopwatch.Frequency / (double)cps));
+                plannedTimestamp = channel.NextClickTimestamp > 0
+                    ? channel.NextClickTimestamp
+                    : nowTimestamp;
+                targetWindow = channel.TargetWindow;
+                leftButton = channel.LeftButton;
+                holdPulseMode = channel.HoldPulseMode;
+            }
 
-                // Check focus at the instant of injection instead of relying on the
-                // slower UI focus timer. This prevents clicks leaking to another app.
-                if (channel.TargetWindow != IntPtr.Zero && GetForegroundWindow() == channel.TargetWindow)
-                    NativeInput.SendMouseClick(channel.LeftButton, channel.HoldPulseMode);
+            // Never hold _sync while SendInput synchronously passes through low-level
+            // input hooks. Update/Stop remains responsive during heavy mouse input.
+            if (channel.Enabled
+                && channel.Generation == generation
+                && targetWindow != IntPtr.Zero
+                && GetForegroundWindow() == targetWindow)
+            {
+                long sendStarted = Stopwatch.GetTimestamp();
+                bool sent = NativeInput.SendMouseClick(leftButton, holdPulseMode);
+                long elapsedMicroseconds = (long)Math.Round(
+                    (Stopwatch.GetTimestamp() - sendStarted) * 1_000_000.0 / Stopwatch.Frequency);
+                _diagnostics.RecordClick(leftButton, elapsedMicroseconds, sent);
+            }
 
-                if (!_disposed && channel.Enabled && channel.Generation == generation)
+            lock (_sync)
+            {
+                if (_disposed || !channel.Enabled || channel.Timer == null || channel.Generation != generation)
+                    return;
+
+                // Keep the cadence tied to the planned deadline, not to the actual
+                // callback time. This compensates for Windows timer jitter instead
+                // of adding the delay to every click (20 CPS drifting to ~15 CPS).
+                long nextTimestamp = plannedTimestamp + intervalTicks;
+                long afterClickTimestamp = Stopwatch.GetTimestamp();
+                if (nextTimestamp <= afterClickTimestamp)
                 {
-                    // Keep the cadence tied to the planned deadline, not to the actual
-                    // callback time. This compensates for Windows timer jitter instead
-                    // of adding the delay to every click (20 CPS drifting to ~15 CPS).
-                    long plannedTimestamp = channel.NextClickTimestamp > 0
-                        ? channel.NextClickTimestamp
-                        : nowTimestamp;
-                    long nextTimestamp = plannedTimestamp + intervalTicks;
-                    long afterClickTimestamp = Stopwatch.GetTimestamp();
-                    if (nextTimestamp <= afterClickTimestamp)
-                    {
-                        long skippedIntervals = ((afterClickTimestamp - nextTimestamp) / intervalTicks) + 1;
-                        nextTimestamp += skippedIntervals * intervalTicks;
-                    }
-
-                    channel.NextClickTimestamp = nextTimestamp;
-                    ScheduleAtTimestamp(channel, nextTimestamp, afterClickTimestamp);
+                    long skippedIntervals = ((afterClickTimestamp - nextTimestamp) / intervalTicks) + 1;
+                    nextTimestamp += skippedIntervals * intervalTicks;
                 }
+
+                channel.NextClickTimestamp = nextTimestamp;
+                ScheduleAtTimestamp(channel, nextTimestamp, afterClickTimestamp);
             }
         }
 
@@ -208,12 +255,12 @@ namespace MinecraftHelper.Services
 
             public bool LeftButton { get; }
             public Timer? Timer { get; set; }
-            public bool Enabled { get; set; }
+            public volatile bool Enabled;
             public int MinCps { get; set; } = 1;
             public int MaxCps { get; set; } = 1;
             public bool HoldPulseMode { get; set; }
             public IntPtr TargetWindow { get; set; }
-            public int Generation { get; set; }
+            public volatile int Generation;
             public long NextClickTimestamp { get; set; }
         }
     }

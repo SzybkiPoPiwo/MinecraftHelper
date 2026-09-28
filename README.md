@@ -5,11 +5,11 @@
 <h1 align="center">Minecraft Helper</h1>
 
 <p align="center">
-  Clickery, automatyczne kopanie, Auto EQ, CobbleX, bindy i HUD dla Minecraft 1.8.8.
+  Clickery, automatyczne kopanie, Auto EQ, CobbleX, Auto Reconnect, logi i HUD dla Minecraft 1.8.8.
 </p>
 
 <p align="center">
-  <strong>Windows 10/11</strong> · <strong>Minecraft 1.8.8</strong> · <strong>bez Forge i modów</strong> · <strong>wersja 1.1.1</strong>
+  <strong>Windows 10/11</strong> · <strong>Minecraft 1.8.8</strong> · <strong>bez Forge i modów</strong> · <strong>wersja 1.1.2</strong>
 </p>
 
 <p align="center">
@@ -35,8 +35,9 @@ Jeżeli korzystasz z programu pierwszy raz:
 2. Uruchom Minecraft lub BlazingPack w wersji 1.8.8 i wejdź do gry.
 3. W Minecraft Helper otwórz zakładkę `Ustawienia`.
 4. Kliknij `Odśwież`, wybierz właściwy proces gry i kliknij `Zapisz program`. Nie wybieraj launchera.
-5. Otwórz interesującą Cię zakładkę, zaznacz moduł i skonfiguruj jego ustawienia.
-6. Ustaw bind, zapisz ustawienia i przejdź do Minecrafta.
+5. Jeżeli chcesz używać Auto EQ lub Auto Reconnect, zainstaluj [paczkę zasobów Minecraft Helper](#wymagana-paczka-zasobów).
+6. Otwórz interesującą Cię zakładkę, zaznacz moduł i skonfiguruj jego ustawienia.
+7. Ustaw bind, zapisz ustawienia i przejdź do Minecrafta.
 
 Zaznaczenie głównego pola modułu rozwija jego konfigurację. Samo zaznaczenie nie zawsze uruchamia funkcję — clickery, Kopacz i pozostałe moduły włącza się ustawionym bindem. Szczegółowe podpowiedzi są dostępne pod przyciskami `?`.
 
@@ -49,7 +50,7 @@ Przy pierwszym uruchomieniu pojawi się okno powitalne. Po aktualizacji programu
 | `PVP` | Automatyczne klikanie LPM i PPM, obsługa bindów oraz pauza po otwarciu GUI. |
 | `Kopacz` | Automatyczne kopanie, harmonogram komend, czyszczenie ekwipunku i tworzenie CobbleX. |
 | `BINDY` | Własne skróty, które wpisują i wysyłają przygotowane komendy na czacie. |
-| `Experimental` | Funkcje testowe, obecnie automatyczne łowienie. |
+| `Experimental` | Automatyczne łowienie oraz profile Auto Reconnect z powrotem do kopania. |
 | `Ustawienia` | Wybór procesu Minecrafta, konfiguracja HUD, import i eksport ustawień oraz działanie aplikacji w tle. |
 
 ## PVP
@@ -67,7 +68,7 @@ W tej zakładce znajdują się funkcje związane z klikaniem oraz ich zabezpiecz
 
 - `AUTO LPM` automatycznie wykonuje lewe kliknięcia.
 - `AUTO PPM` automatycznie wykonuje prawe kliknięcia.
-- `AUTO PPM` i `HOLD PPM` nie uruchomią się, gdy Minecraft pokazuje kursor ekwipunku, chatu albo innego GUI. Bind zostanie zignorowany i pojawi się ostrzeżenie.
+- `AUTO LPM`, `AUTO PPM` i `HOLD PPM` nie uruchomią się, gdy Minecraft pokazuje kursor ekwipunku, chatu albo innego GUI. Bind zostanie zignorowany, dzięki czemu klawisz używany podczas pisania nie zostanie przechwycony przez makro.
 - Tryb pełnoekranowy jest obsługiwany: przezroczysty kursor używany przez grę nie jest mylony z kursorem otwartego GUI.
 - Zakres minimalnego i maksymalnego CPS określa szybkość klikania.
 - W trybie klasycznym ustawiony bind włącza clicker, a kolejne naciśnięcie go wyłącza.
@@ -75,6 +76,14 @@ W tej zakładce znajdują się funkcje związane z klikaniem oraz ich zabezpiecz
 - Opcjonalny tryb `DAB (O)` przytrzymuje klawisz `O` podczas działania AUTO LPM.
 
 Najpierw zaznacz wybrany moduł, rozwiń ustawienia, przypisz bind i zapisz konfigurację. Clicker działa tylko wtedy, gdy zapisane okno Minecrafta ma fokus.
+
+Podczas pracy clickera program zapisuje lekki log diagnostyczny z czasami wysyłania kliknięć, opóźnieniem obsługi myszy i przerwami pracy interfejsu. Zapis odbywa się w tle i nie wykonuje operacji dyskowych bezpośrednio w hooku myszy. Plik znajduje się w:
+
+```text
+%APPDATA%\Minecraft Helper\macro-diagnostics.log
+```
+
+Po przekroczeniu 4 MB poprzedni plik jest przenoszony do `macro-diagnostics.previous.log`. Te dane pomagają sprawdzić zgłoszenia o przycinaniu kursora bez zapisywania naciskanych klawiszy ani treści wpisywanych w grze.
 
 ### Pozostałe opcje
 
@@ -94,10 +103,10 @@ Zakładka `Kopacz` łączy automatyczne kopanie z wykonywaniem komend oraz opcjo
 
 ### Tryby kopania
 
-- `Kopacz 5/3/3` — automatyczny schemat kopania z bindem i listą komend wykonywanych po ustawionym czasie.
-- `Kopacz 6/3/3` — wariant kopania na wprost lub do góry, z konfiguracją szerokości i długości.
+- `Kopacz 5/3/3` — osobny kanał automatycznego kopania z bindem i listą komend wykonywanych po ustawionym czasie.
+- `Kopacz 6/3/3` — osobny kanał kopania na wprost lub do góry, z konfiguracją szerokości i długości.
 
-Po zaznaczeniu wybranego trybu rozwiną się jego ustawienia. Ustaw bind, kierunek, potrzebne czasy i zapisz konfigurację. Czasy zaplanowanych komend są liczone od rozpoczęcia cyklu, dlatego kolejne komendy powinny mieć rosnące wartości.
+Kanały mają oddzielne zakładki i checkboxy konfiguracji. Kopanie uruchamia się i zatrzymuje zapisanym bindem; uruchomienie jednego kanału zatrzymuje drugi. Czasy zaplanowanych komend są liczone od rozpoczęcia cyklu, dlatego kolejne komendy powinny mieć rosnące wartości.
 
 ### Auto EQ — automatyczne czyszczenie ekwipunku
 
@@ -105,17 +114,19 @@ Auto EQ otwiera ekwipunek w ustalonych odstępach, rozpoznaje oznaczone przedmio
 
 Przed skanem program odsuwa kursor poza GUI, aby nazwa przedmiotu nie zasłoniła sąsiednich pól. Po wyrzucaniu ponownie sprawdza otwarty ekwipunek i w razie potrzeby wykonuje maksymalnie trzy przebiegi. Dzięki temu wynik obejmuje przedmioty faktycznie usunięte, a nie tylko wykonane próby naciśnięcia skrótu.
 
-Program sprawdza tylko 27 pól głównego ekwipunku. Hotbar, pancerz i crafting są zawsze pomijane. Zaznaczony typ przedmiotu oznacza „wyrzucaj”, a odznaczony „zawsze zostaw”. Na czas skanowania i wyrzucania pozostałe akcje Kopacza czekają.
+Program wyrzuca przedmioty tylko z 27 pól głównego ekwipunku. Hotbar, pancerz i crafting są zawsze pomijane przy wyrzucaniu. Kontrola bezpieczeństwa może jednak odczytać znacznik diamentowego kilofa również z hotbara. W zwykłym trybie zaznaczony typ przedmiotu oznacza „wyrzucaj”, a odznaczony „zawsze zostaw”. Opcja `Wyrzucaj wszystko z EQ` jest osobnym trybem: ignoruje wybór typów i wyrzuca każdy wykryty przedmiot z zaznaczonych slotów, pozostawiając cobblestone. Wybrane typy są zapamiętywane i wracają po wyłączeniu tego trybu. Na czas skanowania i wyrzucania pozostałe akcje Kopacza czekają.
+
+Opcja `Zjedz mięso po Auto EQ` wykonuje dodatkowy etap po zakończeniu skanowania i ewentualnym utworzeniu CobbleX. Program zamyka ekwipunek, wybiera slot `2`, przytrzymuje PPM przez 4 sekundy, wraca na slot `1` i dopiero wtedy wznawia kopanie. Mięso musi znajdować się na drugim polu hotbara, a narzędzie do kopania na pierwszym.
 
 #### Wymagana paczka zasobów
 
-Rozpoznawanie przedmiotów działa z folderem:
+Rozpoznawanie przedmiotów działa z paczką:
 
 ```text
-MinecraftHelper_AutoEQ_CobbleX_1.8.8
+MinecraftHelper_AutoEQ_CobbleX_1.8.8.zip
 ```
 
-Skopiuj go z głównego katalogu repozytorium do:
+Skopiuj plik ZIP z głównego katalogu repozytorium do poniższego folderu. Nie rozpakowuj paczki:
 
 ```text
 %APPDATA%\.minecraft\resourcepacks
@@ -151,19 +162,21 @@ Aktualny stan Auto EQ, licznik cobblestone i wynik ostatniego skanu mogą być p
 
 ### Logi kopania
 
-Przycisk `Logi kopania` po prawej stronie zakładki Kopacz otwiera historię działania Auto EQ i CobbleX. Każde automatyczne otwarcie ekwipunku tworzy osobną sesję — także wtedy, gdy nie było nic do wyrzucenia albo skan został przerwany. Otwarta sesja pojawia się od razu i aktualizuje się po zakończeniu skanowania. Kliknięcie wiersza rozwija jego szczegóły. Program zapisuje:
+Przycisk `Logi kopania` po prawej stronie zakładki Kopacz otwiera historię całych uruchomień Kopacza. Pierwsze uruchomienie trybu 5/3/3 albo 6/3/3 tworzy nadrzędną sesję z datą, godziną i użytym kanałem. Zatrzymanie oraz ponowne uruchomienie Kopacza rozpoczyna nową sesję.
 
-- datę i dokładną godzinę zdarzenia,
-- liczbę utworzonych CobbleXów,
-- liczbę faktycznie wyrzuconych sztuk i stosów,
-- osobny, kolorowy status zakończenia lub przerwania,
-- podział wyrzuconych przedmiotów według rozpoznanego typu wraz z liczbą sztuk i stosów,
-- liczbę przebiegów skanowania oraz przedmioty pozostałe po ostatnim przebiegu,
-- tryb Kopacza, który uruchomił czyszczenie.
+Po rozwinięciu sesji widoczne są chronologicznie:
 
-Kolory pozwalają szybko odczytać wynik: zielony oznacza poprawne zakończenie, żółty trwającą sesję lub ostrzeżenie, czerwony przerwanie, niebieski informacje o skanie i przedmiotach, a złoty operacje CobbleX. Rozwinięty wpis pozostaje otwarty także podczas aktualizacji danych.
+- kolejne automatyczne otwarcia i skany EQ,
+- uruchomienie, wynik i wznowienie po Auto Reconnect,
+- kontrola stanu kopania,
+- wykrycie braku diamentowego kilofa i powrót do home,
+- zakończenie sesji Kopacza.
 
-Historia ma wyszukiwarkę działającą po dacie, godzinie, trybie Kopacza, statusie, nazwie przedmiotu, komendzie CobbleX i treści szczegółów. Przycisk `Zapisz raport` eksportuje aktualnie widoczne — również przefiltrowane — wpisy do pliku CSV albo TXT. Okno zapisu domyślnie otwiera Pulpit.
+Kliknięcie konkretnego wpisu EQ pokazuje tryb wyrzucania, wybrane sloty i typy, liczbę przebiegów, faktycznie wyrzucone sztuki i stosy, podział na rodzaje przedmiotów, pozostałe elementy, wykonanie komendy CobbleX oraz wynik jedzenia po czyszczeniu. Skan jest rejestrowany także wtedy, gdy nie znaleziono niczego do wyrzucenia albo operacja została przerwana.
+
+Kolory pozwalają szybko odczytać wynik: zielony oznacza poprawne zakończenie, żółty trwającą operację lub ostrzeżenie, czerwony błąd albo przerwanie, niebieski informacje o skanie, a złoty operacje CobbleX. Wznowienie kopania po Auto Reconnect pozostaje przypisane do tej samej sesji.
+
+Wyszukiwarka obejmuje datę, godzinę, kanał Kopacza, status, rodzaj zdarzenia, przedmioty, komendę CobbleX i treść szczegółów. Przycisk `Zapisz raport` eksportuje aktualnie widoczne — również przefiltrowane — dane do pliku CSV albo TXT. Raport zawiera identyfikatory sesji, powiązania zdarzeń i dane automatyzacji. Okno zapisu domyślnie otwiera Pulpit.
 
 Logi są przechowywane niezależnie od ustawień aplikacji w:
 
@@ -171,7 +184,7 @@ Logi są przechowywane niezależnie od ustawień aplikacji w:
 %APPDATA%\Minecraft Helper\mining-logs.json
 ```
 
-Wpisy utworzone przez starszą wersję mechanizmu mogą zawierać tylko liczbę stosów. Program oznacza je jako stare dane zamiast przedstawiać niedokładną liczbę sztuk.
+Wpisy utworzone przez starszą wersję mechanizmu pozostają dostępne jako samodzielne rekordy i mogą zawierać tylko liczbę stosów. Program oznacza je jako stare dane zamiast przedstawiać niedokładną liczbę sztuk.
 
 ## BINDY
 
@@ -200,9 +213,39 @@ Moduł pozwala przypisać własne komendy do klawiszy. Każdy wpis może mieć o
 
 Zakładka zawiera funkcje będące nadal w fazie testów. Mogą wymagać dokładniejszego ustawienia i nie zawsze zachowywać się identycznie na każdym kliencie.
 
+### Auto łowienie
+
 `Auto łowienie wędką` obserwuje zaznaczony fragment ekranu, wykrywa ruch czerwonej końcówki spławika, zwija wędkę po potwierdzonym braniu i może ponowić rzut. Najlepszy efekt daje zaznaczenie małego obszaru bezpośrednio wokół spławika.
 
 Po włączeniu HUD panel łowienia pokazuje godzinę rozpoczęcia i czas trwania sesji, bieżący etap detekcji, położenie spławika, liczbę brań oraz czas od ostatniego złowienia.
+
+### Auto Reconnect i powrót do kopania
+
+`Auto reconnect + kontrola kopania` jest mechanizmem testowym uruchamianym razem z Auto EQ. Nie otwiera ekwipunku w dodatkowym interwale — sprawdzenie odbywa się podczas zaplanowanego cyklu czyszczenia. Jeżeli gra nie otworzy EQ albo program nie rozpozna jego układu po kolejnych próbach, automat analizuje ekran i rozpoczyna odzyskiwanie połączenia.
+
+Każdy serwer ma osobny profil zawierający:
+
+- nazwę profilu i adres `Direct Connect`,
+- komendę powrotu, np. `/home kopalnia`,
+- informację, czy komenda otwiera GUI,
+- czas oczekiwania, rozmiar GUI oraz pole, które należy kliknąć,
+- czas po dołączeniu, czas teleportacji i maksymalną liczbę prób,
+- osobną konfigurację powrotu po wykryciu braku diamentowego kilofa.
+
+Edytor GUI obsługuje od 1 do 6 rzędów i od 1 do 9 kolumn. Rzędy są dodawane od dołu, a kolumny z prawej strony. Jeżeli `/home` nie ma GUI, wpisz w profilu pełną komendę — po jej wysłaniu program przejdzie bezpośrednio do oczekiwania na teleportację.
+
+Pełny przebieg może rozpoznać ekran śmierci, rozłączenie, przycisk `Reconnect`, listę serwerów i ekran `Direct Connect`. Następnie program wpisuje zapisany adres, zatwierdza go klawiszem `Enter`, wykonuje powrót do home, sprawdza EQ i wznawia dokładnie ten kanał Kopacza, który działał przed przerwą. Ekran bana lub nieznany stan zatrzymuje automat bez dalszego klikania.
+
+Brak znacznika diamentowego kilofa uruchamia oddzielny przebieg: program nie wykonuje ponownego Direct Connect, tylko używa skonfigurowanej komendy home i kończy bieżące kopanie. Kontrola obejmuje 27 pól głównego EQ oraz hotbar.
+
+Zalecana kolejność testów profilu:
+
+1. użyj `Rozpoznaj ekran` na ekranach rozłączenia, listy serwerów i Direct Connect,
+2. uruchom `Sprawdź EQ` z aktywną paczką zasobów i `GUI Scale: Large`,
+3. sprawdź wybrany slot przyciskiem `Test /home`,
+4. dopiero na końcu uruchom `Pełny reconnect`.
+
+> Auto Reconnect wymaga widocznego i aktywnego okna gry. Nie zapewnia kopania w tle, gdy Minecraft jest zminimalizowany, zasłonięty albo działa na nieaktywnym pulpicie wirtualnym Windows.
 
 ## Ustawienia i HUD
 
@@ -223,6 +266,8 @@ To tutaj należy rozpocząć konfigurację programu:
 - Podczas kopania HUD aktualizuje etap pracy, godzinę startu, czas działania, bieżący skan EQ oraz łączne wyniki wyrzucania i tworzenia CobbleX.
 - `Eksportuj` zapisuje kopię konfiguracji, a `Importuj` przywraca ją z pliku JSON.
 
+Główne okno uruchamia się wyśrodkowane i w rozmiarze dostosowanym do monitorów 1080p. Program pozwala uruchomić tylko jedną kopię Minecraft Helper jednocześnie, aby dwa procesy nie nadpisywały wspólnego pliku ustawień.
+
 Ustawienia zapisują się automatycznie w:
 
 ```text
@@ -240,6 +285,20 @@ Nie wybieraj procesu launchera. Wskaż właściwe okno Minecrafta lub używanego
 - Menu zasobnika korzysta z ciemnego motywu zgodnego z pozostałą częścią interfejsu.
 
 Jeżeli działają makra lub Kopacz, zamknięcie okna przyciskiem `X` pozostawia aplikację uruchomioną w tle. Aby całkowicie ją wyłączyć, użyj opcji `Zakończ aplikację` z menu ikony.
+
+## Zmiany w wersji 1.1.2
+
+- Dodano konfigurowalne profile Auto Reconnect z adresem Direct Connect, komendą powrotu, opcjonalnym GUI `/home`, wyborem pola i czasami oczekiwania.
+- Po odzyskaniu połączenia program wznawia ten sam tryb Kopacza 5/3/3 lub 6/3/3, który działał przed rozłączeniem.
+- Dodano kontrolę obecności diamentowego kilofa wykonywaną podczas zaplanowanego Auto EQ oraz osobny sposób powrotu do home po wykryciu problemu.
+- Rozbudowano Auto EQ o niezależny tryb wyrzucania całej zawartości, wybór typów i slotów oraz opcjonalne jedzenie mięsa ze slotu 2.
+- Przebudowano logi kopania: jedno uruchomienie Kopacza tworzy nadrzędną sesję, a kolejne otwarcia EQ i zdarzenia automatyzacji są widoczne w rozwijanych szczegółach.
+- Logi zapisują tryb wyrzucania, przedmioty, sztuki, stosy, CobbleX, jedzenie i przebieg Auto Reconnect. Eksport CSV i TXT zawiera nowe dane sesji.
+- Uporządkowano sekcję Kopacza, dodano czytelne obramowania kart i zakładek, zmniejszono domyślne okno oraz wyśrodkowano je przy uruchomieniu.
+- Dodano blokadę uruchomienia drugiej kopii programu.
+- Poprawiono obsługę wejścia, aby otwarte GUI Minecraft Helper nie powodowało przycięć podczas gwałtownych ruchów myszy.
+- Dodano lokalny log diagnostyczny clickerów z czasami wysyłania kliknięć i opóźnieniami obsługi myszy.
+- AUTO LPM i AUTO PPM nie przechwytują bindów przy widocznym kursorze Minecrafta; ograniczenie nie zatrzymuje pozostałych modułów.
 
 ## Zmiany w wersji 1.1.1
 
@@ -282,10 +341,16 @@ Jeżeli zauważysz błąd, problem z konfiguracją albo masz propozycję nowej f
 Najprościej uruchomić instalator:
 
 ```text
-MinecraftHelper-Setup-1.1.1.exe
+MinecraftHelper-Setup-1.1.2.exe
 ```
 
 Instalator działa dla bieżącego użytkownika, nie wymaga osobnej instalacji .NET 8, może utworzyć skrót na pulpicie i dodaje standardowy deinstalator Windows.
+
+Kontrola oficjalnego pliku instalatora wersji 1.1.2:
+
+```text
+SHA-256: e1bed0670d1f2e19e330baad12e1330fd662603f9a04e6266c1964da753dedea
+```
 
 ### Windows SmartScreen i Smart App Control
 
@@ -326,10 +391,10 @@ dotnet run --project MinecraftHelper/MinecraftHelper.csproj
 ### Budowanie instalatora
 
 ```powershell
-.\scripts\build-installer.ps1 -Version 1.1.1 -Rid win-x64 -SelfContained:$true -Clean
+.\scripts\build-installer.ps1 -Version 1.1.2 -Rid win-x64 -SelfContained:$true -Clean
 ```
 
-Wynik zostanie zapisany w `artifacts/installer/MinecraftHelper-Setup-1.1.1.exe`.
+Wynik zostanie zapisany w `artifacts/installer/MinecraftHelper-Setup-1.1.2.exe`.
 
 ### Odtworzenie paczki zasobów
 
@@ -347,6 +412,6 @@ Planowane kierunki dalszego rozwoju:
 - możliwość zminimalizowania Minecrafta i dalszego kopania w tle,
 - zdalna obsługa własnego klienta Minecraft za pomocą telefonu,
 - odczytywanie i prezentowanie informacji z czatu,
-- automatyczne ponowne łączenie z serwerem (`auto reconnect`).
+- dalsze testy i dopracowanie eksperymentalnego `auto reconnectu`.
 
 Lista przedstawia pomysły na przyszłość i nie oznacza jeszcze konkretnego terminu ich wdrożenia.

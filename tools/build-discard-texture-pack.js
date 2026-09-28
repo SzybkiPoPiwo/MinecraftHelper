@@ -5,7 +5,9 @@ const path = require("path");
 const zlib = require("zlib");
 
 const workspace = path.resolve(__dirname, "..");
-const sourceRoot = path.join(workspace, "Old_Default_1.8.8");
+const sourceRoot = process.argv[2]
+    ? path.resolve(process.argv[2])
+    : path.join(workspace, "Old_Default_1.8.8");
 const outputRoot = path.join(workspace, "MinecraftHelper_AutoEQ_CobbleX_1.8.8");
 const packIconSource = path.join(workspace, "MinecraftHelper", "Assets", "pack.png");
 
@@ -13,6 +15,7 @@ const textureRoot = path.join(outputRoot, "assets", "minecraft", "textures");
 const itemRoot = path.join(textureRoot, "items");
 const blockRoot = path.join(textureRoot, "blocks");
 const modelRoot = path.join(outputRoot, "assets", "minecraft", "models", "item");
+const langRoot = path.join(outputRoot, "assets", "minecraft", "lang");
 
 const COLORS = {
     magenta: [255, 0, 255, 255],
@@ -60,6 +63,34 @@ const GUI_BOTTOM_RIGHT_MARKER_Y = 162;
 const ITEM_MARKER_X = 13;
 const ITEM_MARKER_Y = 0;
 
+// Both supported languages intentionally use the same short ASCII labels.
+// Auto reconnect can recognize them without guessing the user's language,
+// while the server-provided disconnect reason remains unchanged.
+const automationLanguageOverrides = {
+    "connect.authorizing": "[MH] AUTHORIZING",
+    "connect.connecting": "[MH] CONNECTING",
+    "connect.failed": "[MH] CONNECTION FAILED",
+    "disconnect.closed": "[MH] CONNECTION LOST",
+    "disconnect.disconnected": "[MH] CONNECTION LOST",
+    "disconnect.endOfStream": "[MH] CONNECTION LOST",
+    "disconnect.kicked": "[MH] KICKED",
+    "disconnect.loginFailed": "[MH] LOGIN FAILED",
+    "disconnect.lost": "[MH] CONNECTION LOST",
+    "disconnect.overflow": "[MH] CONNECTION LOST",
+    "disconnect.spam": "[MH] KICKED",
+    "disconnect.timeout": "[MH] CONNECTION LOST",
+    "gui.toMenu": "[MH] SERVER LIST",
+    "deathScreen.leaveServer": "[MH] LEAVE SERVER",
+    "deathScreen.respawn": "[MH] RESPAWN",
+    "deathScreen.title": "[MH] PLAYER DEAD",
+    "deathScreen.title.hardcore": "[MH] GAME OVER",
+    "deathScreen.titleScreen": "[MH] LEAVE SERVER",
+    "selectServer.direct": "[MH] DIRECT CONNECT",
+    "selectServer.select": "[MH] JOIN SERVER",
+    "selectServer.title": "[MH] SERVER LIST",
+    "addServer.enterIp": "[MH] SERVER ADDRESS"
+};
+
 const directItemTextures = [
     { id: "diamond", file: "diamond.png", label: "diament", markerCode: 0 },
     { id: "gold_ingot", file: "gold_ingot.png", label: "sztabka zlota", markerCode: 1 },
@@ -74,6 +105,12 @@ const directItemTextures = [
     { id: "redstone", file: "redstone_dust.png", label: "redstone", markerCode: 12 }
 ];
 
+// Presence-only markers are used as safety guards. They are detected by the
+// application but are never exposed as Auto EQ discard types.
+const presenceItemTextures = [
+    { id: "diamond_pickaxe", file: "diamond_pickaxe.png", label: "diamentowy kilof", markerCode: 13 }
+];
+
 const blockItems = [
     { id: "obsidian", source: "obsidian.png", output: "mh_discard_obsidian.png", label: "obsydian", markerCode: 3 },
     { id: "sand", source: "sand.png", output: "mh_discard_sand.png", label: "piasek", markerCode: 5 }
@@ -86,6 +123,10 @@ function main() {
     fs.cpSync(sourceRoot, outputRoot, { recursive: true, force: true });
 
     for (const item of directItemTextures) {
+        const filePath = path.join(itemRoot, item.file);
+        markPng(filePath, ITEM_MARKER_X, ITEM_MARKER_Y, buildItemMarker(item.markerCode));
+    }
+    for (const item of presenceItemTextures) {
         const filePath = path.join(itemRoot, item.file);
         markPng(filePath, ITEM_MARKER_X, ITEM_MARKER_Y, buildItemMarker(item.markerCode));
     }
@@ -116,6 +157,7 @@ function main() {
 
     updatePackDescription();
     writePackIcon();
+    writeAutomationLanguageOverrides();
     writeManifest();
     writeReadme();
     verifyOutput();
@@ -123,7 +165,7 @@ function main() {
     writeBlazingDetectorFixture();
 
     console.log(`Gotowe: ${outputRoot}`);
-    console.log(`Oznaczone przedmioty: ${directItemTextures.length + blockItems.length}`);
+    console.log(`Oznaczone przedmioty: ${directItemTextures.length + blockItems.length + presenceItemTextures.length}`);
 }
 
 function markPng(filePath, x, y, pattern) {
@@ -157,6 +199,16 @@ function writePackIcon() {
     fs.copyFileSync(packIconSource, path.join(outputRoot, "pack.png"));
 }
 
+function writeAutomationLanguageOverrides() {
+    fs.mkdirSync(langRoot, { recursive: true });
+    const content = `${Object.entries(automationLanguageOverrides)
+        .map(([key, value]) => `${key}=${value}`)
+        .join("\n")}\n`;
+
+    for (const language of ["en_US", "pl_PL"])
+        fs.writeFileSync(path.join(langRoot, `${language}.lang`), content, "utf8");
+}
+
 function writeManifest() {
     const manifest = {
         format: 1,
@@ -167,11 +219,22 @@ function writeManifest() {
             topLeftMarker: { x: GUI_TOP_LEFT_MARKER_X, y: GUI_TOP_LEFT_MARKER_Y },
             bottomRightMarker: { x: GUI_BOTTOM_RIGHT_MARKER_X, y: GUI_BOTTOM_RIGHT_MARKER_Y }
         },
+        automationLanguages: {
+            languages: ["en_US", "pl_PL"],
+            labelPrefix: "[MH]"
+        },
         itemMarker: { version: 2, x: ITEM_MARKER_X, y: ITEM_MARKER_Y, width: 3, height: 3 },
         discardItems: [
             ...directItemTextures.map(item => ({ id: item.id, label: item.label, markerCode: item.markerCode, texture: `items/${item.file}` })),
             ...blockItems.map(item => ({ id: item.id, label: item.label, markerCode: item.markerCode, texture: `items/${item.output}` }))
-        ]
+        ],
+        presenceItems: presenceItemTextures.map(item => ({
+            id: item.id,
+            label: item.label,
+            markerCode: item.markerCode,
+            texture: `items/${item.file}`,
+            purpose: "missing-item safety check"
+        }))
     };
 
     fs.writeFileSync(
@@ -191,10 +254,15 @@ function writeReadme() {
         ...directItemTextures.map(item => `- ${item.label}`),
         ...blockItems.map(item => `- ${item.label}`),
         "",
+        "Znacznik kontrolny (nigdy nie jest wyrzucany przez Auto EQ):",
+        ...presenceItemTextures.map(item => `- ${item.label}`),
+        "",
         "Zlotych jablek, wegla drzewnego i innych wariantow ksiazek celowo nie oznaczono.",
         "Kazdy typ ma osobny kod znacznika; wybor typow do wyrzucenia ustawia sie w aplikacji.",
-        "Program skanuje tylko 27 glownych slotow ekwipunku; hotbar jest pomijany.",
-        "Wymagane sa domyslne klawisze Minecrafta: E (ekwipunek), Q (wyrzucanie) i T (czat)."
+        "Auto EQ skanuje tylko 27 glownych slotow ekwipunku; hotbar jest pomijany przy wyrzucaniu.",
+        "Kontrola smierci podczas cyklu Auto EQ szuka diamentowego kilofa w 27 glownych slotach oraz na hotbarze.",
+        "Wymagane sa domyslne klawisze Minecrafta: E (ekwipunek), Q (wyrzucanie) i T (czat).",
+        "Dla jezyka polskiego i angielskiego paczka ustawia stale etykiety [MH] na ekranach laczenia, rozlaczenia, smierci i wyboru serwera."
     ];
     fs.writeFileSync(path.join(outputRoot, "MINECRAFT_HELPER.txt"), `${lines.join("\r\n")}\r\n`, "utf8");
 }
@@ -202,6 +270,7 @@ function writeReadme() {
 function verifyOutput() {
     const targets = [
         ...directItemTextures.map(item => ({ path: path.join(itemRoot, item.file), markerCode: item.markerCode })),
+        ...presenceItemTextures.map(item => ({ path: path.join(itemRoot, item.file), markerCode: item.markerCode })),
         ...blockItems.map(item => ({ path: path.join(itemRoot, item.output), markerCode: item.markerCode }))
     ];
 
@@ -233,6 +302,7 @@ function writeDetectorFixture() {
 
     const itemFiles = [
         ...directItemTextures.map(item => ({ path: path.join(itemRoot, item.file), markerCode: item.markerCode })),
+        ...presenceItemTextures.map(item => ({ path: path.join(itemRoot, item.file), markerCode: item.markerCode })),
         ...blockItems.map(item => ({ path: path.join(itemRoot, item.output), markerCode: item.markerCode }))
     ];
     for (let index = 0; index < itemFiles.length; index++) {
@@ -257,6 +327,7 @@ function writeBlazingDetectorFixture() {
     const screen = createImage(1280, 720, [105, 116, 134, 255]);
     const itemFiles = [
         ...directItemTextures.map(item => path.join(itemRoot, item.file)),
+        ...presenceItemTextures.map(item => path.join(itemRoot, item.file)),
         ...blockItems.map(item => path.join(itemRoot, item.output))
     ];
     const firstItemX = 375;
@@ -288,7 +359,7 @@ function detectFixture(image) {
             const row = Math.floor(index / 9);
             const markerX = originX + (8 + column * 18 + ITEM_MARKER_X) * scale;
             const markerY = originY + (84 + row * 18 + ITEM_MARKER_Y) * scale;
-            if ([...directItemTextures, ...blockItems].some(item =>
+            if ([...directItemTextures, ...presenceItemTextures, ...blockItems].some(item =>
                 matchesScaledPattern(image, markerX, markerY, scale, buildItemMarker(item.markerCode))))
                 slots.push(index + 1);
         }

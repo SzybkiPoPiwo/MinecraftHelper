@@ -26,8 +26,12 @@ namespace MinecraftHelper.Services
     internal sealed class InventoryMarkerDetection
     {
         public InventoryMarkerLayout Layout { get; init; }
+        public bool HasGuiMarkers { get; init; }
+        public bool SupportsFullInventoryScan { get; init; }
         public IReadOnlyList<int> MarkedSlots { get; init; } = Array.Empty<int>();
         public IReadOnlyList<DetectedInventoryItem> Items { get; init; } = Array.Empty<DetectedInventoryItem>();
+        public IReadOnlyList<int> AllNonCobblestoneSlots { get; init; } = Array.Empty<int>();
+        public IReadOnlyList<DetectedInventoryItem> AllNonCobblestoneItems { get; init; } = Array.Empty<DetectedInventoryItem>();
         public IReadOnlyList<int> UnknownMarkerSlots { get; init; } = Array.Empty<int>();
         public IReadOnlyList<int> FullCobblestoneSlots { get; init; } = Array.Empty<int>();
     }
@@ -46,6 +50,7 @@ namespace MinecraftHelper.Services
         private const int ItemMarkerY = 0;
         private const int SlotStartX = 8;
         private const int SlotStartY = 84;
+        private const int HotbarSlotStartY = 142;
         private const int SlotStep = 18;
         private const int MaximumGuiScale = 8;
         private const int ColorTolerance = 18;
@@ -114,7 +119,8 @@ namespace MinecraftHelper.Services
             new ItemMarkerDefinition("quartz", BuildItemMarker(9)),
             new ItemMarkerDefinition("book", BuildItemMarker(10)),
             new ItemMarkerDefinition("ender_pearl", BuildItemMarker(11)),
-            new ItemMarkerDefinition("redstone", BuildItemMarker(12))
+            new ItemMarkerDefinition("redstone", BuildItemMarker(12)),
+            new ItemMarkerDefinition("diamond_pickaxe", BuildItemMarker(13))
         };
 
         private static readonly MarkerColor[,] TopLeftMarker =
@@ -142,13 +148,20 @@ namespace MinecraftHelper.Services
                 return false;
 
             using var pixels = new PixelReader(bitmap);
-            if (!TryFindLayoutFromGuiMarkers(pixels, out InventoryMarkerLayout layout)
-                && !TryFindLayoutFromBlazingSlotGrid(pixels, out layout)
-                && !TryFindLayoutFromItemMarkers(pixels, out layout))
-                return false;
+            bool hasGuiMarkers = TryFindLayoutFromGuiMarkers(pixels, out InventoryMarkerLayout layout);
+            bool hasSlotGridLayout = false;
+            if (!hasGuiMarkers)
+            {
+                hasSlotGridLayout = TryFindLayoutFromBlazingSlotGrid(pixels, out layout);
+                if (!hasSlotGridLayout && !TryFindLayoutFromItemMarkers(pixels, out layout))
+                    return false;
+            }
+            bool supportsFullInventoryScan = hasGuiMarkers || hasSlotGridLayout;
 
             var markedSlots = new List<int>();
             var detectedItems = new List<DetectedInventoryItem>();
+            var allNonCobblestoneSlots = new List<int>();
+            var allNonCobblestoneItems = new List<DetectedInventoryItem>();
             var unknownMarkerSlots = new List<int>();
             var fullCobblestoneSlots = new List<int>();
             for (int slot = 0; slot < 27; slot++)
@@ -158,8 +171,36 @@ namespace MinecraftHelper.Services
                 int itemX = layout.Left + (SlotStartX + column * SlotStep) * layout.Scale;
                 int itemY = layout.Top + (SlotStartY + row * SlotStep) * layout.Scale;
                 int detectedQuantity = 0;
-                if (LooksLikeCobblestone(pixels, itemX, itemY, layout.Scale)
-                    && MatchesStackCount64(pixels, itemX, itemY, layout.Scale))
+                bool looksLikeCobblestone = LooksLikeCobblestone(pixels, itemX, itemY, layout.Scale);
+                bool looksLikeProtectedCobblestone = LooksLikeCobblestone(
+                    pixels,
+                    itemX,
+                    itemY,
+                    layout.Scale,
+                    minimumNeutralTexturePixels: 180,
+                    minimumDarkTexturePixels: 80);
+                int markerX = layout.Left + (SlotStartX + column * SlotStep + ItemMarkerX) * layout.Scale;
+                int markerY = layout.Top + (SlotStartY + row * SlotStep + ItemMarkerY) * layout.Scale;
+                bool hasKnownItem = TryMatchItemMarker(pixels, markerX, markerY, layout.Scale, out string? itemId);
+                if (!hasKnownItem
+                    && TryMatchSolidBlockItem(pixels, itemX, itemY, layout.Scale, out string solidBlockItemId))
+                {
+                    hasKnownItem = true;
+                    itemId = solidBlockItemId;
+                }
+
+                bool hasLegacyMarker = !hasKnownItem
+                    && MatchesScaledPatternNear(pixels, markerX, markerY, layout.Scale, LegacyItemMarker);
+
+                // A typed marker or a dedicated solid block color is authoritative.
+                // Obsidian must never be mistaken for protected cobblestone.
+                if (hasKnownItem)
+                {
+                    looksLikeCobblestone = false;
+                    looksLikeProtectedCobblestone = false;
+                }
+
+                if (looksLikeCobblestone && MatchesStackCount64(pixels, itemX, itemY, layout.Scale))
                 {
                     fullCobblestoneSlots.Add(slot);
                     detectedQuantity = 64;
@@ -168,9 +209,7 @@ namespace MinecraftHelper.Services
                 if (enabledSlots != null && !enabledSlots.Contains(slot))
                     continue;
 
-                int markerX = layout.Left + (SlotStartX + column * SlotStep + ItemMarkerX) * layout.Scale;
-                int markerY = layout.Top + (SlotStartY + row * SlotStep + ItemMarkerY) * layout.Scale;
-                if (TryMatchItemMarker(pixels, markerX, markerY, layout.Scale, out string? itemId))
+                if (hasKnownItem)
                 {
                     if (enabledItemTypes == null || enabledItemTypes.Contains(itemId))
                     {
@@ -181,21 +220,69 @@ namespace MinecraftHelper.Services
                         detectedItems.Add(new DetectedInventoryItem(slot, itemId, detectedQuantity));
                     }
                 }
-                else if (MatchesScaledPatternNear(pixels, markerX, markerY, layout.Scale, LegacyItemMarker))
+                else if (hasLegacyMarker)
                 {
                     unknownMarkerSlots.Add(slot);
+                }
+
+                bool occupied = hasKnownItem
+                    || hasLegacyMarker
+                    || (supportsFullInventoryScan && LooksLikeOccupiedSlot(pixels, itemX, itemY, layout.Scale));
+                if (occupied && !looksLikeProtectedCobblestone)
+                {
+                    if (detectedQuantity == 0)
+                        detectedQuantity = DetectStackCount(pixels, itemX, itemY, layout.Scale);
+
+                    allNonCobblestoneSlots.Add(slot);
+                    allNonCobblestoneItems.Add(new DetectedInventoryItem(
+                        slot,
+                        hasKnownItem ? itemId : "other",
+                        detectedQuantity));
                 }
             }
 
             detection = new InventoryMarkerDetection
             {
                 Layout = layout,
+                HasGuiMarkers = hasGuiMarkers,
+                SupportsFullInventoryScan = supportsFullInventoryScan,
                 MarkedSlots = markedSlots,
                 Items = detectedItems,
+                AllNonCobblestoneSlots = allNonCobblestoneSlots,
+                AllNonCobblestoneItems = allNonCobblestoneItems,
                 UnknownMarkerSlots = unknownMarkerSlots,
                 FullCobblestoneSlots = fullCobblestoneSlots
             };
             return true;
+        }
+
+        public static bool ContainsMarkedItem(
+            Bitmap bitmap,
+            InventoryMarkerLayout layout,
+            string itemId,
+            bool includeHotbar)
+        {
+            if (bitmap == null || string.IsNullOrWhiteSpace(itemId) || layout.Scale <= 0)
+                return false;
+
+            using var pixels = new PixelReader(bitmap);
+            int slotCount = includeHotbar ? 36 : 27;
+            for (int slot = 0; slot < slotCount; slot++)
+            {
+                int column = slot % 9;
+                int logicalY = slot < 27
+                    ? SlotStartY + (slot / 9) * SlotStep
+                    : HotbarSlotStartY;
+                int markerX = layout.Left + (SlotStartX + column * SlotStep + ItemMarkerX) * layout.Scale;
+                int markerY = layout.Top + (logicalY + ItemMarkerY) * layout.Scale;
+                if (TryMatchItemMarker(pixels, markerX, markerY, layout.Scale, out string detectedItemId)
+                    && string.Equals(detectedItemId, itemId, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static bool TryFindLayoutFromBlazingSlotGrid(PixelReader pixels, out InventoryMarkerLayout layout)
@@ -276,11 +363,18 @@ namespace MinecraftHelper.Services
             return bestBorderScore >= MinimumBlazingDarkBorders;
         }
 
-        private static bool LooksLikeCobblestone(PixelReader pixels, int itemX, int itemY, int scale)
+        private static bool LooksLikeCobblestone(
+            PixelReader pixels,
+            int itemX,
+            int itemY,
+            int scale,
+            int minimumNeutralTexturePixels = 105,
+            int minimumDarkTexturePixels = 45)
         {
             int neutralTexturePixels = 0;
             int coloredTexturePixels = 0;
             int darkTexturePixels = 0;
+            int protectedPinkPixels = 0;
             int sampleOffset = scale / 2;
 
             for (int logicalY = 0; logicalY < 16; logicalY++)
@@ -300,6 +394,21 @@ namespace MinecraftHelper.Services
                     int spread = maximum - minimum;
                     int intensity = (color.R + color.G + color.B) / 3;
                     bool differsFromSlotBackground = Math.Abs(intensity - 139) >= 11;
+
+                    // The updated helper texture uses solid RGB 255,174,201 for
+                    // cobblestone. Minecraft shades the three block faces while
+                    // rendering the inventory model, so match its pink hue rather
+                    // than one exact RGB value.
+                    if (color.R >= 120
+                        && color.G >= 65
+                        && color.B >= 85
+                        && color.R - color.G >= 25
+                        && color.B - color.G >= 8
+                        && color.R - color.B >= 12)
+                    {
+                        protectedPinkPixels++;
+                    }
+
                     if (spread <= 16 && differsFromSlotBackground)
                     {
                         neutralTexturePixels++;
@@ -315,9 +424,118 @@ namespace MinecraftHelper.Services
 
             // A cobblestone block fills most of the 16x16 item area and is almost entirely neutral gray.
             // Enchanted/mossy CobbleX variants contain enough purple/green to fail this input check.
-            return neutralTexturePixels >= 105
-                && darkTexturePixels >= 45
+            bool looksLikeLegacyGrayCobblestone = neutralTexturePixels >= minimumNeutralTexturePixels
+                && darkTexturePixels >= minimumDarkTexturePixels
                 && coloredTexturePixels <= 28;
+
+            // The stricter protection pass asks for 180 neutral pixels. Its pink
+            // equivalent is deliberately conservative, but still allows for the
+            // lighting applied to a rendered 3D block icon.
+            int minimumProtectedPinkPixels = minimumNeutralTexturePixels >= 180 ? 70 : 45;
+            bool looksLikeUpdatedPinkCobblestone = protectedPinkPixels >= minimumProtectedPinkPixels;
+            return looksLikeLegacyGrayCobblestone || looksLikeUpdatedPinkCobblestone;
+        }
+
+        private static bool LooksLikeOccupiedSlot(PixelReader pixels, int itemX, int itemY, int scale)
+        {
+            int itemPixels = 0;
+            int sampleOffset = scale / 2;
+
+            for (int logicalY = 0; logicalY < 16; logicalY++)
+            {
+                for (int logicalX = 0; logicalX < 16; logicalX++)
+                {
+                    if (!pixels.TryGetColor(
+                        itemX + logicalX * scale + sampleOffset,
+                        itemY + logicalY * scale + sampleOffset,
+                        out MarkerColor color))
+                    {
+                        continue;
+                    }
+
+                    int maximum = Math.Max(color.R, Math.Max(color.G, color.B));
+                    int minimum = Math.Min(color.R, Math.Min(color.G, color.B));
+                    int spread = maximum - minimum;
+                    int intensity = (color.R + color.G + color.B) / 3;
+                    if (spread > 14 || Math.Abs(intensity - 139) > 14)
+                    {
+                        itemPixels++;
+                        if (itemPixels >= 20)
+                            return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        private static bool TryMatchSolidBlockItem(
+            PixelReader pixels,
+            int itemX,
+            int itemY,
+            int scale,
+            out string itemId)
+        {
+            int obsidianPixels = 0;
+            int sandPixels = 0;
+            int sampleOffset = scale / 2;
+
+            for (int logicalY = 0; logicalY < 16; logicalY++)
+            {
+                for (int logicalX = 0; logicalX < 16; logicalX++)
+                {
+                    if (!pixels.TryGetColor(
+                        itemX + logicalX * scale + sampleOffset,
+                        itemY + logicalY * scale + sampleOffset,
+                        out MarkerColor color))
+                    {
+                        continue;
+                    }
+
+                    // Source texture RGB 60,48,86. The broad ranges account for
+                    // lighting on the three faces of Minecraft's inventory block.
+                    if (color.B >= 35
+                        && color.B <= 125
+                        && color.R >= 22
+                        && color.R <= 95
+                        && color.G >= 16
+                        && color.G <= 80
+                        && color.B - color.R >= 12
+                        && color.B - color.G >= 18
+                        && color.R - color.G >= 5
+                        && color.R - color.G <= 25)
+                    {
+                        obsidianPixels++;
+                    }
+
+                    // Source texture RGB 255,201,14, also matched after face shading.
+                    if (color.R >= 125
+                        && color.G >= 85
+                        && color.B <= 65
+                        && color.R - color.G >= 28
+                        && color.R - color.G <= 75
+                        && color.G - color.B >= 70)
+                    {
+                        sandPixels++;
+                    }
+                }
+            }
+
+            const int minimumSolidBlockPixels = 45;
+            if (obsidianPixels >= minimumSolidBlockPixels && obsidianPixels > sandPixels)
+            {
+                itemId = "obsidian";
+                return true;
+            }
+
+            if (sandPixels >= minimumSolidBlockPixels)
+            {
+                itemId = "sand";
+                return true;
+            }
+
+            itemId = string.Empty;
+            return false;
         }
 
         private static bool MatchesStackCount64(PixelReader pixels, int itemX, int itemY, int scale)

@@ -11,6 +11,18 @@ namespace MinecraftHelper.Services
         public const string ItemsDiscarded = "items-discarded";
         public const string CobbleXCreated = "cobblex-created";
         public const string InventorySession = "inventory-session";
+        public const string MiningRun = "mining-run";
+        public const string AutomationEvent = "automation-event";
+    }
+
+    internal static class MiningLogEventTypes
+    {
+        public const string AutoReconnectStarted = "auto-reconnect-started";
+        public const string AutoReconnectFinished = "auto-reconnect-finished";
+        public const string HealthCheckStarted = "health-check-started";
+        public const string HealthCheckFinished = "health-check-finished";
+        public const string MissingPickaxeRecovery = "missing-pickaxe-recovery";
+        public const string MissingPickaxeRecoveryFinished = "missing-pickaxe-recovery-finished";
     }
 
     internal static class MiningLogStatuses
@@ -39,9 +51,12 @@ namespace MinecraftHelper.Services
         public int ItemCount { get; set; }
         public int StackCount { get; set; }
         public string Details { get; set; } = string.Empty;
+        public string EndDetails { get; set; } = string.Empty;
         public string SessionId { get; set; } = string.Empty;
+        public string MiningRunId { get; set; } = string.Empty;
         public string Owner { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
+        public string EventType { get; set; } = string.Empty;
         public DateTimeOffset? CompletedAt { get; set; }
         public int DropPasses { get; set; }
         public int RemainingStacks { get; set; }
@@ -49,6 +64,12 @@ namespace MinecraftHelper.Services
         public int RequiredCobblestoneStacks { get; set; }
         public bool CobbleXCreated { get; set; }
         public string CobbleXCommand { get; set; } = string.Empty;
+        public bool CobbleXEnabled { get; set; }
+        public string CleanupMode { get; set; } = string.Empty;
+        public bool EatAfterCleanup { get; set; }
+        public bool EatingCompleted { get; set; }
+        public List<int> SelectedSlots { get; set; } = new List<int>();
+        public List<string> SelectedItemTypes { get; set; } = new List<string>();
         public List<MiningLogItemDetail> Items { get; set; } = new List<MiningLogItemDetail>();
     }
 
@@ -59,6 +80,8 @@ namespace MinecraftHelper.Services
         int LegacyDiscardedStacks,
         int InventorySessions,
         int FailedInventorySessions,
+        int MiningRuns,
+        int AutomationEvents,
         DateTimeOffset? FirstActivity,
         DateTimeOffset? LastActivity);
 
@@ -116,11 +139,13 @@ namespace MinecraftHelper.Services
                 int failedInventorySessions = _entries.Count(entry =>
                     entry.Kind == MiningLogKinds.InventorySession
                     && entry.Status is MiningLogStatuses.Aborted or MiningLogStatuses.Interrupted);
+                int miningRuns = _entries.Count(entry => entry.Kind == MiningLogKinds.MiningRun);
+                int automationEvents = _entries.Count(entry => entry.Kind == MiningLogKinds.AutomationEvent);
                 DateTimeOffset? firstActivity = _entries.Count > 0
                     ? _entries.Min(entry => entry.Timestamp)
                     : null;
                 DateTimeOffset? lastActivity = _entries.Count > 0
-                    ? _entries.Max(entry => entry.Timestamp)
+                    ? _entries.Max(entry => entry.CompletedAt ?? entry.Timestamp)
                     : null;
 
                 return new MiningLogSummary(
@@ -130,12 +155,124 @@ namespace MinecraftHelper.Services
                     legacyDiscardedStacks,
                     inventorySessions,
                     failedInventorySessions,
+                    miningRuns,
+                    automationEvents,
                     firstActivity,
                     lastActivity);
             }
         }
 
-        public bool StartInventorySession(string owner, out string sessionId, out string error)
+        public bool StartMiningRun(string owner, string details, out string runId, out string error)
+        {
+            runId = Guid.NewGuid().ToString("N");
+            lock (_sync)
+            {
+                var entry = new MiningLogEntry
+                {
+                    Timestamp = DateTimeOffset.Now,
+                    Kind = MiningLogKinds.MiningRun,
+                    SessionId = runId,
+                    MiningRunId = runId,
+                    Owner = owner?.Trim() ?? string.Empty,
+                    Status = MiningLogStatuses.InProgress,
+                    Details = details?.Trim() ?? string.Empty
+                };
+
+                _entries.Add(entry);
+                TrimEntries();
+                if (TrySave(out error))
+                {
+                    Changed?.Invoke(this, EventArgs.Empty);
+                    return true;
+                }
+
+                _entries.Remove(entry);
+                runId = string.Empty;
+                return false;
+            }
+        }
+
+        public bool CompleteMiningRun(string runId, string details, string status, out string error)
+        {
+            if (string.IsNullOrWhiteSpace(runId))
+            {
+                error = string.Empty;
+                return true;
+            }
+
+            lock (_sync)
+            {
+                MiningLogEntry? entry = _entries.LastOrDefault(candidate =>
+                    candidate.Kind == MiningLogKinds.MiningRun
+                    && string.Equals(candidate.SessionId, runId, StringComparison.OrdinalIgnoreCase));
+                if (entry == null)
+                {
+                    error = string.Empty;
+                    return true;
+                }
+
+                MiningLogEntry backup = CloneEntry(entry);
+                entry.Status = status is MiningLogStatuses.Aborted or MiningLogStatuses.Interrupted
+                    ? status
+                    : MiningLogStatuses.Completed;
+                entry.CompletedAt = DateTimeOffset.Now;
+                entry.EndDetails = details?.Trim() ?? string.Empty;
+                if (TrySave(out error))
+                {
+                    Changed?.Invoke(this, EventArgs.Empty);
+                    return true;
+                }
+
+                CopyEntry(backup, entry);
+                return false;
+            }
+        }
+
+        public bool RecordAutomationEvent(
+            string miningRunId,
+            string owner,
+            string eventType,
+            string status,
+            string details,
+            out string error)
+        {
+            lock (_sync)
+            {
+                var entry = new MiningLogEntry
+                {
+                    Timestamp = DateTimeOffset.Now,
+                    Kind = MiningLogKinds.AutomationEvent,
+                    SessionId = Guid.NewGuid().ToString("N"),
+                    MiningRunId = miningRunId?.Trim() ?? string.Empty,
+                    Owner = owner?.Trim() ?? string.Empty,
+                    EventType = eventType?.Trim() ?? string.Empty,
+                    Status = string.IsNullOrWhiteSpace(status) ? MiningLogStatuses.Completed : status.Trim(),
+                    Details = details?.Trim() ?? string.Empty
+                };
+
+                _entries.Add(entry);
+                TrimEntries();
+                if (TrySave(out error))
+                {
+                    Changed?.Invoke(this, EventArgs.Empty);
+                    return true;
+                }
+
+                _entries.Remove(entry);
+                return false;
+            }
+        }
+
+        public bool StartInventorySession(
+            string owner,
+            string miningRunId,
+            string cleanupMode,
+            bool cobbleXEnabled,
+            bool eatAfterCleanup,
+            IReadOnlyList<int> selectedSlots,
+            IReadOnlyList<string> selectedItemTypes,
+            out string sessionId,
+            out string error)
         {
             sessionId = Guid.NewGuid().ToString("N");
             lock (_sync)
@@ -145,8 +282,14 @@ namespace MinecraftHelper.Services
                     Timestamp = DateTimeOffset.Now,
                     Kind = MiningLogKinds.InventorySession,
                     SessionId = sessionId,
+                    MiningRunId = miningRunId?.Trim() ?? string.Empty,
                     Owner = owner?.Trim() ?? string.Empty,
                     Status = MiningLogStatuses.InProgress,
+                    CleanupMode = cleanupMode?.Trim() ?? string.Empty,
+                    CobbleXEnabled = cobbleXEnabled,
+                    EatAfterCleanup = eatAfterCleanup,
+                    SelectedSlots = (selectedSlots ?? Array.Empty<int>()).Where(slot => slot > 0).Distinct().OrderBy(slot => slot).ToList(),
+                    SelectedItemTypes = (selectedItemTypes ?? Array.Empty<string>()).Where(item => !string.IsNullOrWhiteSpace(item)).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
                     Details = "Otwarto ekwipunek. Oczekiwanie na skan i wynik czyszczenia."
                 };
 
@@ -176,6 +319,7 @@ namespace MinecraftHelper.Services
             string cobbleXCommand,
             int fullCobblestoneStacks,
             int requiredCobblestoneStacks,
+            bool eatingCompleted,
             string details,
             out string error)
         {
@@ -196,6 +340,7 @@ namespace MinecraftHelper.Services
                 entry.CobbleXCommand = cobbleXCommand?.Trim() ?? string.Empty;
                 entry.FullCobblestoneStacks = Math.Max(0, fullCobblestoneStacks);
                 entry.RequiredCobblestoneStacks = Math.Max(0, requiredCobblestoneStacks);
+                entry.EatingCompleted = eatingCompleted;
                 entry.Details = details?.Trim() ?? string.Empty;
                 entry.Items = (items ?? Array.Empty<MiningLogItemDetail>())
                     .Where(item => item != null && (item.ItemCount > 0 || item.StackCount > 0))
@@ -290,13 +435,21 @@ namespace MinecraftHelper.Services
             lock (_sync)
             {
                 List<MiningLogEntry> backup = _entries.Select(CloneEntry).ToList();
+                List<MiningLogEntry> activeEntries = _entries
+                    .Where(entry => entry.Status == MiningLogStatuses.InProgress
+                        && entry.Kind is MiningLogKinds.MiningRun
+                            or MiningLogKinds.InventorySession)
+                    .Select(CloneEntry)
+                    .ToList();
                 _entries.Clear();
+                _entries.AddRange(activeEntries);
                 if (TrySave(out error))
                 {
                     Changed?.Invoke(this, EventArgs.Empty);
                     return true;
                 }
 
+                _entries.Clear();
                 _entries.AddRange(backup);
                 return false;
             }
@@ -350,8 +503,12 @@ namespace MinecraftHelper.Services
                         && entry.Timestamp != default
                         && (entry.Kind == MiningLogKinds.ItemsDiscarded
                             || entry.Kind == MiningLogKinds.CobbleXCreated
-                            || entry.Kind == MiningLogKinds.InventorySession)
+                            || entry.Kind == MiningLogKinds.InventorySession
+                            || entry.Kind == MiningLogKinds.MiningRun
+                            || entry.Kind == MiningLogKinds.AutomationEvent)
                         && (entry.Kind == MiningLogKinds.InventorySession
+                            || entry.Kind == MiningLogKinds.MiningRun
+                            || entry.Kind == MiningLogKinds.AutomationEvent
                             || entry.Count > 0
                             || entry.ItemCount > 0
                             || entry.StackCount > 0))
@@ -410,9 +567,12 @@ namespace MinecraftHelper.Services
                 ItemCount = entry.ItemCount,
                 StackCount = entry.StackCount,
                 Details = entry.Details,
+                EndDetails = entry.EndDetails,
                 SessionId = entry.SessionId,
+                MiningRunId = entry.MiningRunId,
                 Owner = entry.Owner,
                 Status = entry.Status,
+                EventType = entry.EventType,
                 CompletedAt = entry.CompletedAt,
                 DropPasses = entry.DropPasses,
                 RemainingStacks = entry.RemainingStacks,
@@ -420,6 +580,12 @@ namespace MinecraftHelper.Services
                 RequiredCobblestoneStacks = entry.RequiredCobblestoneStacks,
                 CobbleXCreated = entry.CobbleXCreated,
                 CobbleXCommand = entry.CobbleXCommand,
+                CobbleXEnabled = entry.CobbleXEnabled,
+                CleanupMode = entry.CleanupMode,
+                EatAfterCleanup = entry.EatAfterCleanup,
+                EatingCompleted = entry.EatingCompleted,
+                SelectedSlots = (entry.SelectedSlots ?? new List<int>()).ToList(),
+                SelectedItemTypes = (entry.SelectedItemTypes ?? new List<string>()).ToList(),
                 Items = (entry.Items ?? new List<MiningLogItemDetail>()).Select(CloneItem).ToList()
             };
         }
@@ -444,9 +610,12 @@ namespace MinecraftHelper.Services
             target.ItemCount = clone.ItemCount;
             target.StackCount = clone.StackCount;
             target.Details = clone.Details;
+            target.EndDetails = clone.EndDetails;
             target.SessionId = clone.SessionId;
+            target.MiningRunId = clone.MiningRunId;
             target.Owner = clone.Owner;
             target.Status = clone.Status;
+            target.EventType = clone.EventType;
             target.CompletedAt = clone.CompletedAt;
             target.DropPasses = clone.DropPasses;
             target.RemainingStacks = clone.RemainingStacks;
@@ -454,6 +623,12 @@ namespace MinecraftHelper.Services
             target.RequiredCobblestoneStacks = clone.RequiredCobblestoneStacks;
             target.CobbleXCreated = clone.CobbleXCreated;
             target.CobbleXCommand = clone.CobbleXCommand;
+            target.CobbleXEnabled = clone.CobbleXEnabled;
+            target.CleanupMode = clone.CleanupMode;
+            target.EatAfterCleanup = clone.EatAfterCleanup;
+            target.EatingCompleted = clone.EatingCompleted;
+            target.SelectedSlots = clone.SelectedSlots;
+            target.SelectedItemTypes = clone.SelectedItemTypes;
             target.Items = clone.Items;
         }
 
@@ -486,12 +661,16 @@ namespace MinecraftHelper.Services
                 bool changed = false;
                 foreach (MiningLogEntry entry in _entries)
                 {
-                    if (entry.Kind != MiningLogKinds.InventorySession
+                    if (entry.Kind is not (MiningLogKinds.InventorySession or MiningLogKinds.MiningRun)
                         || entry.Status != MiningLogStatuses.InProgress)
                         continue;
 
                     entry.Status = MiningLogStatuses.Interrupted;
-                    entry.Details = "Sesja EQ nie została zakończona — program lub makro zostało wcześniej zatrzymane.";
+                    entry.CompletedAt = DateTimeOffset.Now;
+                    if (entry.Kind == MiningLogKinds.MiningRun)
+                        entry.EndDetails = "Sesja kopania nie została poprawnie zakończona — program został wcześniej zatrzymany.";
+                    else
+                        entry.Details = "Sesja EQ nie została zakończona — program lub makro zostało wcześniej zatrzymane.";
                     changed = true;
                 }
 
