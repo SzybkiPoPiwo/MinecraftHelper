@@ -478,6 +478,9 @@ namespace MinecraftHelper.Services
         {
             int obsidianPixels = 0;
             int sandPixels = 0;
+            int goldBlockPixels = 0;
+            int ironBlockPixels = 0;
+            int emeraldBlockPixels = 0;
             int sampleOffset = scale / 2;
 
             for (int logicalY = 0; logicalY < 16; logicalY++)
@@ -518,24 +521,69 @@ namespace MinecraftHelper.Services
                     {
                         sandPixels++;
                     }
+
+                    // Source texture RGB 255,242,0. It stays distinctly more
+                    // yellow than sand after Minecraft shades the block faces.
+                    if (color.R >= 125
+                        && color.G >= 115
+                        && color.B <= 50
+                        && color.R - color.G >= 3
+                        && color.R - color.G <= 25
+                        && color.G - color.B >= 100)
+                    {
+                        goldBlockPixels++;
+                    }
+
+                    // Source texture RGB 232,232,232. The normal slot background
+                    // is close to RGB 139,139,139, so only the two brighter faces
+                    // are counted. This prevents empty slots from becoming iron.
+                    int maximum = Math.Max(color.R, Math.Max(color.G, color.B));
+                    int minimum = Math.Min(color.R, Math.Min(color.G, color.B));
+                    int intensity = (color.R + color.G + color.B) / 3;
+                    if (maximum - minimum <= 8
+                        && intensity >= 160
+                        && intensity <= 248)
+                    {
+                        ironBlockPixels++;
+                    }
+
+                    // Source texture RGB 131,237,161, matched across the three
+                    // differently shaded faces of the inventory block model.
+                    if (color.G >= 100
+                        && color.R >= 45
+                        && color.B >= 55
+                        && color.G - color.R >= 45
+                        && color.G - color.B >= 35
+                        && color.B - color.R >= 15
+                        && color.B - color.R <= 50)
+                    {
+                        emeraldBlockPixels++;
+                    }
                 }
             }
 
             const int minimumSolidBlockPixels = 45;
-            if (obsidianPixels >= minimumSolidBlockPixels && obsidianPixels > sandPixels)
+            const int minimumIronBlockPixels = 30;
+            string bestItemId = string.Empty;
+            int bestPixelCount = 0;
+
+            void Consider(string candidateItemId, int pixelCount, int requiredPixelCount = minimumSolidBlockPixels)
             {
-                itemId = "obsidian";
-                return true;
+                if (pixelCount >= requiredPixelCount && pixelCount > bestPixelCount)
+                {
+                    bestItemId = candidateItemId;
+                    bestPixelCount = pixelCount;
+                }
             }
 
-            if (sandPixels >= minimumSolidBlockPixels)
-            {
-                itemId = "sand";
-                return true;
-            }
+            Consider("obsidian", obsidianPixels);
+            Consider("sand", sandPixels);
+            Consider("gold_block", goldBlockPixels);
+            Consider("iron_block", ironBlockPixels, minimumIronBlockPixels);
+            Consider("emerald_block", emeraldBlockPixels);
 
-            itemId = string.Empty;
-            return false;
+            itemId = bestItemId;
+            return bestPixelCount > 0;
         }
 
         private static bool MatchesStackCount64(PixelReader pixels, int itemX, int itemY, int scale)

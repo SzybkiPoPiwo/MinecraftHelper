@@ -49,6 +49,8 @@ namespace MinecraftHelper
         private readonly DispatcherTimer _macroTimer;
         private readonly DispatcherTimer _f3AnalysisTimer;
         private readonly DispatcherTimer _autoReconnectTimer;
+        private readonly DispatcherTimer _transientStatusTimer;
+        private readonly DispatcherTimer _bindyHudClearTimer;
         private readonly MacroDiagnosticsService _macroDiagnosticsService;
         private readonly AutoClickScheduler _autoClickScheduler;
 
@@ -166,13 +168,16 @@ namespace MinecraftHelper
         private static readonly (string Id, string Label)[] InventoryCleanupItemTypes =
         {
             ("diamond", "Diament"),
-            ("gold_ingot", "Złoto"),
-            ("iron_ingot", "Żelazo"),
+            ("gold_ingot", "Sztabka złota"),
+            ("gold_block", "Blok złota"),
+            ("iron_ingot", "Sztabka żelaza"),
+            ("iron_block", "Blok żelaza"),
+            ("emerald", "Emerald"),
+            ("emerald_block", "Blok emeraldu"),
             ("obsidian", "Obsydian"),
             ("apple", "Jabłko"),
             ("sand", "Piasek"),
             ("gunpowder", "Proch"),
-            ("emerald", "Emerald"),
             ("coal", "Węgiel"),
             ("quartz", "Kwarc"),
             ("book", "Książka"),
@@ -771,6 +776,26 @@ namespace MinecraftHelper
                 Interval = TimeSpan.FromMilliseconds(100)
             };
             _autoReconnectTimer.Tick += RunAutoReconnectTick;
+
+            _transientStatusTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(4)
+            };
+            _transientStatusTimer.Tick += (_, __) =>
+            {
+                _transientStatusTimer.Stop();
+                UpdateStatusBar("Gotowy", "Green");
+            };
+
+            _bindyHudClearTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(BindyHudNotificationMs + 100)
+            };
+            _bindyHudClearTimer.Tick += (_, __) =>
+            {
+                _bindyHudClearTimer.Stop();
+                RefreshOverlayHud(DateTime.UtcNow);
+            };
 
             DataContext = this;
 
@@ -1858,6 +1883,8 @@ namespace MinecraftHelper
             UpdateTestAutoFishingStatusLabel();
 
             // OVERLAY
+            ChkAnimatedBackgroundEnabled.IsChecked = _settings.AnimatedBackgroundEnabled;
+            CyberBackground.IsAnimationEnabled = _settings.AnimatedBackgroundEnabled;
             ChkOverlayHudEnabled.IsChecked = _settings.OverlayHudEnabled;
             ChkOverlayAnimationsEnabled.IsChecked = _settings.OverlayAnimationsEnabled;
             RefreshOverlayMonitorChoices();
@@ -6681,6 +6708,7 @@ namespace MinecraftHelper
                 : NormalizeFastUpPlaceAfterJumpMs((int)Math.Round(SlTestFastUpExitPlaceMs.Value));
             _settings.OverlayHudEnabled = ChkOverlayHudEnabled.IsChecked == true;
             _settings.OverlayAnimationsEnabled = ChkOverlayAnimationsEnabled.IsChecked == true;
+            _settings.AnimatedBackgroundEnabled = ChkAnimatedBackgroundEnabled.IsChecked != false;
             _settings.OverlayMonitorIndex = Math.Max(0, CbOverlayMonitor?.SelectedIndex ?? 0);
             _settings.OverlayCorner = ToOverlayCornerSetting(GetSelectedOverlayCorner());
 
@@ -10194,7 +10222,7 @@ namespace MinecraftHelper
             _bindyPendingEntryName = GetBindyEntryDisplayName(entry);
             _bindyCommandStage = BindyCommandStage.OpenChat;
             _nextBindyStageAtUtc = now;
-            UpdateStatusBar($"BINDY: uruchomiono \"{_bindyPendingEntryName}\"", "Orange");
+            UpdateTemporaryStatusBar($"BINDY: uruchomiono \"{_bindyPendingEntryName}\"", "Orange");
         }
 
         private void RunBindyTick(DateTime now)
@@ -10228,7 +10256,7 @@ namespace MinecraftHelper
                 case BindyCommandStage.TypeCommand:
                     if (!SendTextByKeyboard(_bindyPendingCommand))
                     {
-                        UpdateStatusBar("BINDY: błąd wpisywania komendy", "Red");
+                        UpdateTemporaryStatusBar("BINDY: błąd wpisywania komendy", "Red", 5);
                         ResetBindyRuntimeState(now.AddSeconds(1));
                         return true;
                     }
@@ -10242,8 +10270,10 @@ namespace MinecraftHelper
                     string executedName = string.IsNullOrWhiteSpace(_bindyPendingEntryName) ? "Bind" : _bindyPendingEntryName.Trim();
                     _bindyLastExecutedName = executedName;
                     _bindyLastExecutedAtUtc = now;
-                    UpdateStatusBar($"BINDY: {executedName} zostało wykonane", "Green");
+                    UpdateTemporaryStatusBar($"BINDY: {executedName} zostało wykonane", "Green");
                     RefreshOverlayHud(now);
+                    _bindyHudClearTimer.Stop();
+                    _bindyHudClearTimer.Start();
                     ResetBindyRuntimeState(now.AddMilliseconds(BindyDelayAfterSubmitCommandMs));
                     return true;
 
@@ -10918,12 +10948,21 @@ namespace MinecraftHelper
         {
             if (TxtStatusBar == null) return;
 
+            _transientStatusTimer?.Stop();
+
             TxtStatusBar.Text = message;
             TxtStatusBar.Foreground =
                 colorName == "Red" ? new SolidColorBrush(Color.FromRgb(255, 107, 107)) :
                 colorName == "Green" ? new SolidColorBrush(Color.FromRgb(56, 214, 180)) :
                 colorName == "Orange" ? new SolidColorBrush(Color.FromRgb(251, 191, 36)) :
                 new SolidColorBrush(Color.FromRgb(207, 219, 235));
+        }
+
+        private void UpdateTemporaryStatusBar(string message, string colorName, int seconds = 4)
+        {
+            UpdateStatusBar(message, colorName);
+            _transientStatusTimer.Interval = TimeSpan.FromSeconds(Math.Max(1, seconds));
+            _transientStatusTimer.Start();
         }
 
         private void ChkHoldLeftEnabled_Changed(object sender, RoutedEventArgs e)
@@ -10973,6 +11012,17 @@ namespace MinecraftHelper
             UpdateEnabledStates();
             UpdateOverlayLayout();
             RefreshOverlayHud(DateTime.UtcNow);
+            MarkDirty();
+        }
+
+        private void ChkAnimatedBackgroundEnabled_Changed(object sender, RoutedEventArgs e)
+        {
+            if (CyberBackground != null)
+                CyberBackground.IsAnimationEnabled = ChkAnimatedBackgroundEnabled.IsChecked != false;
+
+            if (_isLoadingUi)
+                return;
+
             MarkDirty();
         }
 
@@ -11413,6 +11463,8 @@ namespace MinecraftHelper
             _macroTimer.Stop();
             _f3AnalysisTimer.Stop();
             _autoReconnectTimer.Stop();
+            _transientStatusTimer.Stop();
+            _bindyHudClearTimer.Stop();
             _autoClickScheduler.Dispose();
             _macroDiagnosticsService.Dispose();
 

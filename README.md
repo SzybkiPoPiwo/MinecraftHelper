@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <strong>Windows 10/11</strong> · <strong>Minecraft 1.8.8</strong> · <strong>bez Forge i modów</strong> · <strong>wersja 1.1.2</strong>
+  <strong>Windows 10/11</strong> · <strong>Minecraft 1.8.8</strong> · <strong>bez Forge i modów</strong> · <strong>wersja 1.1.3</strong>
 </p>
 
 <p align="center">
@@ -42,6 +42,13 @@ Jeżeli korzystasz z programu pierwszy raz:
 Zaznaczenie głównego pola modułu rozwija jego konfigurację. Samo zaznaczenie nie zawsze uruchamia funkcję — clickery, Kopacz i pozostałe moduły włącza się ustawionym bindem. Szczegółowe podpowiedzi są dostępne pod przyciskami `?`.
 
 Przy pierwszym uruchomieniu pojawi się okno powitalne. Po aktualizacji programu to samo okno pokaże listę zmian i ostrzeże o ewentualnej różnicy wersji zapisanych ustawień.
+
+<p align="center">
+  <a href="docs/images/app-first-run.png">
+    <img src="docs/images/app-first-run.png" alt="Przewodnik pierwszego uruchomienia Minecraft Helper" width="100%">
+  </a><br>
+  <sub>Przewodnik pierwszego uruchomienia prowadzi przez podstawową konfigurację programu.</sub>
+</p>
 
 ## Przegląd funkcji
 
@@ -94,9 +101,12 @@ Po przekroczeniu 4 MB poprzedni plik jest przenoszony do `macro-diagnostics.prev
 
 <p align="center">
   <a href="docs/images/app-kopacz.png">
-    <img src="docs/images/app-kopacz.png" alt="Zakładka Kopacz w Minecraft Helper" width="100%">
+    <img src="docs/images/app-kopacz.png" alt="Kanał Kopacz 5/3/3 w Minecraft Helper" width="49%">
+  </a>
+  <a href="docs/images/app-kopacz-633.png">
+    <img src="docs/images/app-kopacz-633.png" alt="Kanał Kopacz 6/3/3 w Minecraft Helper" width="49%">
   </a><br>
-  <sub>Kliknij obraz, aby otworzyć go w pełnym rozmiarze.</sub>
+  <sub>Kopacz 5/3/3 i 6/3/3 — kliknij wybrany obraz, aby otworzyć go w pełnym rozmiarze.</sub>
 </p>
 
 Zakładka `Kopacz` łączy automatyczne kopanie z wykonywaniem komend oraz opcjonalnym czyszczeniem ekwipunku.
@@ -150,7 +160,7 @@ Wymagane są domyślne klawisze: `E` dla ekwipunku, `Q` dla wyrzucania i `T` dla
 5. Otwórz ekwipunek w grze i użyj `Test wykrywania`.
 6. Sprawdź wynik testu, a następnie uruchom jeden z trybów Kopacza.
 
-Obsługiwane oznaczenia: diament, złoto, żelazo, obsydian, jabłko, piasek, proch, emerald, węgiel, kwarc, książka, ender perła i redstone.
+Obsługiwane oznaczenia: diament, sztabka i blok złota, sztabka i blok żelaza, emerald i blok emeraldu, obsydian, jabłko, piasek, proch, węgiel, kwarc, książka, ender perła i redstone.
 
 ### Automatyczne tworzenie CobbleX
 
@@ -206,9 +216,12 @@ Moduł pozwala przypisać własne komendy do klawiszy. Każdy wpis może mieć o
 
 <p align="center">
   <a href="docs/images/app-experimental.png">
-    <img src="docs/images/app-experimental.png" alt="Zakładka Experimental w Minecraft Helper" width="100%">
+    <img src="docs/images/app-experimental.png" alt="Auto Reconnect w zakładce Experimental" width="49%">
+  </a>
+  <a href="docs/images/app-experimental-fishing.png">
+    <img src="docs/images/app-experimental-fishing.png" alt="Auto łowienie w zakładce Experimental" width="49%">
   </a><br>
-  <sub>Kliknij obraz, aby otworzyć go w pełnym rozmiarze.</sub>
+  <sub>Auto Reconnect i autołowienie — kliknij wybrany obraz, aby otworzyć go w pełnym rozmiarze.</sub>
 </p>
 
 Zakładka zawiera funkcje będące nadal w fazie testów. Mogą wymagać dokładniejszego ustawienia i nie zawsze zachowywać się identycznie na każdym kliencie.
@@ -261,6 +274,7 @@ To tutaj należy rozpocząć konfigurację programu:
 - `Program gry` wskazuje proces Minecrafta, do którego mają trafiać klawisze i kliknięcia.
 - `Odśwież` ponownie pobiera listę uruchomionych okien.
 - `Zapisz program` zapamiętuje wybrane okno gry.
+- `Animowane tło gwiazd` włącza lub wyłącza lekki efekt tła w głównym oknie.
 - `Panel HUD (overlay)` pokazuje stan uruchomionych funkcji na ekranie.
 - HUD pozwala wybrać monitor, narożnik oraz wyłączyć animacje.
 - Podczas kopania HUD aktualizuje etap pracy, godzinę startu, czas działania, bieżący skan EQ oraz łączne wyniki wyrzucania i tworzenia CobbleX.
@@ -285,6 +299,17 @@ Nie wybieraj procesu launchera. Wskaż właściwe okno Minecrafta lub używanego
 - Menu zasobnika korzysta z ciemnego motywu zgodnego z pozostałą częścią interfejsu.
 
 Jeżeli działają makra lub Kopacz, zamknięcie okna przyciskiem `X` pozostawia aplikację uruchomioną w tle. Aby całkowicie ją wyłączyć, użyj opcji `Zakończ aplikację` z menu ikony.
+
+## Zmiany w wersji 1.1.3
+
+- Dodano lekkie, animowane tło z gwiazdami oraz możliwość wyłączenia animacji w ustawieniach.
+- Ujednolicono wygląd i działanie pasków przewijania w głównym oknie, konfiguracji Auto Reconnect, logach i przewodniku pierwszego uruchomienia.
+- Poprawiono przewijanie ekranów z dłuższą zawartością — kółko myszy nie przeskakuje już od razu na samą górę lub dół.
+- Dopracowano układ sekcji Kopacza, obramowania kart i przyciski wyboru kanału 5/3/3 oraz 6/3/3.
+- Komunikaty modułu BINDY znikają automatycznie po kilku sekundach.
+- Auto EQ może osobno rozpoznawać i wyrzucać bloki złota, żelaza oraz emeraldu.
+- Zaktualizowano generator paczki zasobów i wykrywanie jednolitych kolorów bloków z zachowaniem ochrony cobblestone.
+- Odświeżono zrzuty ekranu i opis aktualnego interfejsu.
 
 ## Zmiany w wersji 1.1.2
 
@@ -341,15 +366,15 @@ Jeżeli zauważysz błąd, problem z konfiguracją albo masz propozycję nowej f
 Najprościej uruchomić instalator:
 
 ```text
-MinecraftHelper-Setup-1.1.2.exe
+MinecraftHelper-Setup-1.1.3.exe
 ```
 
 Instalator działa dla bieżącego użytkownika, nie wymaga osobnej instalacji .NET 8, może utworzyć skrót na pulpicie i dodaje standardowy deinstalator Windows.
 
-Kontrola oficjalnego pliku instalatora wersji 1.1.2:
+Kontrola oficjalnego pliku instalatora wersji 1.1.3:
 
 ```text
-SHA-256: e1bed0670d1f2e19e330baad12e1330fd662603f9a04e6266c1964da753dedea
+SHA-256: 68e7a9e1d96b688073f63936c3e09cf2a6a1ca1b2c8d293ffed53d6d50ed1061
 ```
 
 ### Windows SmartScreen i Smart App Control
@@ -391,10 +416,10 @@ dotnet run --project MinecraftHelper/MinecraftHelper.csproj
 ### Budowanie instalatora
 
 ```powershell
-.\scripts\build-installer.ps1 -Version 1.1.2 -Rid win-x64 -SelfContained:$true -Clean
+.\scripts\build-installer.ps1 -Version 1.1.3 -Rid win-x64 -SelfContained:$true -Clean
 ```
 
-Wynik zostanie zapisany w `artifacts/installer/MinecraftHelper-Setup-1.1.2.exe`.
+Wynik zostanie zapisany w `artifacts/installer/MinecraftHelper-Setup-1.1.3.exe`.
 
 ### Odtworzenie paczki zasobów
 

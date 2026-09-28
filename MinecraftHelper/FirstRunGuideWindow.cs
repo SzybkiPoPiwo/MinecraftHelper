@@ -8,7 +8,6 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Interop;
-using System.Windows.Markup;
 using System.Windows.Media;
 
 namespace MinecraftHelper
@@ -151,9 +150,9 @@ namespace MinecraftHelper
                 Content = guidePanel,
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
                 HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
-                CanContentScroll = true
+                CanContentScroll = false,
+                PanningMode = PanningMode.VerticalFirst
             };
-            scrollViewer.Resources.Add(typeof(ScrollBar), CreateDarkScrollBarStyle());
             Grid.SetRow(scrollViewer, 2);
             layout.Children.Add(scrollViewer);
 
@@ -426,86 +425,6 @@ namespace MinecraftHelper
 
             style.Setters.Add(new Setter(Control.TemplateProperty, template));
             return style;
-        }
-
-        private static Style CreateDarkScrollBarStyle()
-        {
-            const string styleXaml = """
-                <Style xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                       TargetType="{x:Type ScrollBar}">
-                    <Setter Property="Width" Value="12"/>
-                    <Setter Property="Background" Value="#0D1A2B"/>
-                    <Setter Property="Template">
-                        <Setter.Value>
-                            <ControlTemplate TargetType="{x:Type ScrollBar}">
-                                <Border Background="{TemplateBinding Background}"
-                                        BorderBrush="#2F425B"
-                                        BorderThickness="1"
-                                        CornerRadius="4">
-                                    <Track x:Name="PART_Track"
-                                           Margin="1"
-                                           Orientation="Vertical"
-                                           Minimum="{TemplateBinding Minimum}"
-                                           Maximum="{TemplateBinding Maximum}"
-                                           Value="{TemplateBinding Value}"
-                                           ViewportSize="{TemplateBinding ViewportSize}"
-                                           IsDirectionReversed="True">
-                                        <Track.DecreaseRepeatButton>
-                                            <RepeatButton Command="{x:Static ScrollBar.PageUpCommand}"
-                                                          CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"
-                                                          Focusable="False">
-                                                <RepeatButton.Template>
-                                                    <ControlTemplate TargetType="{x:Type RepeatButton}">
-                                                        <Border Background="Transparent"/>
-                                                    </ControlTemplate>
-                                                </RepeatButton.Template>
-                                            </RepeatButton>
-                                        </Track.DecreaseRepeatButton>
-                                        <Track.Thumb>
-                                            <Thumb MinHeight="34">
-                                                <Thumb.Template>
-                                                    <ControlTemplate TargetType="{x:Type Thumb}">
-                                                        <Border x:Name="ThumbBorder"
-                                                                Margin="1"
-                                                                Background="#355171"
-                                                                BorderBrush="#46658A"
-                                                                BorderThickness="1"
-                                                                CornerRadius="3"/>
-                                                        <ControlTemplate.Triggers>
-                                                            <Trigger Property="IsMouseOver" Value="True">
-                                                                <Setter TargetName="ThumbBorder" Property="Background" Value="#46658A"/>
-                                                                <Setter TargetName="ThumbBorder" Property="BorderBrush" Value="#7FC8FF"/>
-                                                            </Trigger>
-                                                            <Trigger Property="IsDragging" Value="True">
-                                                                <Setter TargetName="ThumbBorder" Property="Background" Value="#2EA8FF"/>
-                                                                <Setter TargetName="ThumbBorder" Property="BorderBrush" Value="#9BD7FF"/>
-                                                            </Trigger>
-                                                        </ControlTemplate.Triggers>
-                                                    </ControlTemplate>
-                                                </Thumb.Template>
-                                            </Thumb>
-                                        </Track.Thumb>
-                                        <Track.IncreaseRepeatButton>
-                                            <RepeatButton Command="{x:Static ScrollBar.PageDownCommand}"
-                                                          CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"
-                                                          Focusable="False">
-                                                <RepeatButton.Template>
-                                                    <ControlTemplate TargetType="{x:Type RepeatButton}">
-                                                        <Border Background="Transparent"/>
-                                                    </ControlTemplate>
-                                                </RepeatButton.Template>
-                                            </RepeatButton>
-                                        </Track.IncreaseRepeatButton>
-                                    </Track>
-                                </Border>
-                            </ControlTemplate>
-                        </Setter.Value>
-                    </Setter>
-                </Style>
-                """;
-
-            return (Style)XamlReader.Parse(styleXaml);
         }
 
         private static SolidColorBrush BrushFromRgb(byte red, byte green, byte blue)

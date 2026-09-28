@@ -14,7 +14,6 @@ const packIconSource = path.join(workspace, "MinecraftHelper", "Assets", "pack.p
 const textureRoot = path.join(outputRoot, "assets", "minecraft", "textures");
 const itemRoot = path.join(textureRoot, "items");
 const blockRoot = path.join(textureRoot, "blocks");
-const modelRoot = path.join(outputRoot, "assets", "minecraft", "models", "item");
 const langRoot = path.join(outputRoot, "assets", "minecraft", "lang");
 
 const COLORS = {
@@ -111,9 +110,12 @@ const presenceItemTextures = [
     { id: "diamond_pickaxe", file: "diamond_pickaxe.png", label: "diamentowy kilof", markerCode: 13 }
 ];
 
-const blockItems = [
-    { id: "obsidian", source: "obsidian.png", output: "mh_discard_obsidian.png", label: "obsydian", markerCode: 3 },
-    { id: "sand", source: "sand.png", output: "mh_discard_sand.png", label: "piasek", markerCode: 5 }
+const solidBlockItems = [
+    { id: "obsidian", file: "obsidian.png", label: "obsydian", rgb: [60, 48, 86] },
+    { id: "sand", file: "sand.png", label: "piasek", rgb: [255, 201, 14] },
+    { id: "gold_block", file: "gold_block.png", label: "blok zlota", rgb: [255, 242, 0] },
+    { id: "iron_block", file: "iron_block.png", label: "blok zelaza", rgb: [232, 232, 232] },
+    { id: "emerald_block", file: "emerald_block.png", label: "blok emeraldu", rgb: [131, 237, 161] }
 ];
 
 function main() {
@@ -131,21 +133,7 @@ function main() {
         markPng(filePath, ITEM_MARKER_X, ITEM_MARKER_Y, buildItemMarker(item.markerCode));
     }
 
-    const standardItemModel = JSON.parse(fs.readFileSync(path.join(modelRoot, "diamond.json"), "utf8"));
-    for (const item of blockItems) {
-        const sourcePath = path.join(blockRoot, item.source);
-        const outputPath = path.join(itemRoot, item.output);
-        const image = readPng(sourcePath);
-        drawPattern(image, ITEM_MARKER_X, ITEM_MARKER_Y, buildItemMarker(item.markerCode));
-        writePng(outputPath, image);
-
-        const model = {
-            parent: "builtin/generated",
-            textures: { layer0: `items/${path.basename(item.output, ".png")}` },
-            display: standardItemModel.display
-        };
-        fs.writeFileSync(path.join(modelRoot, `${item.id}.json`), `${JSON.stringify(model, null, 4)}\n`, "utf8");
-    }
+    verifySolidBlockTextures();
 
     const inventoryPath = path.join(textureRoot, "gui", "container", "inventory.png");
     const inventory = readPng(inventoryPath);
@@ -165,7 +153,7 @@ function main() {
     writeBlazingDetectorFixture();
 
     console.log(`Gotowe: ${outputRoot}`);
-    console.log(`Oznaczone przedmioty: ${directItemTextures.length + blockItems.length + presenceItemTextures.length}`);
+    console.log(`Oznaczone przedmioty: ${directItemTextures.length + solidBlockItems.length + presenceItemTextures.length}`);
 }
 
 function markPng(filePath, x, y, pattern) {
@@ -226,7 +214,13 @@ function writeManifest() {
         itemMarker: { version: 2, x: ITEM_MARKER_X, y: ITEM_MARKER_Y, width: 3, height: 3 },
         discardItems: [
             ...directItemTextures.map(item => ({ id: item.id, label: item.label, markerCode: item.markerCode, texture: `items/${item.file}` })),
-            ...blockItems.map(item => ({ id: item.id, label: item.label, markerCode: item.markerCode, texture: `items/${item.output}` }))
+            ...solidBlockItems.map(item => ({
+                id: item.id,
+                label: item.label,
+                recognition: "solidBlockColor",
+                rgb: item.rgb,
+                texture: `blocks/${item.file}`
+            }))
         ],
         presenceItems: presenceItemTextures.map(item => ({
             id: item.id,
@@ -252,13 +246,14 @@ function writeReadme() {
         "",
         "Oznaczone przedmioty:",
         ...directItemTextures.map(item => `- ${item.label}`),
-        ...blockItems.map(item => `- ${item.label}`),
+        ...solidBlockItems.map(item => `- ${item.label} (jednolity kolor bloku, bez znacznika)`),
         "",
         "Znacznik kontrolny (nigdy nie jest wyrzucany przez Auto EQ):",
         ...presenceItemTextures.map(item => `- ${item.label}`),
         "",
         "Zlotych jablek, wegla drzewnego i innych wariantow ksiazek celowo nie oznaczono.",
-        "Kazdy typ ma osobny kod znacznika; wybor typow do wyrzucenia ustawia sie w aplikacji.",
+        "Bloki sa rozpoznawane po osobnych jednolitych kolorach. Pozostale typy maja kody znacznikow.",
+        "Wybor typow do wyrzucenia ustawia sie w aplikacji.",
         "Auto EQ skanuje tylko 27 glownych slotow ekwipunku; hotbar jest pomijany przy wyrzucaniu.",
         "Kontrola smierci podczas cyklu Auto EQ szuka diamentowego kilofa w 27 glownych slotach oraz na hotbarze.",
         "Wymagane sa domyslne klawisze Minecrafta: E (ekwipunek), Q (wyrzucanie) i T (czat).",
@@ -270,8 +265,7 @@ function writeReadme() {
 function verifyOutput() {
     const targets = [
         ...directItemTextures.map(item => ({ path: path.join(itemRoot, item.file), markerCode: item.markerCode })),
-        ...presenceItemTextures.map(item => ({ path: path.join(itemRoot, item.file), markerCode: item.markerCode })),
-        ...blockItems.map(item => ({ path: path.join(itemRoot, item.output), markerCode: item.markerCode }))
+        ...presenceItemTextures.map(item => ({ path: path.join(itemRoot, item.file), markerCode: item.markerCode }))
     ];
 
     for (const target of targets) {
@@ -279,9 +273,29 @@ function verifyOutput() {
         assertPattern(image, ITEM_MARKER_X, ITEM_MARKER_Y, buildItemMarker(target.markerCode), path.basename(target.path));
     }
 
+    verifySolidBlockTextures();
+
     const inventory = readPng(path.join(textureRoot, "gui", "container", "inventory.png"));
     assertPattern(inventory, GUI_TOP_LEFT_MARKER_X, GUI_TOP_LEFT_MARKER_Y, GUI_TOP_LEFT_MARKER, "inventory TL");
     assertPattern(inventory, GUI_BOTTOM_RIGHT_MARKER_X, GUI_BOTTOM_RIGHT_MARKER_Y, GUI_BOTTOM_RIGHT_MARKER, "inventory BR");
+}
+
+function verifySolidBlockTextures() {
+    for (const item of solidBlockItems) {
+        const filePath = path.join(blockRoot, item.file);
+        const image = readPng(filePath);
+        if (image.width !== 16 || image.height !== 16)
+            throw new Error(`Niepoprawny rozmiar tekstury ${item.file}: ${image.width}x${image.height}`);
+
+        for (let y = 0; y < image.height; y++) {
+            for (let x = 0; x < image.width; x++) {
+                const actual = getPixel(image, x, y);
+                const expected = [...item.rgb, 255];
+                if (!actual.every((value, index) => value === expected[index]))
+                    throw new Error(`Tekstura ${item.file} nie jest jednolita: piksel ${x},${y}`);
+            }
+        }
+    }
 }
 
 function assertPattern(image, startX, startY, pattern, name) {
@@ -303,7 +317,7 @@ function writeDetectorFixture() {
     const itemFiles = [
         ...directItemTextures.map(item => ({ path: path.join(itemRoot, item.file), markerCode: item.markerCode })),
         ...presenceItemTextures.map(item => ({ path: path.join(itemRoot, item.file), markerCode: item.markerCode })),
-        ...blockItems.map(item => ({ path: path.join(itemRoot, item.output), markerCode: item.markerCode }))
+        ...solidBlockItems.map(item => ({ path: path.join(blockRoot, item.file) }))
     ];
     for (let index = 0; index < itemFiles.length; index++) {
         const item = readPng(itemFiles[index].path);
@@ -317,7 +331,8 @@ function writeDetectorFixture() {
     writePng(fixturePath, scaled);
 
     const detection = detectFixture(scaled);
-    if (detection.scale !== 3 || detection.slots.length !== itemFiles.length)
+    const expectedMarkedSlots = directItemTextures.length + presenceItemTextures.length;
+    if (detection.scale !== 3 || detection.slots.length !== expectedMarkedSlots)
         throw new Error(`Test detektora nie przeszedl: skala=${detection.scale}, sloty=${detection.slots.length}`);
     console.log(`Test detektora OK: skala ${detection.scale}, wykryte sloty ${detection.slots.join(", ")}`);
 }
@@ -328,7 +343,7 @@ function writeBlazingDetectorFixture() {
     const itemFiles = [
         ...directItemTextures.map(item => path.join(itemRoot, item.file)),
         ...presenceItemTextures.map(item => path.join(itemRoot, item.file)),
-        ...blockItems.map(item => path.join(itemRoot, item.output))
+        ...solidBlockItems.map(item => path.join(blockRoot, item.file))
     ];
     const firstItemX = 375;
     const firstItemY = 318;
@@ -359,7 +374,7 @@ function detectFixture(image) {
             const row = Math.floor(index / 9);
             const markerX = originX + (8 + column * 18 + ITEM_MARKER_X) * scale;
             const markerY = originY + (84 + row * 18 + ITEM_MARKER_Y) * scale;
-            if ([...directItemTextures, ...presenceItemTextures, ...blockItems].some(item =>
+            if ([...directItemTextures, ...presenceItemTextures].some(item =>
                 matchesScaledPattern(image, markerX, markerY, scale, buildItemMarker(item.markerCode))))
                 slots.push(index + 1);
         }

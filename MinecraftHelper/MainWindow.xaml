@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:MinecraftHelper"
         mc:Ignorable="d"
-        Title="Minecraft Helper 1.1.2"
+        Title="Minecraft Helper 1.1.3"
         Width="1280"
         Height="820"
         MinWidth="1050"
@@ -328,175 +328,7 @@
             </Style.Triggers>
         </Style>
 
-        <!-- Styl dla ScrollBar (ciemny motyw) -->
-        <SolidColorBrush x:Key="ScrollTrackBrush" Color="#141E2B"/>
-        <SolidColorBrush x:Key="ScrollTrackBorderBrush" Color="#2F425B"/>
-        <SolidColorBrush x:Key="ScrollThumbBrush" Color="#355171"/>
-        <SolidColorBrush x:Key="ScrollThumbHoverBrush" Color="#46658A"/>
-        <SolidColorBrush x:Key="ScrollThumbPressedBrush" Color="#5A7DA8"/>
-
-        <Style x:Key="DarkScrollRepeatButton" TargetType="RepeatButton">
-            <Setter Property="Focusable" Value="False"/>
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="RepeatButton">
-                        <Border Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="0"/>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style x:Key="DarkScrollThumbStyle" TargetType="Thumb">
-            <Setter Property="Background" Value="{StaticResource ScrollThumbBrush}"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Thumb">
-                        <Border Background="{TemplateBinding Background}"
-                                CornerRadius="3"
-                                Margin="2"/>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="{StaticResource ScrollThumbHoverBrush}"/>
-                </Trigger>
-                <Trigger Property="IsDragging" Value="True">
-                    <Setter Property="Background" Value="{StaticResource ScrollThumbPressedBrush}"/>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-
-        <Style TargetType="ScrollBar">
-            <Setter Property="Width" Value="14"/>
-            <Setter Property="Height" Value="14"/>
-            <Setter Property="Background" Value="{StaticResource ScrollTrackBrush}"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ScrollBar">
-                        <Border Background="{TemplateBinding Background}"
-                                BorderBrush="{StaticResource ScrollTrackBorderBrush}"
-                                BorderThickness="1"
-                                CornerRadius="4">
-                            <Grid Margin="0">
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="0"/>
-                                    <RowDefinition Height="*"/>
-                                    <RowDefinition Height="0"/>
-                                </Grid.RowDefinitions>
-
-                                <RepeatButton Grid.Row="0"
-                                              Visibility="Collapsed"
-                                              Style="{StaticResource DarkScrollRepeatButton}"
-                                              Command="ScrollBar.LineUpCommand"
-                                              CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"/>
-
-                                <Track x:Name="PART_Track"
-                                       Grid.Row="1"
-                                       Orientation="{TemplateBinding Orientation}"
-                                       Minimum="{TemplateBinding Minimum}"
-                                       Maximum="{TemplateBinding Maximum}"
-                                       Value="{TemplateBinding Value}"
-                                       ViewportSize="{TemplateBinding ViewportSize}"
-                                       IsDirectionReversed="True">
-                                    <Track.DecreaseRepeatButton>
-                                        <RepeatButton Style="{StaticResource DarkScrollRepeatButton}"
-                                                      Command="ScrollBar.PageUpCommand"
-                                                      CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"/>
-                                    </Track.DecreaseRepeatButton>
-                                    <Track.Thumb>
-                                        <Thumb Style="{StaticResource DarkScrollThumbStyle}"
-                                               MinHeight="32"/>
-                                    </Track.Thumb>
-                                    <Track.IncreaseRepeatButton>
-                                        <RepeatButton Style="{StaticResource DarkScrollRepeatButton}"
-                                                      Command="ScrollBar.PageDownCommand"
-                                                      CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"/>
-                                    </Track.IncreaseRepeatButton>
-                                </Track>
-
-                                <RepeatButton Grid.Row="2"
-                                              Visibility="Collapsed"
-                                              Style="{StaticResource DarkScrollRepeatButton}"
-                                              Command="ScrollBar.LineDownCommand"
-                                              CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"/>
-                            </Grid>
-                        </Border>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-            <Style.Triggers>
-                <Trigger Property="Orientation" Value="Horizontal">
-                    <Setter Property="Width" Value="Auto"/>
-                    <Setter Property="Height" Value="14"/>
-                    <Setter Property="Template">
-                        <Setter.Value>
-                            <ControlTemplate TargetType="ScrollBar">
-                                <Border Background="{TemplateBinding Background}"
-                                        BorderBrush="{StaticResource ScrollTrackBorderBrush}"
-                                        BorderThickness="1"
-                                        CornerRadius="4">
-                                    <Grid Margin="0">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="0"/>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="0"/>
-                                        </Grid.ColumnDefinitions>
-
-                                        <RepeatButton Grid.Column="0"
-                                                      Visibility="Collapsed"
-                                                      Style="{StaticResource DarkScrollRepeatButton}"
-                                                      Command="ScrollBar.LineLeftCommand"
-                                                      CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"/>
-
-                                        <Track x:Name="PART_Track"
-                                               Grid.Column="1"
-                                               Orientation="{TemplateBinding Orientation}"
-                                               Minimum="{TemplateBinding Minimum}"
-                                               Maximum="{TemplateBinding Maximum}"
-                                               Value="{TemplateBinding Value}"
-                                               ViewportSize="{TemplateBinding ViewportSize}"
-                                               IsDirectionReversed="False">
-                                            <Track.DecreaseRepeatButton>
-                                                <RepeatButton Style="{StaticResource DarkScrollRepeatButton}"
-                                                              Command="ScrollBar.PageLeftCommand"
-                                                              CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"/>
-                                            </Track.DecreaseRepeatButton>
-                                            <Track.Thumb>
-                                                <Thumb Style="{StaticResource DarkScrollThumbStyle}"
-                                                       MinWidth="32"/>
-                                            </Track.Thumb>
-                                            <Track.IncreaseRepeatButton>
-                                                <RepeatButton Style="{StaticResource DarkScrollRepeatButton}"
-                                                              Command="ScrollBar.PageRightCommand"
-                                                              CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"/>
-                                            </Track.IncreaseRepeatButton>
-                                        </Track>
-
-                                        <RepeatButton Grid.Column="2"
-                                                      Visibility="Collapsed"
-                                                      Style="{StaticResource DarkScrollRepeatButton}"
-                                                      Command="ScrollBar.LineRightCommand"
-                                                      CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"/>
-                                    </Grid>
-                                </Border>
-                            </ControlTemplate>
-                        </Setter.Value>
-                    </Setter>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-
-        <Style TargetType="ScrollViewer">
-            <Setter Property="Background" Value="Transparent"/>
-        </Style>
-
-        <!-- Kompaktowe zakładki używane wewnątrz sekcji. Nagłówek i zawartość
-             tworzą jedną, zamkniętą ramkę zamiast urywać się pod przyciskiem. -->
+        <!-- Kompaktowe zakładki używane wewnątrz sekcji, z pełną ramką nagłówka. -->
         <Style x:Key="SectionTabItemStyle" TargetType="TabItem">
             <Setter Property="Foreground" Value="#92A6C1"/>
             <Setter Property="FontSize" Value="11"/>
@@ -517,16 +349,6 @@
                                                   VerticalAlignment="Center"
                                                   RecognizesAccessKey="True"/>
                             </Border>
-                            <Border x:Name="SelectedRightEdge"
-                                    Width="2"
-                                    Margin="0,3,1,3"
-                                    HorizontalAlignment="Right"
-                                    VerticalAlignment="Stretch"
-                                    Panel.ZIndex="3"
-                                    Background="{StaticResource AccentBrush}"
-                                    CornerRadius="1"
-                                    IsHitTestVisible="False"
-                                    Visibility="Collapsed"/>
                         </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
@@ -537,7 +359,6 @@
                                 <Setter TargetName="TabHeaderBorder" Property="Background" Value="#152437"/>
                                 <Setter TargetName="TabHeaderBorder" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
                                 <Setter TargetName="TabHeaderBorder" Property="BorderThickness" Value="1"/>
-                                <Setter TargetName="SelectedRightEdge" Property="Visibility" Value="Visible"/>
                                 <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
                                 <Setter Property="FontWeight" Value="Bold"/>
                                 <Setter Property="Panel.ZIndex" Value="2"/>
@@ -565,10 +386,14 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
-                            <TabPanel Grid.Row="0"
-                                      Margin="0,0,0,6"
-                                      Panel.ZIndex="1"
-                                      IsItemsHost="True"/>
+                            <!-- TabPanel odejmuje marginesy nagłówków podczas układania,
+                                 przycinając prawą krawędź. WrapPanel rezerwuje cały rozmiar. -->
+                            <WrapPanel Grid.Row="0"
+                                       Orientation="Horizontal"
+                                       Margin="0,0,0,6"
+                                       Panel.ZIndex="1"
+                                       IsItemsHost="True"
+                                       KeyboardNavigation.DirectionalNavigation="Cycle"/>
                             <Border x:Name="TabContentBorder"
                                     Grid.Row="1"
                                     Background="{TemplateBinding Background}"
@@ -593,6 +418,13 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+        </Style>
+
+        <Style x:Key="KopaczChannelTabItemStyle"
+               TargetType="TabItem"
+               BasedOn="{StaticResource SectionTabItemStyle}">
+            <Setter Property="Margin" Value="0,0,10,0"/>
+            <Setter Property="Padding" Value="16,8"/>
         </Style>
 
         <!-- Wspólny wygląd tytułów głównych, rozwijanych sekcji -->
@@ -624,7 +456,12 @@
         </Style>
     </Window.Resources>
 
-    <DockPanel>
+    <Grid Background="Transparent">
+        <local:CyberMeshBackground x:Name="CyberBackground"
+                                   IsAnimationEnabled="True"
+                                   Panel.ZIndex="0"/>
+
+        <DockPanel Background="Transparent" Panel.ZIndex="1">
 
         <!-- STATUS BAR (GÓRA) -->
         <Border DockPanel.Dock="Top" Background="#1E2A39" BorderBrush="#34465E" BorderThickness="0,0,0,1">
@@ -1210,21 +1047,28 @@
                         <ColumnDefinition Width="220"/>
                     </Grid.ColumnDefinitions>
 
-                    <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
+                    <ScrollViewer Grid.Column="0"
+                                  Margin="0,0,12,0"
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled">
                         <StackPanel>
                             <TextBlock Text="Kanał kopania" FontSize="13" FontWeight="Bold" Margin="0,0,0,8" Foreground="White"/>
 
                             <TabControl Name="KopaczChannelTabs"
                                         Style="{StaticResource SectionTabControlStyle}"
+                                        ItemContainerStyle="{StaticResource KopaczChannelTabItemStyle}"
                                         Margin="0,0,0,8"
-                                        Background="#0F141D"
-                                        Width="{Binding ViewportWidth, RelativeSource={RelativeSource AncestorType={x:Type ScrollViewer}}}"
-                                        MaxWidth="1120"
-                                        HorizontalAlignment="Left">
+                                        Background="#151F2C"
+                                        BorderBrush="#465D7A"
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Stretch">
                                 <TabItem Header="Kopacz 5/3/3">
                             <Border Name="BorderKopacz533Section"
                                     Style="{StaticResource SectionBorderStyle}"
-                                    Margin="0,10,0,0">
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="2"
+                                    Margin="0">
                                 <StackPanel>
                                     <StackPanel Orientation="Horizontal">
                                         <CheckBox Name="ChkKopacz533Enabled"
@@ -1280,7 +1124,10 @@
 
                             <Border Name="BorderKopacz633Section"
                                     Style="{StaticResource SectionBorderStyle}"
-                                    Margin="0,10,0,0">
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="2"
+                                    Margin="0">
                                 <StackPanel>
                                     <StackPanel Orientation="Horizontal">
                                         <CheckBox Name="ChkKopacz633Enabled"
@@ -1369,9 +1216,7 @@
 
                             <Border Name="BorderInventoryCleanupSection"
                                     Style="{StaticResource SectionBorderStyle}"
-                                    Width="{Binding ViewportWidth, RelativeSource={RelativeSource AncestorType={x:Type ScrollViewer}}}"
-                                    MaxWidth="1120"
-                                    HorizontalAlignment="Left">
+                                    HorizontalAlignment="Stretch">
                                 <StackPanel>
                                     <StackPanel Orientation="Horizontal">
                                         <CheckBox Name="ChkInventoryCleanupEnabled"
@@ -1574,7 +1419,7 @@
                         </StackPanel>
                     </ScrollViewer>
 
-                    <Border Grid.Column="1" Background="#161F2B" BorderBrush="#4B6283" BorderThickness="1" Padding="12" Margin="12,0,0,0" VerticalAlignment="Top" CornerRadius="4">
+                    <Border Grid.Column="1" Background="#161F2B" BorderBrush="#4B6283" BorderThickness="1" Padding="12" VerticalAlignment="Top" CornerRadius="4">
                         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                         <StackPanel>
                             <TextBlock Text="Informacje kopacza"
@@ -2497,6 +2342,35 @@
                                          Visibility="Collapsed"/>
                             </StackPanel>
 
+                            <Border Style="{StaticResource SectionBorderStyle}"
+                                    Margin="0,0,0,12">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <CheckBox Name="ChkAnimatedBackgroundEnabled"
+                                                  VerticalAlignment="Center"
+                                                  Checked="ChkAnimatedBackgroundEnabled_Changed"
+                                                  Unchecked="ChkAnimatedBackgroundEnabled_Changed"/>
+                                        <TextBlock Text="Animowane tło gwiazd"
+                                                   Style="{StaticResource MainSectionHeaderTextStyle}"/>
+                                        <Button Content="?"
+                                                Style="{StaticResource MacroInfoButtonStyle}"
+                                                Margin="8,0,0,0"
+                                                ToolTipService.InitialShowDelay="100"
+                                                ToolTipService.ShowDuration="120000">
+                                            <Button.ToolTip>
+                                                <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
+                                                         MaxWidth="460"
+                                                         Content="Włącza panoramiczne pole drobnych, kolorowych gwiazd z migoczącymi rozbłyskami i delikatnymi spadającymi punktami. Animacja działa z ograniczeniem do 15 FPS i zatrzymuje się po zminimalizowaniu albo ukryciu aplikacji w zasobniku."/>
+                                            </Button.ToolTip>
+                                        </Button>
+                                    </StackPanel>
+                                    <TextBlock Text="Panoramiczne tło z lekkimi spadającymi gwiazdami; pauza po ukryciu."
+                                               Margin="28,8,0,0"
+                                               FontSize="10"
+                                               Foreground="#92A6C1"/>
+                                </StackPanel>
+                            </Border>
+
                             <Border Name="BorderOverlayHudSection"
                                     Style="{StaticResource SectionBorderStyle}"
                                     Margin="0,0,0,24">
@@ -2610,5 +2484,6 @@
                 </ScrollViewer>
             </TabItem>
         </TabControl>
-    </DockPanel>
+        </DockPanel>
+    </Grid>
 </Window>

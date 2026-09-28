@@ -15,6 +15,19 @@ namespace MinecraftHelper
         private static readonly AppReleaseNotes[] Releases =
         {
             new AppReleaseNotes(
+                "1.1.3",
+                "Nowy wygląd i rozszerzone Auto EQ",
+                new[]
+                {
+                    "Dodano lekkie, animowane tło z gwiazdami oraz przełącznik pozwalający wyłączyć animację w ustawieniach.",
+                    "Ujednolicono wygląd i działanie pasków przewijania we wszystkich oknach; przewijanie nie przeskakuje już od razu na samą górę lub dół.",
+                    "Dopracowano układ zakładki Kopacz, obramowania kart i przyciski wyboru kanału 5/3/3 oraz 6/3/3.",
+                    "Komunikaty modułu BINDY znikają automatycznie po kilku sekundach zamiast pozostawać na ekranie.",
+                    "Auto EQ rozpoznaje i może osobno wyrzucać bloki złota, żelaza oraz emeraldu.",
+                    "Zaktualizowano paczkę zasobów i detektor jednolitych kolorów bloków, zachowując ochronę cobblestone.",
+                    "Odświeżono instrukcję oraz zrzuty ekranu programu."
+                }),
+            new AppReleaseNotes(
                 "1.1.2",
                 "Auto Reconnect, rozbudowany Kopacz i nowe logi",
                 new[]
@@ -66,7 +79,7 @@ namespace MinecraftHelper
             {
                 Version? version = typeof(ReleaseNotesCatalog).Assembly.GetName().Version;
                 if (version == null)
-                    return "1.1.2";
+                    return "1.1.3";
 
                 return $"{version.Major}.{version.Minor}.{Math.Max(0, version.Build)}";
             }

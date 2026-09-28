@@ -92,8 +92,9 @@ namespace MinecraftHelper.Models
         };
         public List<string> InventoryCleanupItemTypes { get; set; } = new List<string>
         {
-            "diamond", "gold_ingot", "iron_ingot", "obsidian", "apple", "sand", "gunpowder",
-            "emerald", "coal", "quartz", "book", "ender_pearl", "redstone"
+            "diamond", "gold_ingot", "gold_block", "iron_ingot", "iron_block", "emerald",
+            "emerald_block", "obsidian", "apple", "sand", "gunpowder", "coal", "quartz",
+            "book", "ender_pearl", "redstone"
         };
         public bool CobbleXEnabled { get; set; }
         public string CobbleXCommand { get; set; } = "/cx";
@@ -154,6 +155,7 @@ namespace MinecraftHelper.Models
         public List<AutoReconnectServerProfile> AutoReconnectServerProfiles { get; set; } = new List<AutoReconnectServerProfile>();
         public bool OverlayHudEnabled { get; set; }
         public bool OverlayAnimationsEnabled { get; set; }
+        public bool AnimatedBackgroundEnabled { get; set; } = true;
         public int OverlayMonitorIndex { get; set; }
         public string OverlayCorner { get; set; } = "RightBottom";
         public string TargetWindowTitle { get; set; } = "";
