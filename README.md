@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <strong>Windows 10/11</strong> · <strong>Minecraft 1.8.8</strong> · <strong>bez Forge i modów</strong> · <strong>wersja 1.1.4</strong>
+  <strong>Windows 10/11</strong> · <strong>Minecraft 1.8.8</strong> · <strong>bez Forge i modów</strong> · <strong>wersja 1.1.5</strong>
 </p>
 
 <p align="center">
@@ -42,6 +42,8 @@ Jeżeli korzystasz z programu pierwszy raz:
 Zaznaczenie głównego pola modułu rozwija jego konfigurację. Samo zaznaczenie nie zawsze uruchamia funkcję — clickery, Kopacz i pozostałe moduły włącza się ustawionym bindem. Szczegółowe podpowiedzi są dostępne pod przyciskami `?`.
 
 Przy pierwszym uruchomieniu pojawi się okno powitalne. Po aktualizacji programu to samo okno pokaże listę zmian i ostrzeże o ewentualnej różnicy wersji zapisanych ustawień.
+
+Przy uruchomieniu program sprawdza także najnowsze publiczne wydanie na GitHubie. Jeśli dostępna jest nowsza wersja, wyświetli numer obecnej i najnowszej wersji oraz bezpieczny link do oficjalnego instalatora. Instalator nie jest pobierany ani uruchamiany automatycznie, a brak internetu nie blokuje startu programu.
 
 <p align="center">
   <a href="docs/images/app-first-run.png">
@@ -79,7 +81,7 @@ W tej zakładce znajdują się funkcje związane z klikaniem oraz ich zabezpiecz
 - Tryb pełnoekranowy jest obsługiwany: przezroczysty kursor używany przez grę nie jest mylony z kursorem otwartego GUI.
 - Zakres minimalnego i maksymalnego CPS określa szybkość klikania.
 - W trybie klasycznym ustawiony bind włącza clicker, a kolejne naciśnięcie go wyłącza.
-- Tryb combo pozwala osobno ustawić przycisk rozpoczynający i zatrzymujący działanie.
+- Tryb kombinacji uruchamia odpowiedni clicker podczas trzymania przypisanego bindu razem z fizycznym LPM albo PPM. AUTO LPM i AUTO PPM mogą korzystać z jednego wspólnego bindu, jeżeli każdy z nich ma włączony tryb kombinacji albo `Trzymanie bindu`. Wspólny bind jest blokowany w trybie klasycznym, aby jedno naciśnięcie nie przełączało przypadkowo obu makr.
 - Opcjonalny tryb `DAB (O)` przytrzymuje klawisz `O` podczas działania AUTO LPM.
 
 Najpierw zaznacz wybrany moduł, rozwiń ustawienia, przypisz bind i zapisz konfigurację. Clicker działa tylko wtedy, gdy zapisane okno Minecrafta ma fokus.
@@ -300,6 +302,15 @@ Nie wybieraj procesu launchera. Wskaż właściwe okno Minecrafta lub używanego
 
 Jeżeli działają makra lub Kopacz, zamknięcie okna przyciskiem `X` pozostawia aplikację uruchomioną w tle. Aby całkowicie ją wyłączyć, użyj opcji `Zakończ aplikację` z menu ikony.
 
+## Zmiany w wersji 1.1.5
+
+- AUTO LPM i AUTO PPM mogą korzystać z jednego wspólnego bindu, jeżeli oba działają w trybie kombinacji albo `Trzymanie bindu`.
+- Dodano jasne okno konfliktu, które wyjaśnia, jak rozdzielić wspólny bind przed wyłączeniem trybu kombinacji lub trzymania.
+- Poprawiono obramowania folderów, sesji, otwarć EQ i zdarzeń automatyzacji w logach kopania. Rozwinięte poziomy są teraz wyraźnie oddzielone.
+- Dodano sprawdzanie najnowszego publicznego wydania przy uruchomieniu programu.
+- Po wykryciu nowszej wersji aplikacja pokazuje obecną i najnowszą wersję oraz link do oficjalnego instalatora na GitHubie.
+- Aktualizacja nie jest pobierana ani uruchamiana automatycznie, a brak internetu nie blokuje startu programu.
+
 ## Zmiany w wersji 1.1.4
 
 - AUTO LPM i AUTO PPM otrzymały dodatkowy tryb `Trzymanie bindu`. Clicker działa wtedy tylko podczas fizycznego trzymania przypisanego klawisza i zatrzymuje się natychmiast po jego puszczeniu.
@@ -376,15 +387,15 @@ Jeżeli zauważysz błąd, problem z konfiguracją albo masz propozycję nowej f
 Najprościej uruchomić instalator:
 
 ```text
-MinecraftHelper-Setup-1.1.4.exe
+MinecraftHelper-Setup-1.1.5.exe
 ```
 
 Instalator działa dla bieżącego użytkownika, nie wymaga osobnej instalacji .NET 8, może utworzyć skrót na pulpicie i dodaje standardowy deinstalator Windows.
 
-Kontrola oficjalnego pliku instalatora wersji 1.1.4:
+Kontrola oficjalnego pliku instalatora wersji 1.1.5:
 
 ```text
-SHA-256: ff657f448170d4ed199a362849838cfea05e40285ac00c4dc30ecbb8c59f04bd
+SHA-256: 5afceb59474fb28755d4e1daca536f12e7901b9e616520d46e7f752143295b4d
 ```
 
 ### Windows SmartScreen i Smart App Control
@@ -426,10 +437,10 @@ dotnet run --project MinecraftHelper/MinecraftHelper.csproj
 ### Budowanie instalatora
 
 ```powershell
-.\scripts\build-installer.ps1 -Version 1.1.4 -Rid win-x64 -SelfContained:$true -Clean
+.\scripts\build-installer.ps1 -Version 1.1.5 -Rid win-x64 -SelfContained:$true -Clean
 ```
 
-Wynik zostanie zapisany w `artifacts/installer/MinecraftHelper-Setup-1.1.4.exe`.
+Wynik zostanie zapisany w `artifacts/installer/MinecraftHelper-Setup-1.1.5.exe`.
 
 ### Odtworzenie paczki zasobów
 

@@ -852,13 +852,13 @@
 
                                     <CheckBox Name="ChkAutoLeftComboMode"
                                               Margin="0,0,0,10"
-                                              Content="Tryb kombinacji: aktywacja bind + LPM, działa tylko przy trzymaniu LPM"
+                                              Content="Tryb kombinacji: bind + LPM (bind może być wspólny z AUTO PPM)"
                                               Checked="ChkAutoLeftComboMode_Changed"
                                               Unchecked="ChkAutoLeftComboMode_Changed"/>
 
                                     <CheckBox Name="ChkAutoLeftHoldBindMode"
                                               Margin="0,0,0,10"
-                                              Content="Trzymanie bindu: AUTO LPM działa tylko podczas trzymania bindu"
+                                              Content="Trzymanie bindu: działa podczas trzymania (bind może być wspólny z AUTO PPM)"
                                               Checked="ChkAutoLeftHoldBindMode_Changed"
                                               Unchecked="ChkAutoLeftHoldBindMode_Changed"/>
 
@@ -927,13 +927,13 @@
 
                                     <CheckBox Name="ChkAutoRightComboMode"
                                               Margin="0,0,0,10"
-                                              Content="Tryb kombinacji: aktywacja bind + PPM, działa tylko przy trzymaniu PPM"
+                                              Content="Tryb kombinacji: bind + PPM (bind może być wspólny z AUTO LPM)"
                                               Checked="ChkAutoRightComboMode_Changed"
                                               Unchecked="ChkAutoRightComboMode_Changed"/>
 
                                     <CheckBox Name="ChkAutoRightHoldBindMode"
                                               Margin="0,0,0,10"
-                                              Content="Trzymanie bindu: AUTO PPM działa tylko podczas trzymania bindu"
+                                              Content="Trzymanie bindu: działa podczas trzymania (bind może być wspólny z AUTO LPM)"
                                               Checked="ChkAutoRightHoldBindMode_Changed"
                                               Unchecked="ChkAutoRightHoldBindMode_Changed"/>
 

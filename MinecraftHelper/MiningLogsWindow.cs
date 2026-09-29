@@ -466,9 +466,17 @@ namespace MinecraftHelper
 
             string entryKey = GetEntryKey(run);
             bool initiallyExpanded = _expandedEntryKeys.Contains(entryKey);
-            var childrenPanel = new StackPanel
+            var childrenPanel = new StackPanel();
+            var childrenContainer = new Border
             {
-                Visibility = initiallyExpanded ? Visibility.Visible : Visibility.Collapsed
+                Visibility = initiallyExpanded ? Visibility.Visible : Visibility.Collapsed,
+                Background = Brush(10, 19, 30),
+                BorderBrush = Brush(46, 168, 255),
+                BorderThickness = new Thickness(3, 1, 1, 1),
+                CornerRadius = new CornerRadius(4),
+                Margin = new Thickness(8, 0, 8, 8),
+                Padding = new Thickness(8, 8, 8, 2),
+                Child = childrenPanel
             };
             arrow.Text = initiallyExpanded ? "▼" : "▶";
 
@@ -477,15 +485,16 @@ namespace MinecraftHelper
                 Text = BuildMiningRunSummary(run, children),
                 TextWrapping = TextWrapping.Wrap,
                 FontSize = 11,
-                Foreground = Brush(168, 186, 211),
-                Margin = new Thickness(12, 9, 12, 9)
+                Foreground = Brush(168, 186, 211)
             };
             childrenPanel.Children.Add(new Border
             {
                 Background = Brush(13, 23, 35),
-                BorderBrush = Brush(46, 168, 255),
-                BorderThickness = new Thickness(3, 0, 0, 0),
-                Margin = new Thickness(18, 0, 0, 0),
+                BorderBrush = Brush(58, 108, 153),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(4),
+                Padding = new Thickness(12, 9, 12, 9),
+                Margin = new Thickness(0, 0, 0, 8),
                 Child = sessionInfo
             });
 
@@ -496,7 +505,7 @@ namespace MinecraftHelper
                     Text = "Ta sesja nie zawiera jeszcze otwarć EQ ani zdarzeń automatyzacji.",
                     Foreground = Brush(146, 166, 193),
                     FontStyle = FontStyles.Italic,
-                    Margin = new Thickness(42, 12, 16, 12)
+                    Margin = new Thickness(12, 8, 12, 14)
                 });
             }
             else
@@ -516,8 +525,8 @@ namespace MinecraftHelper
             };
             toggle.Click += (_, __) =>
             {
-                bool expand = childrenPanel.Visibility != Visibility.Visible;
-                childrenPanel.Visibility = expand ? Visibility.Visible : Visibility.Collapsed;
+                bool expand = childrenContainer.Visibility != Visibility.Visible;
+                childrenContainer.Visibility = expand ? Visibility.Visible : Visibility.Collapsed;
                 arrow.Text = expand ? "▼" : "▶";
                 if (expand)
                     _expandedEntryKeys.Add(entryKey);
@@ -527,11 +536,14 @@ namespace MinecraftHelper
 
             var content = new StackPanel();
             content.Children.Add(toggle);
-            content.Children.Add(childrenPanel);
+            content.Children.Add(childrenContainer);
             return new Border
             {
-                BorderBrush = Brush(58, 82, 112),
-                BorderThickness = new Thickness(0, 0, 0, 1),
+                Background = Brush(13, 23, 35),
+                BorderBrush = Brush(46, 168, 255),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(6),
+                Margin = new Thickness(0, 0, 0, 10),
                 Child = content
             };
         }
@@ -562,6 +574,13 @@ namespace MinecraftHelper
         {
             bool isCobbleX = entry.Kind == MiningLogKinds.CobbleXCreated || entry.CobbleXCreated;
             Brush rowBackground = index % 2 == 0 ? Brush(16, 26, 39) : Brush(19, 31, 46);
+            Brush rowBorder = entry.Kind == MiningLogKinds.AutomationEvent
+                ? Brush(144, 104, 201)
+                : isCobbleX
+                    ? Brush(194, 151, 66)
+                    : entry.Kind == MiningLogKinds.InventorySession
+                        ? Brush(48, 163, 146)
+                        : Brush(75, 98, 131);
             Brush eventBrush = entry.Kind == MiningLogKinds.AutomationEvent
                 ? Brush(188, 145, 255)
                 : isCobbleX ? Brush(245, 200, 96) : Brush(127, 200, 255);
@@ -616,9 +635,11 @@ namespace MinecraftHelper
 
             return new Border
             {
-                BorderBrush = Brush(48, 68, 95),
-                BorderThickness = new Thickness(0, 0, 0, 1),
-                Margin = nested ? new Thickness(18, 0, 0, 0) : new Thickness(0),
+                Background = Brush(12, 22, 34),
+                BorderBrush = rowBorder,
+                BorderThickness = new Thickness(2, 1, 1, 1),
+                CornerRadius = new CornerRadius(4),
+                Margin = nested ? new Thickness(10, 0, 0, 8) : new Thickness(0, 0, 0, 8),
                 Child = content
             };
         }
@@ -759,6 +780,11 @@ namespace MinecraftHelper
         {
             bool isSession = entry.Kind == MiningLogKinds.InventorySession;
             bool isAutomation = entry.Kind == MiningLogKinds.AutomationEvent;
+            Brush detailsBorder = isAutomation
+                ? Brush(104, 77, 148)
+                : isSession
+                    ? Brush(39, 122, 113)
+                    : Brush(58, 82, 112);
             var panel = new StackPanel();
             panel.Children.Add(new TextBlock
             {
@@ -900,8 +926,10 @@ namespace MinecraftHelper
             return new Border
             {
                 Background = Brush(11, 20, 31),
-                BorderBrush = Brush(48, 68, 95),
-                BorderThickness = new Thickness(0, 1, 0, 0),
+                BorderBrush = detailsBorder,
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(4),
+                Margin = new Thickness(8, 0, 8, 8),
                 Padding = new Thickness(18, 12, 18, 14),
                 Child = panel
             };

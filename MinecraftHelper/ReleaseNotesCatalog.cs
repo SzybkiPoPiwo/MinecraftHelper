@@ -15,6 +15,17 @@ namespace MinecraftHelper
         private static readonly AppReleaseNotes[] Releases =
         {
             new AppReleaseNotes(
+                "1.1.5",
+                "Wspólne bindy, czytelniejsze logi i aktualizacje",
+                new[]
+                {
+                    "AUTO LPM i AUTO PPM mogą korzystać z jednego wspólnego bindu w trybie kombinacji albo Trzymanie bindu.",
+                    "Dodano czytelne okno konfliktu, które wyjaśnia, jak bezpiecznie rozdzielić wspólny bind przed przejściem do trybu klasycznego.",
+                    "Dopracowano obramowania sesji, otwarć EQ i zdarzeń automatyzacji w logach kopania, aby rozwinięte poziomy nie zlewały się ze sobą.",
+                    "Przy uruchomieniu program sprawdza najnowsze publiczne wydanie GitHub i informuje o dostępnej aktualizacji wraz z linkiem do oficjalnego instalatora.",
+                    "Sprawdzanie aktualizacji działa w tle, nie pobiera ani nie uruchamia plików automatycznie i nie blokuje programu przy braku internetu."
+                }),
+            new AppReleaseNotes(
                 "1.1.4",
                 "Nowe tryby clickerów i bezpieczniejsze automatyzacje",
                 new[]
@@ -91,7 +102,7 @@ namespace MinecraftHelper
             {
                 Version? version = typeof(ReleaseNotesCatalog).Assembly.GetName().Version;
                 if (version == null)
-                    return "1.1.4";
+                    return "1.1.5";
 
                 return $"{version.Major}.{version.Minor}.{Math.Max(0, version.Build)}";
             }

@@ -813,7 +813,7 @@ namespace MinecraftHelper
             _isMinecraftFocused = CheckGameFocus();
         }
 
-        private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+        private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
             ApplyDarkTitleBar();
             StartMouseHook();
@@ -828,10 +828,28 @@ namespace MinecraftHelper
 
             if (_showStartupNotice)
             {
-                Dispatcher.BeginInvoke(
-                    new Action(ShowStartupNotice),
+                await Dispatcher.InvokeAsync(
+                    ShowStartupNotice,
                     DispatcherPriority.ApplicationIdle);
             }
+
+            await CheckForUpdatesAsync();
+        }
+
+        private async Task CheckForUpdatesAsync()
+        {
+            AppUpdateInfo? update = await UpdateCheckService.CheckForUpdateAsync(_currentAppVersion);
+            if (update == null || !IsVisible || _isExitRequested)
+                return;
+
+            var dialog = new UpdateAvailableWindow(update)
+            {
+                Owner = this
+            };
+            dialog.ShowDialog();
+
+            if (IsVisible && !_isExitRequested)
+                Activate();
         }
 
         private void ShowStartupNotice()
@@ -3918,6 +3936,43 @@ namespace MinecraftHelper
             return $"BINDY: {GetBindyEntryDisplayName(entry)}";
         }
 
+        private bool CanShareAutoClickerBind(string requestedOwnerId, BindTarget candidateTarget)
+        {
+            bool isAutoLeftAndRightPair =
+                string.Equals(requestedOwnerId, GetBindOwnerId(BindTarget.AutoLeft), StringComparison.OrdinalIgnoreCase)
+                    && candidateTarget == BindTarget.AutoRight;
+            bool isAutoRightAndLeftPair =
+                string.Equals(requestedOwnerId, GetBindOwnerId(BindTarget.AutoRight), StringComparison.OrdinalIgnoreCase)
+                    && candidateTarget == BindTarget.AutoLeft;
+
+            bool autoLeftUsesHoldBasedActivation =
+                ChkAutoLeftComboMode.IsChecked == true
+                || ChkAutoLeftHoldBindMode.IsChecked == true;
+            bool autoRightUsesHoldBasedActivation =
+                ChkAutoRightComboMode.IsChecked == true
+                || ChkAutoRightHoldBindMode.IsChecked == true;
+
+            return (isAutoLeftAndRightPair || isAutoRightAndLeftPair)
+                && autoLeftUsesHoldBasedActivation
+                && autoRightUsesHoldBasedActivation;
+        }
+
+        private bool AutoClickersUseSharedBind()
+        {
+            return !string.IsNullOrWhiteSpace(TxtAutoLeftKey.Text)
+                && IsSameBindKey(TxtAutoLeftKey.Text, TxtAutoRightKey.Text);
+        }
+
+        private void ShowSharedAutoClickerBindModeConflict()
+        {
+            const string message = "AUTO LPM i AUTO PPM używają wspólnego bindu. Najpierw usuń albo zmień bind w jednym z makr.";
+            UpdateStatusBar(message, "Orange");
+
+            var dialog = BindConflictDialogWindow.CreateSharedAutoClickerModeConflict(TxtAutoLeftKey.Text);
+            dialog.Owner = this;
+            dialog.ShowDialog();
+        }
+
         private bool TryFindBindConflict(string keyText, string ownerId, out string conflictOwnerLabel)
         {
             conflictOwnerLabel = string.Empty;
@@ -3948,6 +4003,9 @@ namespace MinecraftHelper
                 TextBox? candidateTextBox = GetBindTextBox(target);
                 string candidateKey = candidateTextBox?.Text ?? string.Empty;
                 if (!IsSameBindKey(keyText, candidateKey))
+                    continue;
+
+                if (CanShareAutoClickerBind(ownerId, target))
                     continue;
 
                 conflictOwnerLabel = GetBindTargetLabel(target);
@@ -11088,6 +11146,15 @@ namespace MinecraftHelper
             if (_isLoadingUi)
                 return;
 
+            if (ChkAutoLeftComboMode.IsChecked != true
+                && ChkAutoLeftHoldBindMode.IsChecked != true
+                && AutoClickersUseSharedBind())
+            {
+                ChkAutoLeftComboMode.IsChecked = true;
+                ShowSharedAutoClickerBindModeConflict();
+                return;
+            }
+
             if (ChkAutoLeftComboMode.IsChecked == true)
                 ChkAutoLeftHoldBindMode.IsChecked = false;
 
@@ -11104,6 +11171,15 @@ namespace MinecraftHelper
         {
             if (_isLoadingUi)
                 return;
+
+            if (ChkAutoLeftHoldBindMode.IsChecked != true
+                && ChkAutoLeftComboMode.IsChecked != true
+                && AutoClickersUseSharedBind())
+            {
+                ChkAutoLeftHoldBindMode.IsChecked = true;
+                ShowSharedAutoClickerBindModeConflict();
+                return;
+            }
 
             if (ChkAutoLeftHoldBindMode.IsChecked == true)
                 ChkAutoLeftComboMode.IsChecked = false;
@@ -11138,6 +11214,15 @@ namespace MinecraftHelper
             if (_isLoadingUi)
                 return;
 
+            if (ChkAutoRightComboMode.IsChecked != true
+                && ChkAutoRightHoldBindMode.IsChecked != true
+                && AutoClickersUseSharedBind())
+            {
+                ChkAutoRightComboMode.IsChecked = true;
+                ShowSharedAutoClickerBindModeConflict();
+                return;
+            }
+
             if (ChkAutoRightComboMode.IsChecked == true)
                 ChkAutoRightHoldBindMode.IsChecked = false;
 
@@ -11153,6 +11238,15 @@ namespace MinecraftHelper
         {
             if (_isLoadingUi)
                 return;
+
+            if (ChkAutoRightHoldBindMode.IsChecked != true
+                && ChkAutoRightComboMode.IsChecked != true
+                && AutoClickersUseSharedBind())
+            {
+                ChkAutoRightHoldBindMode.IsChecked = true;
+                ShowSharedAutoClickerBindModeConflict();
+                return;
+            }
 
             if (ChkAutoRightHoldBindMode.IsChecked == true)
                 ChkAutoRightComboMode.IsChecked = false;

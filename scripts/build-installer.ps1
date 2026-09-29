@@ -1,5 +1,5 @@
 param(
-    [string]$Version = "1.1.4",
+    [string]$Version = "1.1.5",
     [ValidateSet("win-x64", "win-x86")]
     [string]$Rid = "win-x64",
     [bool]$SelfContained = $true,
