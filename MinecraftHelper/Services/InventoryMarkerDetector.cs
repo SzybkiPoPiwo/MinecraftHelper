@@ -562,12 +562,11 @@ namespace MinecraftHelper.Services
                 }
             }
 
-            const int minimumSolidBlockPixels = 45;
             const int minimumIronBlockPixels = 30;
             string bestItemId = string.Empty;
             int bestPixelCount = 0;
 
-            void Consider(string candidateItemId, int pixelCount, int requiredPixelCount = minimumSolidBlockPixels)
+            void Consider(string candidateItemId, int pixelCount, int requiredPixelCount = 45)
             {
                 if (pixelCount >= requiredPixelCount && pixelCount > bestPixelCount)
                 {

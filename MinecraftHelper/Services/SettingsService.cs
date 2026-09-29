@@ -9,6 +9,10 @@ namespace MinecraftHelper.Services
     {
         private const string SettingsFolderName = "Minecraft Helper";
         private const string SettingsFileName = "settings.json";
+        private static readonly JsonSerializerOptions SerializerOptions = new JsonSerializerOptions
+        {
+            WriteIndented = true
+        };
 
         public string SettingsDirectoryPath =>
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), SettingsFolderName);
@@ -25,7 +29,7 @@ namespace MinecraftHelper.Services
         public void Save(AppSettings settings)
         {
             EnsureSettingsDirectoryExists();
-            string json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
+            string json = JsonSerializer.Serialize(settings, SerializerOptions);
             WriteAllTextAtomically(SettingsFilePath, json);
         }
 
@@ -59,7 +63,7 @@ namespace MinecraftHelper.Services
                 if (!string.IsNullOrWhiteSpace(directory))
                     Directory.CreateDirectory(directory);
 
-                string json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
+                string json = JsonSerializer.Serialize(settings, SerializerOptions);
                 WriteAllTextAtomically(filePath, json);
             }
             catch (Exception ex)

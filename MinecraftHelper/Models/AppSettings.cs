@@ -67,8 +67,10 @@ namespace MinecraftHelper.Models
         public MacroButton AutoLeftButton { get; set; } = new MacroButton();
         public MacroButton AutoRightButton { get; set; } = new MacroButton();
         public bool AutoLeftComboMode { get; set; }
+        public bool AutoLeftHoldBindMode { get; set; }
         public bool AutoLeftDabMode { get; set; }
         public bool AutoRightComboMode { get; set; }
+        public bool AutoRightHoldBindMode { get; set; }
 
         public bool Kopacz533Enabled { get; set; }
         public string Kopacz533Key { get; set; } = "";
@@ -156,6 +158,8 @@ namespace MinecraftHelper.Models
         public bool OverlayHudEnabled { get; set; }
         public bool OverlayAnimationsEnabled { get; set; }
         public bool AnimatedBackgroundEnabled { get; set; } = true;
+        public string ChatOpenKey { get; set; } = "T";
+        public string DropItemKey { get; set; } = "Q";
         public int OverlayMonitorIndex { get; set; }
         public string OverlayCorner { get; set; } = "RightBottom";
         public string TargetWindowTitle { get; set; } = "";

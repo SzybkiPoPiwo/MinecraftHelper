@@ -15,6 +15,18 @@ namespace MinecraftHelper
         private static readonly AppReleaseNotes[] Releases =
         {
             new AppReleaseNotes(
+                "1.1.4",
+                "Nowe tryby clickerów i bezpieczniejsze automatyzacje",
+                new[]
+                {
+                    "AUTO LPM i AUTO PPM otrzymały tryb Trzymanie bindu, w którym clicker działa wyłącznie podczas fizycznego trzymania przypisanego klawisza.",
+                    "Dodano ustawienia klawisza otwierania chatu i wyrzucania przedmiotu, dzięki czemu automatyzacje współpracują z własnym sterowaniem Minecrafta.",
+                    "Moduł BINDY nie uruchamia komend podczas pisania, gdy Minecraft pokazuje kursor czatu, ekwipunku lub innego GUI.",
+                    "Kopacz 6/3/3 przed zaplanowanym Auto EQ i CobbleX wraca do pozycji startowej: pełne A przy kopaniu na wprost albo A i S przy kopaniu do góry.",
+                    "Poprawiono utrzymywanie HUD nad oknem gry na Windows 10 i odtwarzanie panelu po zmianach trybu okna.",
+                    "Usunięto nieużywany timer i starą ścieżkę analizy encji F3 oraz ograniczono zbędne operacje podczas zapisu ustawień i logów."
+                }),
+            new AppReleaseNotes(
                 "1.1.3",
                 "Nowy wygląd i rozszerzone Auto EQ",
                 new[]
@@ -79,7 +91,7 @@ namespace MinecraftHelper
             {
                 Version? version = typeof(ReleaseNotesCatalog).Assembly.GetName().Version;
                 if (version == null)
-                    return "1.1.3";
+                    return "1.1.4";
 
                 return $"{version.Major}.{version.Minor}.{Math.Max(0, version.Build)}";
             }

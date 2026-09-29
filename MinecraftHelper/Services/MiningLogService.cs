@@ -90,6 +90,10 @@ namespace MinecraftHelper.Services
         private const string LogsFolderName = "Minecraft Helper";
         private const string LogsFileName = "mining-logs.json";
         private const int MaximumEntries = 5000;
+        private static readonly JsonSerializerOptions SerializerOptions = new JsonSerializerOptions
+        {
+            WriteIndented = true
+        };
 
         private readonly object _sync = new object();
         private readonly List<MiningLogEntry> _entries;
@@ -529,7 +533,7 @@ namespace MinecraftHelper.Services
             {
                 string directory = Path.GetDirectoryName(LogsFilePath) ?? string.Empty;
                 Directory.CreateDirectory(directory);
-                string json = JsonSerializer.Serialize(_entries, new JsonSerializerOptions { WriteIndented = true });
+                string json = JsonSerializer.Serialize(_entries, SerializerOptions);
                 temporaryPath = Path.Combine(directory, $".{LogsFileName}.{Guid.NewGuid():N}.tmp");
                 File.WriteAllText(temporaryPath, json);
                 File.Move(temporaryPath, LogsFilePath, overwrite: true);

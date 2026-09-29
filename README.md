@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <strong>Windows 10/11</strong> · <strong>Minecraft 1.8.8</strong> · <strong>bez Forge i modów</strong> · <strong>wersja 1.1.3</strong>
+  <strong>Windows 10/11</strong> · <strong>Minecraft 1.8.8</strong> · <strong>bez Forge i modów</strong> · <strong>wersja 1.1.4</strong>
 </p>
 
 <p align="center">
@@ -120,7 +120,7 @@ Kanały mają oddzielne zakładki i checkboxy konfiguracji. Kopanie uruchamia si
 
 ### Auto EQ — automatyczne czyszczenie ekwipunku
 
-Auto EQ otwiera ekwipunek w ustalonych odstępach, rozpoznaje oznaczone przedmioty i wyrzuca całe stosy z wybranych pól przez `lewy Ctrl + Q`.
+Auto EQ otwiera ekwipunek w ustalonych odstępach, rozpoznaje oznaczone przedmioty i wyrzuca całe stosy z wybranych pól przez `lewy Ctrl + ustawiony klawisz wyrzucania`.
 
 Przed skanem program odsuwa kursor poza GUI, aby nazwa przedmiotu nie zasłoniła sąsiednich pól. Po wyrzucaniu ponownie sprawdza otwarty ekwipunek i w razie potrzeby wykonuje maksymalnie trzy przebiegi. Dzięki temu wynik obejmuje przedmioty faktycznie usunięte, a nie tylko wykonane próby naciśnięcia skrótu.
 
@@ -149,7 +149,7 @@ Następnie w Minecraft:
 3. wyłącz starsze paczki Minecraft Helper, aby znaczniki się nie nakładały,
 4. ustaw `GUI Scale` na `Large`.
 
-Wymagane są domyślne klawisze: `E` dla ekwipunku, `Q` dla wyrzucania i `T` dla czatu. Lewy `Ctrl` nie może być przechwytywany przez inny skrót. Podczas skanu gra musi być widoczna, aktywna i niezasłonięta innym oknem.
+Klawisz ekwipunku musi pozostać pod `E`. Klawisze otwierania chatu i wyrzucania przedmiotu można ustawić w zakładce **Ustawienia** (domyślnie `T` i `Q`). Lewy `Ctrl` nie może być przechwytywany przez inny skrót. Podczas skanu gra musi być widoczna, aktywna i niezasłonięta innym oknem.
 
 #### Konfiguracja Auto EQ
 
@@ -300,6 +300,16 @@ Nie wybieraj procesu launchera. Wskaż właściwe okno Minecrafta lub używanego
 
 Jeżeli działają makra lub Kopacz, zamknięcie okna przyciskiem `X` pozostawia aplikację uruchomioną w tle. Aby całkowicie ją wyłączyć, użyj opcji `Zakończ aplikację` z menu ikony.
 
+## Zmiany w wersji 1.1.4
+
+- AUTO LPM i AUTO PPM otrzymały dodatkowy tryb `Trzymanie bindu`. Clicker działa wtedy tylko podczas fizycznego trzymania przypisanego klawisza i zatrzymuje się natychmiast po jego puszczeniu.
+- Dodano ustawienia klawisza otwierania chatu i klawisza wyrzucania przedmiotu. Automatyczne komendy oraz `lewy Ctrl + klawisz wyrzucania` działają teraz z własnym układem sterowania Minecrafta.
+- BINDY nie uruchamiają komend podczas pisania ani przy widocznym kursorze czatu, ekwipunku lub innego GUI Minecrafta.
+- Kopacz 6/3/3 przed zaplanowanym Auto EQ i CobbleX wraca do pozycji startowej: trzyma pełne `A` przy kopaniu na wprost albo jednocześnie `A + S` przy kopaniu do góry.
+- Poprawiono utrzymywanie HUD nad oknem Minecrafta na Windows 10 oraz jego automatyczne odtworzenie po zamknięciu przez system.
+- Przeprowadzono audyt aplikacji: usunięto nieużywany timer i starą analizę encji F3, martwe fragmenty kodu oraz zbędne tworzenie konfiguracji serializatora podczas zapisu ustawień i logów.
+- Sprawdzono zależności NuGet — brak znanych podatności, pakietów przestarzałych i dostępnych aktualizacji.
+
 ## Zmiany w wersji 1.1.3
 
 - Dodano lekkie, animowane tło z gwiazdami oraz możliwość wyłączenia animacji w ustawieniach.
@@ -366,15 +376,15 @@ Jeżeli zauważysz błąd, problem z konfiguracją albo masz propozycję nowej f
 Najprościej uruchomić instalator:
 
 ```text
-MinecraftHelper-Setup-1.1.3.exe
+MinecraftHelper-Setup-1.1.4.exe
 ```
 
 Instalator działa dla bieżącego użytkownika, nie wymaga osobnej instalacji .NET 8, może utworzyć skrót na pulpicie i dodaje standardowy deinstalator Windows.
 
-Kontrola oficjalnego pliku instalatora wersji 1.1.3:
+Kontrola oficjalnego pliku instalatora wersji 1.1.4:
 
 ```text
-SHA-256: 68e7a9e1d96b688073f63936c3e09cf2a6a1ca1b2c8d293ffed53d6d50ed1061
+SHA-256: ff657f448170d4ed199a362849838cfea05e40285ac00c4dc30ecbb8c59f04bd
 ```
 
 ### Windows SmartScreen i Smart App Control
@@ -416,10 +426,10 @@ dotnet run --project MinecraftHelper/MinecraftHelper.csproj
 ### Budowanie instalatora
 
 ```powershell
-.\scripts\build-installer.ps1 -Version 1.1.3 -Rid win-x64 -SelfContained:$true -Clean
+.\scripts\build-installer.ps1 -Version 1.1.4 -Rid win-x64 -SelfContained:$true -Clean
 ```
 
-Wynik zostanie zapisany w `artifacts/installer/MinecraftHelper-Setup-1.1.3.exe`.
+Wynik zostanie zapisany w `artifacts/installer/MinecraftHelper-Setup-1.1.4.exe`.
 
 ### Odtworzenie paczki zasobów
 

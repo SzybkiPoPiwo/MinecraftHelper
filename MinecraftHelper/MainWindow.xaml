@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:MinecraftHelper"
         mc:Ignorable="d"
-        Title="Minecraft Helper 1.1.3"
+        Title="Minecraft Helper 1.1.4"
         Width="1280"
         Height="820"
         MinWidth="1050"
@@ -823,7 +823,7 @@
                                             <Button.ToolTip>
                                                 <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
                                                          MaxWidth="520"
-                                                         Content="JAK USTAWIĆ AUTO LPM:&#10;1. Zaznacz tę sekcję, aby włączyć moduł. Samo zaznaczenie nie uruchamia klikania.&#10;2. Kliknij pole Klawisz, naciśnij wybrany bind, a następnie kliknij Zapisz.&#10;3. Ustaw minimalny i maksymalny CPS, np. 8–12. Program losuje tempo kliknięć w tym zakresie.&#10;&#10;TRYB KLASYCZNY:&#10;Naciśnij zapisany bind raz, aby rozpocząć AUTO LPM. Naciśnij go ponownie, aby zatrzymać.&#10;&#10;TRYB KOMBINACJI:&#10;Włącz opcję Tryb kombinacji. Naciśnij zapisany bind razem z fizycznym LPM i trzymaj LPM. Puszczenie LPM zatrzymuje clicker.&#10;&#10;TRYB DAB:&#10;Podczas aktywnego AUTO LPM program dodatkowo przytrzymuje klawisz O. Po wyłączeniu clickera, utracie fokusu gry lub pauzie klawisz O zostaje zwolniony.&#10;&#10;Clicker działa tylko wtedy, gdy wybrane okno Minecrafta ma fokus."/>
+                                                         Content="JAK USTAWIĆ AUTO LPM:&#10;1. Zaznacz tę sekcję, aby włączyć moduł. Samo zaznaczenie nie uruchamia klikania.&#10;2. Kliknij pole Klawisz, naciśnij wybrany bind, a następnie kliknij Zapisz.&#10;3. Ustaw minimalny i maksymalny CPS, np. 8–12. Program losuje tempo kliknięć w tym zakresie.&#10;&#10;TRYB KLASYCZNY:&#10;Naciśnij zapisany bind raz, aby rozpocząć AUTO LPM. Naciśnij go ponownie, aby zatrzymać.&#10;&#10;TRYB KOMBINACJI:&#10;Włącz opcję Tryb kombinacji. Naciśnij zapisany bind razem z fizycznym LPM i trzymaj LPM. Puszczenie LPM zatrzymuje clicker.&#10;&#10;TRZYMANIE BINDU:&#10;Włącz opcję Trzymanie bindu. AUTO LPM działa tylko podczas fizycznego trzymania zapisanego bindu i zatrzymuje się natychmiast po jego puszczeniu.&#10;&#10;TRYB DAB:&#10;Podczas aktywnego AUTO LPM program dodatkowo przytrzymuje klawisz O. Po wyłączeniu clickera, utracie fokusu gry lub pauzie klawisz O zostaje zwolniony.&#10;&#10;Clicker działa tylko wtedy, gdy wybrane okno Minecrafta ma fokus."/>
                                             </Button.ToolTip>
                                         </Button>
                                     </StackPanel>
@@ -855,6 +855,12 @@
                                               Content="Tryb kombinacji: aktywacja bind + LPM, działa tylko przy trzymaniu LPM"
                                               Checked="ChkAutoLeftComboMode_Changed"
                                               Unchecked="ChkAutoLeftComboMode_Changed"/>
+
+                                    <CheckBox Name="ChkAutoLeftHoldBindMode"
+                                              Margin="0,0,0,10"
+                                              Content="Trzymanie bindu: AUTO LPM działa tylko podczas trzymania bindu"
+                                              Checked="ChkAutoLeftHoldBindMode_Changed"
+                                              Unchecked="ChkAutoLeftHoldBindMode_Changed"/>
 
                                     <CheckBox Name="ChkAutoLeftDabMode"
                                               Margin="0,0,0,10"
@@ -892,7 +898,7 @@
                                             <Button.ToolTip>
                                                 <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
                                                          MaxWidth="520"
-                                                         Content="JAK USTAWIĆ AUTO PPM:&#10;1. Zaznacz tę sekcję, aby włączyć moduł. Samo zaznaczenie nie uruchamia klikania.&#10;2. Kliknij pole Klawisz, naciśnij wybrany bind, a następnie kliknij Zapisz.&#10;3. Ustaw minimalny i maksymalny CPS, np. 8–12. Program losuje tempo kliknięć w tym zakresie.&#10;&#10;TRYB KLASYCZNY:&#10;Naciśnij zapisany bind raz, aby rozpocząć AUTO PPM. Naciśnij go ponownie, aby zatrzymać.&#10;&#10;TRYB KOMBINACJI:&#10;Włącz opcję Tryb kombinacji. Naciśnij zapisany bind razem z fizycznym PPM i trzymaj PPM. Puszczenie PPM zatrzymuje clicker.&#10;&#10;BEZPIECZEŃSTWO:&#10;AUTO PPM nie uruchomi się, gdy Minecraft pokazuje kursor ekwipunku, chatu lub innego GUI.&#10;&#10;Clicker działa tylko wtedy, gdy wybrane okno Minecrafta ma fokus."/>
+                                                         Content="JAK USTAWIĆ AUTO PPM:&#10;1. Zaznacz tę sekcję, aby włączyć moduł. Samo zaznaczenie nie uruchamia klikania.&#10;2. Kliknij pole Klawisz, naciśnij wybrany bind, a następnie kliknij Zapisz.&#10;3. Ustaw minimalny i maksymalny CPS, np. 8–12. Program losuje tempo kliknięć w tym zakresie.&#10;&#10;TRYB KLASYCZNY:&#10;Naciśnij zapisany bind raz, aby rozpocząć AUTO PPM. Naciśnij go ponownie, aby zatrzymać.&#10;&#10;TRYB KOMBINACJI:&#10;Włącz opcję Tryb kombinacji. Naciśnij zapisany bind razem z fizycznym PPM i trzymaj PPM. Puszczenie PPM zatrzymuje clicker.&#10;&#10;TRZYMANIE BINDU:&#10;Włącz opcję Trzymanie bindu. AUTO PPM działa tylko podczas fizycznego trzymania zapisanego bindu i zatrzymuje się natychmiast po jego puszczeniu.&#10;&#10;BEZPIECZEŃSTWO:&#10;AUTO PPM nie uruchomi się, gdy Minecraft pokazuje kursor ekwipunku, chatu lub innego GUI.&#10;&#10;Clicker działa tylko wtedy, gdy wybrane okno Minecrafta ma fokus."/>
                                             </Button.ToolTip>
                                         </Button>
                                     </StackPanel>
@@ -925,6 +931,12 @@
                                               Checked="ChkAutoRightComboMode_Changed"
                                               Unchecked="ChkAutoRightComboMode_Changed"/>
 
+                                    <CheckBox Name="ChkAutoRightHoldBindMode"
+                                              Margin="0,0,0,10"
+                                              Content="Trzymanie bindu: AUTO PPM działa tylko podczas trzymania bindu"
+                                              Checked="ChkAutoRightHoldBindMode_Changed"
+                                              Unchecked="ChkAutoRightHoldBindMode_Changed"/>
+
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                                         <TextBlock Text="Min CPS:" Width="100" VerticalAlignment="Center"/>
                                         <TextBox Name="TxtAutoRightMinCps" Width="80" TextChanged="AnyTextBox_TextChanged"/>
@@ -954,7 +966,7 @@
                                                 ToolTipService.ShowDuration="120000">
                                             <Button.ToolTip>
                                                 <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
-                                                         Content="Aktywacja makra poprzez kliknięcie bindu. Ustaw: 1. slot: nożyce, 2. slot: liście. Ustaw komendę zaczynającą się od '/'. Komenda wpisuje się po kliknięciu przycisku T (czat)."/>
+                                                         Content="Aktywacja makra poprzez kliknięcie bindu. Ustaw: 1. slot: nożyce, 2. slot: liście. Ustaw komendę zaczynającą się od '/'. Program otwiera chat klawiszem ustawionym w zakładce Ustawienia."/>
                                             </Button.ToolTip>
                                         </Button>
                                     </StackPanel>
@@ -996,7 +1008,7 @@
                                                 Click="BtnSaveJablkaZLisciCommand_Click"/>
                                     </StackPanel>
 
-                                    <TextBlock Text="70 cykli: slot 1 nożyce, slot 2 liście. Wybiera chat (T) i zatwierdza ENTER komendę /repair."
+                                    <TextBlock Text="70 cykli: slot 1 nożyce, slot 2 liście. Otwiera chat ustawionym klawiszem i zatwierdza ENTER komendę /repair."
                                                FontSize="11"
                                                Foreground="#7F94B2"
                                                TextWrapping="Wrap"/>
@@ -1233,7 +1245,7 @@
                                             <Button.ToolTip>
                                                 <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
                                                          MaxWidth="520"
-                                                         Content="JAK TO USTAWIĆ:&#10;1. W zakładce Ustawienia wybierz proces właściwego okna Minecrafta, nie launchera.&#10;2. Włącz paczkę MinecraftHelper AutoEQ + CobbleX (1.8.8) i ustaw ją nad paczką Default. Wyłącz starsze paczki Minecraft Helper.&#10;3. W ustawieniach obrazu Minecrafta ustaw GUI Scale: Large.&#10;4. Zostaw domyślne sterowanie: E = ekwipunek, Q = wyrzucanie, T = czat. Lewy Ctrl nie może być zajęty przez inny skrót. Przy automatycznym jedzeniu klawisze 1 i 2 muszą wybierać odpowiednie sloty hotbara.&#10;5. Ustaw odstęp między skanami, wybierz sloty 1–27 oraz jeden z trybów: wybrane typy albo osobne „Wszystko poza cobblestone”.&#10;6. Otwórz ekwipunek w grze i użyj przycisku Test wykrywania. Program powinien znaleźć okno EQ i rozpoznać zawartość slotów.&#10;&#10;JAK TO DZIAŁA:&#10;Funkcja działa tylko podczas pracy Kopacza 5/3/3 albo 6/3/3. Co ustawiony czas program otwiera EQ, odsuwa kursor poza GUI, czeka na zniknięcie podpowiedzi i skanuje wybrane pola. W zwykłym trybie wyrzuca tylko zaznaczone typy. Osobny tryb „Wszystko poza cobblestone” opróżnia wybrane sloty ze wszystkich wykrytych przedmiotów, ale chroni rozpoznany szary lub różowy cobblestone. Stosy wyrzuca przez lewy Ctrl + Q, po czym ponownie skanuje otwarte EQ. Wykonuje maksymalnie 3 przebiegi. Hotbar, pancerz i crafting są zawsze pomijane. Na czas skanu kopanie oraz zaplanowane komendy są wstrzymywane. Opcjonalnie po całej sekwencji program zjada jedzenie ze slotu 2 i wraca na narzędzie w slocie 1.&#10;&#10;Gra musi być widoczna, aktywna i niezasłonięta innym oknem."/>
+                                                         Content="JAK TO USTAWIĆ:&#10;1. W zakładce Ustawienia wybierz proces właściwego okna Minecrafta, nie launchera.&#10;2. Włącz paczkę MinecraftHelper AutoEQ + CobbleX (1.8.8) i ustaw ją nad paczką Default. Wyłącz starsze paczki Minecraft Helper.&#10;3. W ustawieniach obrazu Minecrafta ustaw GUI Scale: Large.&#10;4. Klawisz ekwipunku musi pozostać pod E. W zakładce Ustawienia wpisz używane w Minecraftcie klawisze otwierania chatu i wyrzucania przedmiotu. Lewy Ctrl nie może być zajęty przez inny skrót. Przy automatycznym jedzeniu klawisze 1 i 2 muszą wybierać odpowiednie sloty hotbara.&#10;5. Ustaw odstęp między skanami, wybierz sloty 1–27 oraz jeden z trybów: wybrane typy albo osobne „Wszystko poza cobblestone”.&#10;6. Otwórz ekwipunek w grze i użyj przycisku Test wykrywania. Program powinien znaleźć okno EQ i rozpoznać zawartość slotów.&#10;&#10;JAK TO DZIAŁA:&#10;Funkcja działa tylko podczas pracy Kopacza 5/3/3 albo 6/3/3. Co ustawiony czas program otwiera EQ, odsuwa kursor poza GUI, czeka na zniknięcie podpowiedzi i skanuje wybrane pola. W zwykłym trybie wyrzuca tylko zaznaczone typy. Osobny tryb „Wszystko poza cobblestone” opróżnia wybrane sloty ze wszystkich wykrytych przedmiotów, ale chroni rozpoznany szary lub różowy cobblestone. Stosy wyrzuca przez lewy Ctrl + ustawiony klawisz wyrzucania, po czym ponownie skanuje otwarte EQ. Wykonuje maksymalnie 3 przebiegi. Hotbar, pancerz i crafting są zawsze pomijane. Na czas skanu kopanie oraz zaplanowane komendy są wstrzymywane. Opcjonalnie po całej sekwencji program zjada jedzenie ze slotu 2 i wraca na narzędzie w slocie 1.&#10;&#10;Gra musi być widoczna, aktywna i niezasłonięta innym oknem."/>
                                             </Button.ToolTip>
                                         </Button>
                                     </StackPanel>
@@ -1241,7 +1253,7 @@
                                     <StackPanel Name="PanelInventoryCleanupExpandableContent"
                                                 Margin="0,8,0,0"
                                                 Visibility="Collapsed">
-                                        <TextBlock Text="Wymagane: aktualna paczka Minecraft Helper, GUI Scale: Large oraz domyślne E / Q / T."
+                                        <TextBlock Text="Wymagane: aktualna paczka Minecraft Helper, GUI Scale: Large, ekwipunek pod E oraz poprawne klawisze chatu i wyrzucania w Ustawieniach."
                                                    TextWrapping="Wrap"
                                                    FontSize="10"
                                                    Foreground="#F5C860"
@@ -2341,6 +2353,74 @@
                                          Width="300"
                                          Visibility="Collapsed"/>
                             </StackPanel>
+
+                            <Border Style="{StaticResource SectionBorderStyle}"
+                                    Margin="0,0,0,12">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                        <TextBlock Text="Sterowanie Minecrafta dla automatyzacji"
+                                                   Style="{StaticResource MainSectionHeaderTextStyle}"/>
+                                        <Button Content="?"
+                                                Style="{StaticResource MacroInfoButtonStyle}"
+                                                Margin="8,0,0,0"
+                                                ToolTipService.InitialShowDelay="100"
+                                                ToolTipService.ShowDuration="120000">
+                                            <Button.ToolTip>
+                                                <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
+                                                         MaxWidth="500"
+                                                         Content="Ustaw takie same klawisze jak w sterowaniu Minecrafta. Klawisz otwierania chatu jest używany przez wszystkie automatycznie wpisywane komendy. Klawisz wyrzucania jest używany przez Auto EQ razem z lewym Ctrl, aby wyrzucać całe stosy. Domyślnie: T dla chatu i Q dla wyrzucania."/>
+                                            </Button.ToolTip>
+                                        </Button>
+                                    </StackPanel>
+
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                        <TextBlock Text="Otwieranie chatu:" Width="160" VerticalAlignment="Center"/>
+                                        <TextBox Name="TxtChatOpenKey"
+                                                 Width="90"
+                                                 Margin="0,0,10,0"
+                                                 IsReadOnly="True"
+                                                 FontWeight="Bold"
+                                                 Foreground="#38D6B4"
+                                                 Tag="ChatOpen"
+                                                 PreviewMouseLeftButtonDown="BindKeyBox_PreviewMouseLeftButtonDown"/>
+                                        <Button Name="BtnChatOpenKeySave"
+                                                Content="Zapisz"
+                                                Width="90"
+                                                Click="BtnChatOpenKeySave_Click"/>
+                                        <Button Content="Domyślny T"
+                                                Width="105"
+                                                Margin="10,0,0,0"
+                                                Tag="ChatOpen"
+                                                Click="BtnResetMinecraftControlKey_Click"/>
+                                    </StackPanel>
+
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="Wyrzucanie przedmiotu:" Width="160" VerticalAlignment="Center"/>
+                                        <TextBox Name="TxtDropItemKey"
+                                                 Width="90"
+                                                 Margin="0,0,10,0"
+                                                 IsReadOnly="True"
+                                                 FontWeight="Bold"
+                                                 Foreground="#38D6B4"
+                                                 Tag="DropItem"
+                                                 PreviewMouseLeftButtonDown="BindKeyBox_PreviewMouseLeftButtonDown"/>
+                                        <Button Name="BtnDropItemKeySave"
+                                                Content="Zapisz"
+                                                Width="90"
+                                                Click="BtnDropItemKeySave_Click"/>
+                                        <Button Content="Domyślny Q"
+                                                Width="105"
+                                                Margin="10,0,0,0"
+                                                Tag="DropItem"
+                                                Click="BtnResetMinecraftControlKey_Click"/>
+                                    </StackPanel>
+
+                                    <TextBlock Text="Kliknij pole, naciśnij klawisz z ustawień Minecrafta i wybierz Zapisz."
+                                               Margin="0,10,0,0"
+                                               FontSize="10"
+                                               Foreground="#92A6C1"/>
+                                </StackPanel>
+                            </Border>
 
                             <Border Style="{StaticResource SectionBorderStyle}"
                                     Margin="0,0,0,12">

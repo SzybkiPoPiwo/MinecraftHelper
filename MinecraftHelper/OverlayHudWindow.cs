@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 
@@ -27,6 +29,37 @@ namespace MinecraftHelper
 
     internal sealed class OverlayHudWindow : Window
     {
+        private const int GwlExStyle = -20;
+        private const int GwlHwndParent = -8;
+        private const int WsExTransparent = 0x00000020;
+        private const int WsExToolWindow = 0x00000080;
+        private const int WsExNoActivate = 0x08000000;
+        private const uint SwpNoSize = 0x0001;
+        private const uint SwpNoMove = 0x0002;
+        private const uint SwpNoActivate = 0x0010;
+        private const uint SwpNoOwnerZOrder = 0x0200;
+        private static readonly IntPtr HwndTopmost = new IntPtr(-1);
+
+        [DllImport("user32.dll", EntryPoint = "GetWindowLongW")]
+        private static extern int GetWindowLong(IntPtr hWnd, int index);
+
+        [DllImport("user32.dll", EntryPoint = "SetWindowLongW")]
+        private static extern int SetWindowLong(IntPtr hWnd, int index, int newLong);
+
+        [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW")]
+        private static extern IntPtr SetWindowLongPtr64(IntPtr hWnd, int index, IntPtr newLong);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool SetWindowPos(
+            IntPtr hWnd,
+            IntPtr insertAfter,
+            int x,
+            int y,
+            int width,
+            int height,
+            uint flags);
+
         private static readonly Brush LabelBrush = new SolidColorBrush(Color.FromRgb(146, 166, 193));
         private static readonly Brush AccentBrush = new SolidColorBrush(Color.FromRgb(127, 200, 255));
         private static readonly Brush OnBrush = new SolidColorBrush(Color.FromRgb(74, 222, 128));
@@ -43,6 +76,7 @@ namespace MinecraftHelper
         private bool _animationsEnabled = true;
         private bool _isStructureAnimating;
         private List<OverlayHudEntry>? _queuedStructureEntries;
+        private IntPtr _ownerWindowHandle;
 
         public OverlayHudWindow()
         {
@@ -65,9 +99,27 @@ namespace MinecraftHelper
             Content = _itemsPanel;
         }
 
+        protected override void OnSourceInitialized(EventArgs e)
+        {
+            base.OnSourceInitialized(e);
+            ApplyNativeWindowBehavior();
+            ApplyOwnerWindowHandle();
+            EnsureNativeTopmost();
+        }
+
         public bool IsHudVisible => IsVisible;
 
         public double CurrentHeight => ActualHeight > 0 ? ActualHeight : RenderSize.Height;
+
+        public void SetOwnerWindowHandle(IntPtr ownerWindowHandle)
+        {
+            if (_ownerWindowHandle == ownerWindowHandle)
+                return;
+
+            _ownerWindowHandle = ownerWindowHandle;
+            ApplyOwnerWindowHandle();
+            EnsureNativeTopmost();
+        }
 
         public void SetAnimationsEnabled(bool enabled)
         {
@@ -113,6 +165,46 @@ namespace MinecraftHelper
             ShowWindow();
             if (!_isStructureAnimating)
                 RepositionToAnchor();
+            EnsureNativeTopmost();
+        }
+
+        private void ApplyNativeWindowBehavior()
+        {
+            IntPtr handle = new WindowInteropHelper(this).Handle;
+            if (handle == IntPtr.Zero)
+                return;
+
+            int extendedStyle = GetWindowLong(handle, GwlExStyle);
+            extendedStyle |= WsExTransparent | WsExToolWindow | WsExNoActivate;
+            _ = SetWindowLong(handle, GwlExStyle, extendedStyle);
+        }
+
+        private void ApplyOwnerWindowHandle()
+        {
+            IntPtr handle = new WindowInteropHelper(this).Handle;
+            if (handle == IntPtr.Zero)
+                return;
+
+            if (IntPtr.Size == 8)
+                _ = SetWindowLongPtr64(handle, GwlHwndParent, _ownerWindowHandle);
+            else
+                _ = SetWindowLong(handle, GwlHwndParent, _ownerWindowHandle.ToInt32());
+        }
+
+        private void EnsureNativeTopmost()
+        {
+            IntPtr handle = new WindowInteropHelper(this).Handle;
+            if (handle == IntPtr.Zero)
+                return;
+
+            _ = SetWindowPos(
+                handle,
+                HwndTopmost,
+                0,
+                0,
+                0,
+                0,
+                SwpNoMove | SwpNoSize | SwpNoActivate | SwpNoOwnerZOrder);
         }
 
         private void RebuildTiles(IReadOnlyList<OverlayHudEntry> entries)

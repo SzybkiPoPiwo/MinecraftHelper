@@ -47,7 +47,6 @@ namespace MinecraftHelper
         private readonly DispatcherTimer _dirtyTimer;
         private readonly DispatcherTimer _focusTimer;
         private readonly DispatcherTimer _macroTimer;
-        private readonly DispatcherTimer _f3AnalysisTimer;
         private readonly DispatcherTimer _autoReconnectTimer;
         private readonly DispatcherTimer _transientStatusTimer;
         private readonly DispatcherTimer _bindyHudClearTimer;
@@ -147,7 +146,12 @@ namespace MinecraftHelper
         private bool _inventoryCleanupCursorParkedForDetection;
         private Drawing.Rectangle _inventoryCleanupClientArea = Drawing.Rectangle.Empty;
         private bool _inventoryCleanupControlDown;
-        private bool _inventoryCleanupQDown;
+        private bool _inventoryCleanupDropKeyDown;
+        private int _inventoryCleanupDropVirtualKey;
+        private bool _inventoryCleanupReturnLeftDown;
+        private bool _inventoryCleanupReturnBackwardDown;
+        private DateTime _inventoryCleanupReturnLeftUntilUtc = DateTime.MinValue;
+        private DateTime _inventoryCleanupReturnBackwardUntilUtc = DateTime.MinValue;
         private bool _inventoryCleanupEatAfterCleanupPending;
         private bool _inventoryCleanupEatingRightButtonDown;
         private bool _inventoryCleanupEatingCompleted;
@@ -233,7 +237,6 @@ namespace MinecraftHelper
         private Forms.NotifyIcon? _trayIcon;
         private bool _isExitRequested;
         private bool _isMinimizedToTray;
-        private bool _isF3AnalysisInProgress;
         private bool _isTestCaptureSelectionInProgress;
         private readonly object _mouseHookLifecycleSync = new object();
         private readonly ManualResetEventSlim _mouseHookThreadReady = new ManualResetEventSlim(false);
@@ -246,7 +249,6 @@ namespace MinecraftHelper
         private volatile bool _physicalRightButtonDown;
         private readonly object _f3TesseractLock = new object();
         private TesseractEngine? _f3TesseractEngine;
-        private int _f3ConsecutiveReadFailures;
         private AutoReconnectStage _autoReconnectStage = AutoReconnectStage.None;
         private DateTime _nextAutoReconnectActionAtUtc = DateTime.UtcNow;
         private DateTime _nextAutoReconnectHealthCheckAtUtc = DateTime.UtcNow;
@@ -273,11 +275,6 @@ namespace MinecraftHelper
         private string _pendingAutoReconnectProfileDeleteId = string.Empty;
         private DateTime _pendingAutoReconnectProfileDeleteUntilUtc = DateTime.MinValue;
         private const double OverlayScreenMargin = 16;
-        private const int F3AnalysisIntervalMs = 350;
-        private const int F3CaptureWidth = 520;
-        private const int F3CaptureHeight = 230;
-        private const int F3CaptureMargin = 0;
-        private const int F3ReadFailureTolerance = 3;
         private const int MinimumCaptureSelectionSize = 24;
         private const int TestAutoFishingScanIntervalMs = 45;
         private const int TestAutoFishingPreviewIntervalMs = 220;
@@ -299,8 +296,6 @@ namespace MinecraftHelper
         private const int AutoReconnectBlockedButtonWaitSeconds = 7;
 
         private readonly Random _random = new Random();
-        private static readonly Regex F3EntityOnlyLineRegex = new Regex(@"^\W*E\s*[:;.,]?\s*([0-9IlOo]{1,2})\s*[/\\|:;.,]\s*([0-9IlOo]{1,3})(?:\W.*)?$", RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
-        private static readonly Regex F3EntityFromBlockRegex = new Regex(@"(?:^|[^A-Za-z0-9])E\s*[:;.,]?\s*([0-9IlOo]{1,2})\s*[/\\|:;.,]\s*([0-9IlOo]{1,3})(?=$|[^A-Za-z0-9])", RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
         private const string FastUpDefaultPickaxeType = "Diamentowy";
         private static readonly string[] FastUpPickaxeTypes =
         {
@@ -322,7 +317,9 @@ namespace MinecraftHelper
             FastUpExit,
             TestCaptureArea,
             TestAutoFishing,
-            TestAutoFishingCaptureArea
+            TestAutoFishingCaptureArea,
+            ChatOpen,
+            DropItem
         }
 
         private enum JablkaCommandStage
@@ -424,6 +421,8 @@ namespace MinecraftHelper
         private enum InventoryCleanupStage
         {
             None,
+            ReturnToMiningStart,
+            OpenInventory,
             WaitForInventory,
             MoveToSlot,
             PressDropModifier,
@@ -457,8 +456,6 @@ namespace MinecraftHelper
                 return $"{ProcessName} [{ProcessId}] - {WindowTitle}";
             }
         }
-
-        private readonly record struct F3TelemetryRead(bool Success, string BestText, int VisibleNow, int LoadedNow, bool HasEntityRatio);
 
         private BindTarget _bindCaptureTarget = BindTarget.None;
         private readonly Dictionary<BindTarget, string> _pendingBindValues = new Dictionary<BindTarget, string>();
@@ -632,6 +629,7 @@ namespace MinecraftHelper
         private const int HoldLeftTogglePressMinMs = 12;
         private const int InventoryCleanupMinimumIntervalSeconds = 10;
         private const int InventoryCleanupMaximumIntervalSeconds = 3600;
+        private const int InventoryCleanupReturnSettleMs = 120;
         private const int InventoryCleanupOpenDelayMs = 350;
         private const int InventoryCleanupDetectionRetryMs = 140;
         private const int InventoryCleanupMaximumDetectionAttempts = 4;
@@ -765,12 +763,6 @@ namespace MinecraftHelper
             };
             _macroTimer.Tick += RunMacroTick;
 
-            _f3AnalysisTimer = new DispatcherTimer
-            {
-                Interval = TimeSpan.FromMilliseconds(F3AnalysisIntervalMs)
-            };
-            _f3AnalysisTimer.Tick += RunF3AnalysisTick;
-
             _autoReconnectTimer = new DispatcherTimer
             {
                 Interval = TimeSpan.FromMilliseconds(100)
@@ -817,10 +809,8 @@ namespace MinecraftHelper
 
             _focusTimer.Start();
             _macroTimer.Start();
-            _f3AnalysisTimer.Start();
             _autoReconnectTimer.Start();
             _isMinecraftFocused = CheckGameFocus();
-            UpdateTestF3Estimator();
         }
 
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -1246,6 +1236,10 @@ namespace MinecraftHelper
             _settings.HoldRightButton ??= new MacroButton();
             _settings.AutoLeftButton ??= new MacroButton();
             _settings.AutoRightButton ??= new MacroButton();
+            if (_settings.AutoLeftHoldBindMode)
+                _settings.AutoLeftComboMode = false;
+            if (_settings.AutoRightHoldBindMode)
+                _settings.AutoRightComboMode = false;
 
             // These legacy modules are intentionally hidden from the streamlined UI.
             // Force them off so settings imported from an older build cannot run invisibly.
@@ -1307,6 +1301,8 @@ namespace MinecraftHelper
             _settings.TestFastUpExitBreakDurationByPickaxe ??= new Dictionary<string, int>();
             _settings.BindyKey ??= string.Empty;
             _settings.TargetProcessName ??= string.Empty;
+            _settings.ChatOpenKey = NormalizeMinecraftControlKey(_settings.ChatOpenKey, "T");
+            _settings.DropItemKey = NormalizeMinecraftControlKey(_settings.DropItemKey, "Q");
             _settings.OverlayCorner ??= "RightBottom";
             if (_settings.OverlayMonitorIndex < 0)
                 _settings.OverlayMonitorIndex = 0;
@@ -1386,11 +1382,6 @@ namespace MinecraftHelper
                 CopyMacroButtonData(_settings.MacroLeftButton, _settings.HoldLeftButton);
             if (IsMacroButtonEmpty(_settings.HoldRightButton) && !IsMacroButtonEmpty(_settings.MacroRightButton))
                 CopyMacroButtonData(_settings.MacroRightButton, _settings.HoldRightButton);
-
-            if (!_settings.HoldEnabled && _settings.MacroLeftButton.Enabled)
-                _settings.HoldEnabled = true;
-            if (string.IsNullOrWhiteSpace(_settings.HoldToggleKey) && !string.IsNullOrWhiteSpace(_settings.MacroLeftButton.Key))
-                _settings.HoldToggleKey = _settings.MacroLeftButton.Key;
 
             if (IsMacroButtonEmpty(_settings.AutoLeftButton) && !IsMacroButtonEmpty(_settings.MacroLeftButton))
             {
@@ -1788,6 +1779,7 @@ namespace MinecraftHelper
             TxtAutoLeftMinCps.Text = _settings.AutoLeftButton.MinCps.ToString();
             TxtAutoLeftMaxCps.Text = _settings.AutoLeftButton.MaxCps.ToString();
             ChkAutoLeftComboMode.IsChecked = _settings.AutoLeftComboMode;
+            ChkAutoLeftHoldBindMode.IsChecked = _settings.AutoLeftHoldBindMode;
             ChkAutoLeftDabMode.IsChecked = _settings.AutoLeftDabMode;
 
             ChkAutoRightEnabled.IsChecked = _settings.AutoRightButton.Enabled;
@@ -1795,6 +1787,7 @@ namespace MinecraftHelper
             TxtAutoRightMinCps.Text = _settings.AutoRightButton.MinCps.ToString();
             TxtAutoRightMaxCps.Text = _settings.AutoRightButton.MaxCps.ToString();
             ChkAutoRightComboMode.IsChecked = _settings.AutoRightComboMode;
+            ChkAutoRightHoldBindMode.IsChecked = _settings.AutoRightHoldBindMode;
 
             // KOPACZ
             ChkKopacz533Enabled.IsChecked = _settings.Kopacz533Enabled;
@@ -1887,6 +1880,8 @@ namespace MinecraftHelper
             CyberBackground.IsAnimationEnabled = _settings.AnimatedBackgroundEnabled;
             ChkOverlayHudEnabled.IsChecked = _settings.OverlayHudEnabled;
             ChkOverlayAnimationsEnabled.IsChecked = _settings.OverlayAnimationsEnabled;
+            TxtChatOpenKey.Text = _settings.ChatOpenKey;
+            TxtDropItemKey.Text = _settings.DropItemKey;
             RefreshOverlayMonitorChoices();
             CbOverlayCorner.SelectedIndex = ParseOverlayCorner(_settings.OverlayCorner) switch
             {
@@ -3007,7 +3002,7 @@ namespace MinecraftHelper
                         break;
 
                     case AutoReconnectStage.OpenHomeChat:
-                        SendKeyTap(VK_T);
+                        SendChatOpenKeyTap();
                         _autoReconnectStage = AutoReconnectStage.TypeHomeCommand;
                         _nextAutoReconnectActionAtUtc = now.AddMilliseconds(220);
                         UpdateAutoReconnectStatus($"Wysyłam {_autoReconnectActiveHomeCommand}...", "Orange");
@@ -3314,7 +3309,7 @@ namespace MinecraftHelper
 
                     string text = await Task.Run(() =>
                     {
-                        using Drawing.Bitmap prepared = PrepareBitmapForF3Ocr(bitmap!);
+                        using Drawing.Bitmap prepared = PrepareBitmapForOcr(bitmap!);
                         string raw = RunOcrOnBitmap(bitmap!, TesseractPageSegMode.SparseText);
                         string enhanced = RunOcrOnBitmap(prepared, TesseractPageSegMode.SparseText);
                         return raw + Environment.NewLine + enhanced;
@@ -3805,6 +3800,8 @@ namespace MinecraftHelper
                 BindTarget.TestCaptureArea => "Experimental OCR (obszar)",
                 BindTarget.TestAutoFishing => "Auto łowienie wędką",
                 BindTarget.TestAutoFishingCaptureArea => "Auto łowienie (zaznaczanie obszaru)",
+                BindTarget.ChatOpen => "otwieranie chatu",
+                BindTarget.DropItem => "wyrzucanie przedmiotu",
                 _ => "bind"
             };
         }
@@ -3812,6 +3809,11 @@ namespace MinecraftHelper
         private static string GetSaveButtonBaseContent(BindTarget target)
         {
             return target is BindTarget.Kopacz533 or BindTarget.Kopacz633 ? "Zapisz klawisz" : "Zapisz";
+        }
+
+        private static bool IsMinecraftControlKeyTarget(BindTarget target)
+        {
+            return target is BindTarget.ChatOpen or BindTarget.DropItem;
         }
 
         private Button? GetBindSaveButton(BindTarget target)
@@ -3828,6 +3830,8 @@ namespace MinecraftHelper
                 BindTarget.TestCaptureArea => BtnTestCustomCaptureBind,
                 BindTarget.TestAutoFishing => BtnTestAutoFishingBind,
                 BindTarget.TestAutoFishingCaptureArea => BtnTestAutoFishingCaptureBind,
+                BindTarget.ChatOpen => BtnChatOpenKeySave,
+                BindTarget.DropItem => BtnDropItemKeySave,
                 _ => null
             };
         }
@@ -3846,6 +3850,8 @@ namespace MinecraftHelper
                 BindTarget.TestCaptureArea => TxtTestCustomCaptureBind,
                 BindTarget.TestAutoFishing => TxtTestAutoFishingBind,
                 BindTarget.TestAutoFishingCaptureArea => TxtTestAutoFishingCaptureBind,
+                BindTarget.ChatOpen => TxtChatOpenKey,
+                BindTarget.DropItem => TxtDropItemKey,
                 _ => null
             };
         }
@@ -3862,6 +3868,8 @@ namespace MinecraftHelper
             yield return BindTarget.TestCaptureArea;
             yield return BindTarget.TestAutoFishing;
             yield return BindTarget.TestAutoFishingCaptureArea;
+            yield return BindTarget.ChatOpen;
+            yield return BindTarget.DropItem;
         }
 
         private static string GetBindOwnerId(BindTarget target)
@@ -3878,6 +3886,8 @@ namespace MinecraftHelper
                 BindTarget.TestCaptureArea => "core:test-capture",
                 BindTarget.TestAutoFishing => "core:test-auto-fishing",
                 BindTarget.TestAutoFishingCaptureArea => "core:test-auto-fishing-capture",
+                BindTarget.ChatOpen => "minecraft-control:chat-open",
+                BindTarget.DropItem => "minecraft-control:drop-item",
                 _ => "core:unknown"
             };
         }
@@ -3971,12 +3981,6 @@ namespace MinecraftHelper
             string requestedOwner = string.IsNullOrWhiteSpace(requestedOwnerLabel) ? "tej funkcji" : requestedOwnerLabel.Trim();
 
             string shortMessage = $"Klawisz {normalizedKey} jest już przypisany do: {conflictOwner}.";
-            string fullMessage =
-                $"Nie można zapisać bindu dla: {requestedOwner}.\n\n" +
-                $"Klawisz: {normalizedKey}\n" +
-                $"Jest już zajęty przez: {conflictOwner}\n\n" +
-                "Wybierz inny klawisz i kliknij \"Zapisz\" ponownie.";
-
             UpdateStatusBar(shortMessage, "Orange");
             var dialog = new BindConflictDialogWindow(requestedOwner, normalizedKey, conflictOwner)
             {
@@ -4024,6 +4028,8 @@ namespace MinecraftHelper
             RefreshBindSaveButton(BindTarget.TestCaptureArea);
             RefreshBindSaveButton(BindTarget.TestAutoFishing);
             RefreshBindSaveButton(BindTarget.TestAutoFishingCaptureArea);
+            RefreshBindSaveButton(BindTarget.ChatOpen);
+            RefreshBindSaveButton(BindTarget.DropItem);
             UpdateBindCaptureVisuals();
         }
 
@@ -4390,7 +4396,18 @@ namespace MinecraftHelper
                 return;
             }
 
-            _overlayHud ??= new OverlayHudWindow();
+            if (_overlayHud == null)
+            {
+                var overlay = new OverlayHudWindow();
+                overlay.Closed += (_, __) =>
+                {
+                    if (ReferenceEquals(_overlayHud, overlay))
+                        _overlayHud = null;
+                };
+                _overlayHud = overlay;
+            }
+
+            _overlayHud.SetOwnerWindowHandle(_targetGameWindowHandle);
             _overlayHud.UpdateEntries(entries);
             UpdateOverlayLayout();
         }
@@ -4521,6 +4538,11 @@ namespace MinecraftHelper
             int max = ParseNonNegativeInt(TxtAutoLeftMaxCps.Text);
             string bindLabel = GetConfiguredBindLabel(TxtAutoLeftKey.Text);
             string runtimeState = GetRuntimeStateLabel(_autoLeftRuntimeEnabled);
+            string activationMode = ChkAutoLeftHoldBindMode.IsChecked == true
+                ? "Trzymanie bindu"
+                : ChkAutoLeftComboMode.IsChecked == true
+                    ? "Bind + LPM"
+                    : "Przełącznik";
             string dabState = ChkAutoLeftDabMode.IsChecked != true
                 ? "OFF"
                 : _autoLeftDabHolding
@@ -4529,6 +4551,7 @@ namespace MinecraftHelper
             string body =
                 $"Bind: {bindLabel}\n" +
                 $"Stan: {runtimeState}\n" +
+                $"Tryb: {activationMode}\n" +
                 $"CPS: {min}-{max}\n" +
                 $"DAB (O): {dabState}";
 
@@ -4541,9 +4564,15 @@ namespace MinecraftHelper
             int max = ParseNonNegativeInt(TxtAutoRightMaxCps.Text);
             string bindLabel = GetConfiguredBindLabel(TxtAutoRightKey.Text);
             string runtimeState = GetRuntimeStateLabel(_autoRightRuntimeEnabled);
+            string activationMode = ChkAutoRightHoldBindMode.IsChecked == true
+                ? "Trzymanie bindu"
+                : ChkAutoRightComboMode.IsChecked == true
+                    ? "Bind + PPM"
+                    : "Przełącznik";
             string body =
                 $"Bind: {bindLabel}\n" +
                 $"Stan: {runtimeState}\n" +
+                $"Tryb: {activationMode}\n" +
                 $"CPS: {min}-{max}";
 
             return new OverlayHudEntry("AUTO PPM", body, _isPausedByCursorVisibility ? OverlayHudTone.Warning : OverlayHudTone.Active);
@@ -4649,6 +4678,20 @@ namespace MinecraftHelper
 
             switch (_inventoryCleanupStage)
             {
+                case InventoryCleanupStage.ReturnToMiningStart:
+                    state = "Powrót na start przed Auto EQ";
+                    progressLine = CbKopacz633Direction.SelectedIndex == 2
+                        ? "Trzymanie pełnego A + S"
+                        : "Trzymanie pełnego A";
+                    break;
+
+                case InventoryCleanupStage.OpenInventory:
+                    state = "Otwieranie EQ";
+                    progressLine = _inventoryCleanupOwner == InventoryCleanupOwner.Kopacz633
+                        ? "Pozycja startowa przywrócona"
+                        : "Przygotowanie skanowania";
+                    break;
+
                 case InventoryCleanupStage.WaitForInventory:
                     state = "Otwieranie i skanowanie EQ";
                     progressLine = $"Próba wykrywania: {Math.Max(1, _inventoryCleanupDetectionAttempts + 1)}/{InventoryCleanupMaximumDetectionAttempts}";
@@ -5098,6 +5141,7 @@ namespace MinecraftHelper
             TxtAutoLeftMinCps.IsEnabled = autoLeftOn;
             TxtAutoLeftMaxCps.IsEnabled = autoLeftOn;
             ChkAutoLeftComboMode.IsEnabled = autoLeftOn;
+            ChkAutoLeftHoldBindMode.IsEnabled = autoLeftOn;
             ChkAutoLeftDabMode.IsEnabled = autoLeftOn;
 
             TxtAutoRightKey.IsEnabled = autoRightOn;
@@ -5106,6 +5150,7 @@ namespace MinecraftHelper
             TxtAutoRightMinCps.IsEnabled = autoRightOn;
             TxtAutoRightMaxCps.IsEnabled = autoRightOn;
             ChkAutoRightComboMode.IsEnabled = autoRightOn;
+            ChkAutoRightHoldBindMode.IsEnabled = autoRightOn;
 
             if (!manualOn)
             {
@@ -5772,7 +5817,7 @@ namespace MinecraftHelper
             if (key == Key.None)
                 return;
 
-            string keyText = key.ToString();
+            string keyText = key == Key.Return ? "Enter" : key.ToString();
             if (_bindyCaptureEntry != null)
             {
                 BindyEntry bindyEntry = _bindyCaptureEntry;
@@ -5820,6 +5865,13 @@ namespace MinecraftHelper
             if (keyText == null)
                 return;
 
+            if (_bindyCaptureEntry == null && IsMinecraftControlKeyTarget(_bindCaptureTarget))
+            {
+                UpdateStatusBar("Sterowanie Minecrafta: wybierz klawisz klawiatury, nie przycisk myszy.", "Orange");
+                e.Handled = true;
+                return;
+            }
+
             if (_bindyCaptureEntry != null)
             {
                 BindyEntry bindyEntry = _bindyCaptureEntry;
@@ -5859,8 +5911,15 @@ namespace MinecraftHelper
             if (textBox == null)
                 return;
 
+            if (IsMinecraftControlKeyTarget(target) && !IsSupportedMinecraftControlKey(keyText))
+            {
+                UpdateStatusBar($"{GetBindTargetLabel(target)}: wybierz prawidłowy klawisz klawiatury.", "Orange");
+                return;
+            }
+
             string ownerId = GetBindOwnerId(target);
-            if (TryFindBindConflict(keyText, ownerId, out string conflictOwnerLabel))
+            if (!IsMinecraftControlKeyTarget(target)
+                && TryFindBindConflict(keyText, ownerId, out string conflictOwnerLabel))
             {
                 ShowBindConflict(keyText, conflictOwnerLabel, GetBindTargetLabel(target));
                 return;
@@ -6033,6 +6092,41 @@ namespace MinecraftHelper
         private void BtnTestAutoFishingCaptureBind_Click(object sender, RoutedEventArgs e)
         {
             ConfirmPendingBind(BindTarget.TestAutoFishingCaptureArea);
+        }
+
+        private void BtnChatOpenKeySave_Click(object sender, RoutedEventArgs e)
+        {
+            ConfirmPendingBind(BindTarget.ChatOpen);
+        }
+
+        private void BtnDropItemKeySave_Click(object sender, RoutedEventArgs e)
+        {
+            ConfirmPendingBind(BindTarget.DropItem);
+        }
+
+        private void BtnResetMinecraftControlKey_Click(object sender, RoutedEventArgs e)
+        {
+            if (_isLoadingUi || sender is not Button button)
+                return;
+            if (!Enum.TryParse(button.Tag?.ToString(), out BindTarget target)
+                || !IsMinecraftControlKeyTarget(target))
+            {
+                return;
+            }
+
+            string defaultKey = target == BindTarget.ChatOpen ? "T" : "Q";
+            TextBox? textBox = GetBindTextBox(target);
+            if (textBox == null)
+                return;
+
+            textBox.Text = defaultKey;
+            _pendingBindValues.Remove(target);
+            if (_bindCaptureTarget == target)
+                _bindCaptureTarget = BindTarget.None;
+            RefreshBindSaveButton(target);
+            UpdateBindCaptureVisuals();
+            MarkDirty();
+            UpdateStatusBar($"Przywrócono {defaultKey} dla: {GetBindTargetLabel(target)}.", "Green");
         }
 
         private async void BtnTestSelectCaptureArea_Click(object sender, RoutedEventArgs e)
@@ -6604,6 +6698,7 @@ namespace MinecraftHelper
             _settings.AutoLeftButton.MinCps = ParseNonNegativeInt(TxtAutoLeftMinCps.Text);
             _settings.AutoLeftButton.MaxCps = ParseNonNegativeInt(TxtAutoLeftMaxCps.Text);
             _settings.AutoLeftComboMode = ChkAutoLeftComboMode.IsChecked ?? false;
+            _settings.AutoLeftHoldBindMode = ChkAutoLeftHoldBindMode.IsChecked == true;
             _settings.AutoLeftDabMode = ChkAutoLeftDabMode.IsChecked == true;
 
             _settings.AutoRightButton.Enabled = ChkAutoRightEnabled.IsChecked ?? false;
@@ -6611,6 +6706,7 @@ namespace MinecraftHelper
             _settings.AutoRightButton.MinCps = ParseNonNegativeInt(TxtAutoRightMinCps.Text);
             _settings.AutoRightButton.MaxCps = ParseNonNegativeInt(TxtAutoRightMaxCps.Text);
             _settings.AutoRightComboMode = ChkAutoRightComboMode.IsChecked ?? false;
+            _settings.AutoRightHoldBindMode = ChkAutoRightHoldBindMode.IsChecked == true;
 
             // Legacy mirror for older settings format compatibility
             _settings.MacroLeftButton.Enabled = _settings.HoldEnabled && _settings.HoldLeftEnabled;
@@ -6709,6 +6805,8 @@ namespace MinecraftHelper
             _settings.OverlayHudEnabled = ChkOverlayHudEnabled.IsChecked == true;
             _settings.OverlayAnimationsEnabled = ChkOverlayAnimationsEnabled.IsChecked == true;
             _settings.AnimatedBackgroundEnabled = ChkAnimatedBackgroundEnabled.IsChecked != false;
+            _settings.ChatOpenKey = NormalizeMinecraftControlKey(TxtChatOpenKey.Text, "T");
+            _settings.DropItemKey = NormalizeMinecraftControlKey(TxtDropItemKey.Text, "Q");
             _settings.OverlayMonitorIndex = Math.Max(0, CbOverlayMonitor?.SelectedIndex ?? 0);
             _settings.OverlayCorner = ToOverlayCornerSetting(GetSelectedOverlayCorner());
 
@@ -6948,155 +7046,10 @@ namespace MinecraftHelper
             TxtTestFastUpExitPlaceMsValue.Text = $"{NormalizeFastUpPlaceAfterJumpMs(valueMs)} ms";
         }
 
-        private void UpdateTestF3Estimator()
-        {
-            if (TxtTestLiveEntities != null)
-                TxtTestLiveEntities.Text = "-";
-        }
-
-        private void UpdateTestF3Status(string state, bool success)
-        {
-            // Kompas i dodatkowe statusy są wyłączone w trybie testowym.
-        }
-
         private void ClearTestF3LiveReadings()
         {
             if (TxtTestLiveEntities != null)
                 TxtTestLiveEntities.Text = "-";
-
-            _f3ConsecutiveReadFailures = 0;
-        }
-
-        private void RegisterF3ReadFailure(bool hardReset)
-        {
-            if (hardReset)
-            {
-                _f3ConsecutiveReadFailures = F3ReadFailureTolerance;
-                ClearTestF3LiveReadings();
-                return;
-            }
-
-            _f3ConsecutiveReadFailures++;
-            if (_f3ConsecutiveReadFailures >= F3ReadFailureTolerance)
-                ClearTestF3LiveReadings();
-        }
-
-        private void MarkF3ReadSuccess()
-        {
-            _f3ConsecutiveReadFailures = 0;
-        }
-
-        private void UpdateTestF3Estimator(int visibleNow, int loadedNow, bool hasEntityRatio)
-        {
-            if (TxtTestLiveEntities == null)
-                return;
-
-            if (hasEntityRatio && loadedNow > 0)
-            {
-                TxtTestLiveEntities.Text = $"{visibleNow}/{loadedNow}";
-                return;
-            }
-
-            TxtTestLiveEntities.Text = "-";
-        }
-
-        private async void RunF3AnalysisTick(object? sender, EventArgs e)
-        {
-            if (_isLoadingUi || _isF3AnalysisInProgress)
-                return;
-            if (ChkTestEntitiesEnabled?.IsChecked != true)
-                return;
-
-            if (!_isMinecraftFocused || _targetGameWindowHandle == IntPtr.Zero)
-            {
-                UpdateTestF3Status("Czekam na fokus gry", success: false);
-                RegisterF3ReadFailure(hardReset: true);
-                RefreshOverlayHud(DateTime.UtcNow);
-                return;
-            }
-
-            if (!EnsureF3TesseractEngine())
-            {
-                UpdateTestF3Status("Brak pliku OCR eng.traineddata", success: false);
-                RegisterF3ReadFailure(hardReset: true);
-                RefreshOverlayHud(DateTime.UtcNow);
-                return;
-            }
-
-            if (!TryGetF3CaptureArea(_targetGameWindowHandle, out Drawing.Rectangle captureArea))
-            {
-                UpdateTestF3Status("Nie mogę wyznaczyć obszaru F3", success: false);
-                RegisterF3ReadFailure(hardReset: true);
-                RefreshOverlayHud(DateTime.UtcNow);
-                return;
-            }
-
-            _isF3AnalysisInProgress = true;
-            try
-            {
-                F3TelemetryRead telemetryRead = await ReadF3TelemetryAsync(captureArea);
-                if (!telemetryRead.Success)
-                {
-                    UpdateTestF3Status("Brak czytelnych danych F3", success: false);
-                    RegisterF3ReadFailure(hardReset: false);
-                    RefreshOverlayHud(DateTime.UtcNow);
-                    return;
-                }
-
-                int visibleNow = telemetryRead.VisibleNow;
-                int loadedNow = telemetryRead.LoadedNow;
-                bool hasEntityRatio = telemetryRead.HasEntityRatio;
-
-                UpdateTestF3Estimator(visibleNow, loadedNow, hasEntityRatio);
-                MarkF3ReadSuccess();
-                RefreshOverlayHud(DateTime.UtcNow);
-            }
-            catch (Exception ex)
-            {
-                UpdateTestF3Status("Błąd OCR: " + ex.Message, success: false);
-                RegisterF3ReadFailure(hardReset: false);
-                RefreshOverlayHud(DateTime.UtcNow);
-            }
-            finally
-            {
-                _isF3AnalysisInProgress = false;
-            }
-        }
-
-        private bool TryGetF3CaptureArea(IntPtr windowHandle, out Drawing.Rectangle captureArea)
-        {
-            if (TryGetCustomF3CaptureArea(windowHandle, out captureArea))
-                return true;
-            return TryGetDefaultF3CaptureArea(windowHandle, out captureArea);
-        }
-
-        private bool TryGetCustomF3CaptureArea(IntPtr windowHandle, out Drawing.Rectangle captureArea)
-        {
-            captureArea = Drawing.Rectangle.Empty;
-            if (!HasCustomCaptureAreaConfigured())
-                return false;
-            if (!TryGetWindowClientRectOnScreen(windowHandle, out RECT clientRect))
-                return false;
-
-            int clientWidth = Math.Max(0, clientRect.Right - clientRect.Left);
-            int clientHeight = Math.Max(0, clientRect.Bottom - clientRect.Top);
-            if (clientWidth < MinimumCaptureSelectionSize || clientHeight < MinimumCaptureSelectionSize)
-                return false;
-
-            int offsetX = Math.Clamp(_settings.TestCustomCaptureX, 0, Math.Max(0, clientWidth - MinimumCaptureSelectionSize));
-            int offsetY = Math.Clamp(_settings.TestCustomCaptureY, 0, Math.Max(0, clientHeight - MinimumCaptureSelectionSize));
-            int width = Math.Clamp(_settings.TestCustomCaptureWidth, MinimumCaptureSelectionSize, Math.Max(MinimumCaptureSelectionSize, clientWidth - offsetX));
-            int height = Math.Clamp(_settings.TestCustomCaptureHeight, MinimumCaptureSelectionSize, Math.Max(MinimumCaptureSelectionSize, clientHeight - offsetY));
-
-            if (offsetX + width > clientWidth)
-                width = clientWidth - offsetX;
-            if (offsetY + height > clientHeight)
-                height = clientHeight - offsetY;
-            if (width < MinimumCaptureSelectionSize || height < MinimumCaptureSelectionSize)
-                return false;
-
-            captureArea = new Drawing.Rectangle(clientRect.Left + offsetX, clientRect.Top + offsetY, width, height);
-            return true;
         }
 
         private bool TryGetTestAutoFishingCaptureArea(IntPtr windowHandle, out Drawing.Rectangle captureArea)
@@ -7125,23 +7078,6 @@ namespace MinecraftHelper
 
             captureArea = new Drawing.Rectangle(clientRect.Left + offsetX, clientRect.Top + offsetY, width, height);
             return true;
-        }
-
-        private static bool TryGetDefaultF3CaptureArea(IntPtr windowHandle, out Drawing.Rectangle captureArea)
-        {
-            captureArea = Drawing.Rectangle.Empty;
-            if (!TryGetWindowClientRectOnScreen(windowHandle, out RECT clientRect))
-                return false;
-
-            int clientWidth = Math.Max(0, clientRect.Right - clientRect.Left);
-            int clientHeight = Math.Max(0, clientRect.Bottom - clientRect.Top);
-            if (clientWidth < 220 || clientHeight < 120)
-                return false;
-
-            int width = Math.Min(F3CaptureWidth, Math.Max(220, clientWidth - F3CaptureMargin * 2));
-            int height = Math.Min(F3CaptureHeight, Math.Max(120, clientHeight - F3CaptureMargin * 2));
-            captureArea = new Drawing.Rectangle(clientRect.Left + F3CaptureMargin, clientRect.Top + F3CaptureMargin, width, height);
-            return captureArea.Width > 0 && captureArea.Height > 0;
         }
 
         private static bool TryGetWindowClientRectOnScreen(IntPtr windowHandle, out RECT clientRectOnScreen)
@@ -7214,44 +7150,6 @@ namespace MinecraftHelper
             return null;
         }
 
-        private async Task<F3TelemetryRead> ReadF3TelemetryAsync(Drawing.Rectangle captureArea)
-        {
-            if (_f3TesseractEngine == null)
-                return new F3TelemetryRead(false, string.Empty, 0, 0, false);
-
-            return await Task.Run(() =>
-            {
-                using Drawing.Bitmap screenshot = new Drawing.Bitmap(captureArea.Width, captureArea.Height, DrawingImaging.PixelFormat.Format32bppArgb);
-                using (Drawing.Graphics graphics = Drawing.Graphics.FromImage(screenshot))
-                {
-                    graphics.CopyFromScreen(captureArea.Left, captureArea.Top, 0, 0, captureArea.Size, Drawing.CopyPixelOperation.SourceCopy);
-                }
-
-                using Drawing.Bitmap prepared = PrepareBitmapForF3Ocr(screenshot);
-                string preparedText = RunOcrOnBitmap(prepared, TesseractPageSegMode.SparseText);
-                string rawText = RunOcrOnBitmap(screenshot, TesseractPageSegMode.SparseText);
-                string rawBlockText = RunOcrOnBitmap(screenshot, TesseractPageSegMode.SingleBlock);
-
-                var attempts = new List<(string Source, string Text)>
-                {
-                    ("prepared", preparedText),
-                    ("raw", rawText),
-                    ("raw-block", rawBlockText)
-                };
-
-                for (int i = 0; i < attempts.Count; i++)
-                {
-                    string candidateText = attempts[i].Text;
-                    if (!TryExtractF3Telemetry(candidateText, out int visibleNow, out int loadedNow, out bool hasEntityRatio))
-                        continue;
-
-                    return new F3TelemetryRead(true, candidateText, visibleNow, loadedNow, hasEntityRatio);
-                }
-
-                return new F3TelemetryRead(false, attempts[0].Text, 0, 0, false);
-            });
-        }
-
         private string RunOcrOnBitmap(Drawing.Bitmap bitmap, TesseractPageSegMode pageSegMode)
         {
             using var memoryStream = new MemoryStream();
@@ -7278,7 +7176,7 @@ namespace MinecraftHelper
             }
         }
 
-        private static Drawing.Bitmap PrepareBitmapForF3Ocr(Drawing.Bitmap source)
+        private static Drawing.Bitmap PrepareBitmapForOcr(Drawing.Bitmap source)
         {
             const int scale = 2;
             var scaled = new Drawing.Bitmap(source.Width * scale, source.Height * scale, DrawingImaging.PixelFormat.Format32bppArgb);
@@ -7342,195 +7240,6 @@ namespace MinecraftHelper
             }
 
             return scaled;
-        }
-
-        private static bool TryExtractF3Telemetry(string rawText, out int visibleNow, out int loadedNow, out bool hasEntityRatio)
-        {
-            visibleNow = 0;
-            loadedNow = 0;
-            hasEntityRatio = false;
-
-            string filtered = FilterOcrTextForEParsing(rawText);
-            if (!TryExtractEntitiesFromESection(filtered, out visibleNow, out loadedNow))
-                return false;
-
-            hasEntityRatio = true;
-            return true;
-        }
-
-        private static bool TryExtractEntitiesFromESection(string rawText, out int visibleNow, out int loadedNow)
-        {
-            visibleNow = 0;
-            loadedNow = 0;
-            if (string.IsNullOrWhiteSpace(rawText))
-                return false;
-
-            string normalized = NormalizeOcrText(rawText);
-            if (string.IsNullOrWhiteSpace(normalized))
-                return false;
-
-            string[] lines = normalized.Split('\n');
-            for (int i = 0; i < lines.Length; i++)
-            {
-                string line = CompactWhitespace(lines[i]).Trim();
-                if (line.Length == 0)
-                    continue;
-
-                if (!TryParseEntityLine(line, out int parsedVisible, out int parsedLoaded))
-                    continue;
-
-                visibleNow = parsedVisible;
-                loadedNow = parsedLoaded;
-                return true;
-            }
-
-            Match blockMatch = F3EntityFromBlockRegex.Match(normalized);
-            if (blockMatch.Success)
-            {
-                string left = NormalizeEntityNumberToken(blockMatch.Groups[1].Value);
-                string right = NormalizeEntityNumberToken(blockMatch.Groups[2].Value);
-                if (int.TryParse(left, NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsedVisible)
-                    && int.TryParse(right, NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsedLoaded)
-                    && parsedLoaded > 0
-                    && parsedVisible >= 0
-                    && parsedVisible <= parsedLoaded)
-                {
-                    visibleNow = parsedVisible;
-                    loadedNow = parsedLoaded;
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        private static string FilterOcrTextForEParsing(string rawText)
-        {
-            if (string.IsNullOrWhiteSpace(rawText))
-                return string.Empty;
-
-            var builder = new StringBuilder(rawText.Length);
-            for (int i = 0; i < rawText.Length; i++)
-            {
-                char c = rawText[i];
-                if (char.IsLetterOrDigit(c)
-                    || char.IsWhiteSpace(c)
-                    || c == ':' || c == ';' || c == '/' || c == '\\'
-                    || c == '|' || c == '.' || c == ',' || c == '-'
-                    || c == '(' || c == ')')
-                {
-                    builder.Append(c);
-                }
-            }
-
-            return builder.ToString();
-        }
-
-        private static bool TryParseEntityLine(string rawLine, out int visibleNow, out int loadedNow)
-        {
-            visibleNow = 0;
-            loadedNow = 0;
-            if (string.IsNullOrWhiteSpace(rawLine))
-                return false;
-
-            string normalizedLine = CompactWhitespace(rawLine).Trim();
-            if (normalizedLine.Length == 0)
-                return false;
-
-            Match match = F3EntityOnlyLineRegex.Match(normalizedLine);
-            if (!match.Success)
-                return false;
-
-            string left = NormalizeEntityNumberToken(match.Groups[1].Value);
-            string right = NormalizeEntityNumberToken(match.Groups[2].Value);
-            if (!int.TryParse(left, NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsedVisible))
-                return false;
-            if (!int.TryParse(right, NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsedLoaded))
-                return false;
-            if (parsedLoaded <= 0)
-                return false;
-            if (parsedVisible < 0 || parsedVisible > parsedLoaded)
-                return false;
-
-            visibleNow = parsedVisible;
-            loadedNow = parsedLoaded;
-            return true;
-        }
-
-        private static string NormalizeEntityNumberToken(string token)
-        {
-            if (string.IsNullOrWhiteSpace(token))
-                return string.Empty;
-
-            string normalized = token
-                .Replace('I', '1')
-                .Replace('l', '1')
-                .Replace('O', '0')
-                .Replace('o', '0');
-
-            var builder = new StringBuilder(normalized.Length);
-            for (int i = 0; i < normalized.Length; i++)
-            {
-                char c = normalized[i];
-                if (char.IsDigit(c))
-                    builder.Append(c);
-            }
-
-            return builder.ToString();
-        }
-
-        private static string NormalizeOcrText(string rawText)
-        {
-            if (string.IsNullOrWhiteSpace(rawText))
-                return string.Empty;
-
-            string text = rawText
-                .Replace("\r\n", "\n", StringComparison.Ordinal)
-                .Replace('\r', '\n')
-                .Replace('\u00A0', ' ');
-
-            string[] lines = text.Split('\n');
-            var builder = new StringBuilder(text.Length);
-
-            foreach (string rawLine in lines)
-            {
-                string line = CompactWhitespace(rawLine);
-                if (line.Length == 0)
-                    continue;
-
-                if (builder.Length > 0)
-                    builder.Append('\n');
-                builder.Append(line);
-            }
-
-            return builder.ToString();
-        }
-
-        private static string CompactWhitespace(string value)
-        {
-            if (string.IsNullOrEmpty(value))
-                return string.Empty;
-
-            var builder = new StringBuilder(value.Length);
-            bool hasPendingSpace = false;
-            foreach (char character in value)
-            {
-                if (char.IsWhiteSpace(character))
-                {
-                    hasPendingSpace = builder.Length > 0;
-                    continue;
-                }
-
-                if (hasPendingSpace)
-                {
-                    builder.Append(' ');
-                    hasPendingSpace = false;
-                }
-
-                builder.Append(character);
-            }
-
-            return builder.ToString().Trim();
         }
 
         private string GetRuntimeStateLabel(bool enabled)
@@ -7711,6 +7420,10 @@ namespace MinecraftHelper
             string normalized = keyText.Trim();
             switch (normalized.ToUpperInvariant())
             {
+                case "ENTER":
+                case "RETURN":
+                    virtualKey = VK_RETURN;
+                    return true;
                 case "MOUSEMIDDLE":
                     virtualKey = VK_MBUTTON;
                     return true;
@@ -7727,6 +7440,46 @@ namespace MinecraftHelper
 
             virtualKey = KeyInterop.VirtualKeyFromKey(key);
             return virtualKey != 0;
+        }
+
+        private static bool IsSupportedMinecraftControlKey(string keyText)
+        {
+            if (!TryGetVirtualKey(keyText, out int virtualKey))
+                return false;
+
+            return virtualKey is not VK_LBUTTON
+                and not VK_RBUTTON
+                and not VK_MBUTTON
+                and not VK_XBUTTON1
+                and not VK_XBUTTON2;
+        }
+
+        private static string NormalizeMinecraftControlKey(string? keyText, string fallback)
+        {
+            string normalized = string.IsNullOrWhiteSpace(keyText) ? fallback : keyText.Trim();
+            if (string.Equals(normalized, "Return", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalized, "Enter", StringComparison.OrdinalIgnoreCase))
+            {
+                normalized = "Enter";
+            }
+            return IsSupportedMinecraftControlKey(normalized) ? normalized : fallback;
+        }
+
+        private int GetConfiguredChatOpenVirtualKey()
+        {
+            string keyText = NormalizeMinecraftControlKey(TxtChatOpenKey?.Text, "T");
+            return TryGetVirtualKey(keyText, out int virtualKey) ? virtualKey : VK_T;
+        }
+
+        private int GetConfiguredDropItemVirtualKey()
+        {
+            string keyText = NormalizeMinecraftControlKey(TxtDropItemKey?.Text, "Q");
+            return TryGetVirtualKey(keyText, out int virtualKey) ? virtualKey : VK_Q;
+        }
+
+        private void SendChatOpenKeyTap()
+        {
+            SendKeyTap(GetConfiguredChatOpenVirtualKey());
         }
 
         private static bool IsVirtualKeyDown(int virtualKey)
@@ -7870,6 +7623,44 @@ namespace MinecraftHelper
             return changed;
         }
 
+        private bool TryHandleAutoHoldBind(
+            string bindKeyText,
+            ref bool bindWasDown,
+            ref bool runtimeEnabled,
+            string enabledMessage,
+            string disabledMessage,
+            bool allowEnable,
+            string blockedMessage)
+        {
+            bool bindDown = IsConfiguredBindKeyDown(bindKeyText);
+            bool changed = false;
+
+            if (bindDown && !bindWasDown && !runtimeEnabled)
+            {
+                if (allowEnable)
+                {
+                    runtimeEnabled = true;
+                    UpdateStatusBar(enabledMessage, "Orange");
+                    changed = true;
+                }
+                else
+                {
+                    UpdateStatusBar(blockedMessage, "Red");
+                }
+            }
+            else if (!bindDown && runtimeEnabled)
+            {
+                runtimeEnabled = false;
+                UpdateStatusBar(disabledMessage, "Orange");
+                changed = true;
+            }
+
+            // A press made while a GUI is open is deliberately consumed here.
+            // Closing the GUI while the key is still held must not start clicking.
+            bindWasDown = bindDown;
+            return changed;
+        }
+
         private bool TryToggleHoldLeftClicking(DateTime now)
         {
             // GetAsyncKeyState also sees our injected clicks. Use the low-level hook
@@ -7993,6 +7784,14 @@ namespace MinecraftHelper
             // Bind toggles can be changed only while Minecraft window has focus.
             if (!_isMinecraftFocused || !targetWindowFocusedNow)
             {
+                if (_inventoryCleanupStage == InventoryCleanupStage.ReturnToMiningStart)
+                {
+                    DateTime focusLostAtUtc = DateTime.UtcNow;
+                    ResetInventoryCleanupState(scheduleNext: false, focusLostAtUtc);
+                    _nextInventoryCleanupAtUtc = focusLostAtUtc;
+                    UpdateInventoryCleanupStatus("Powrót przed Auto EQ przerwany po utracie fokusu. Próba zostanie ponowiona po powrocie do gry.", "Orange");
+                }
+
                 // Keep key state in sync to avoid accidental toggle right after refocus.
                 _holdBindWasDown = IsConfiguredBindKeyDown(TxtMacroManualKey.Text);
                 _autoLeftBindWasDown = IsConfiguredBindKeyDown(TxtAutoLeftKey.Text);
@@ -8142,8 +7941,27 @@ namespace MinecraftHelper
 
             if (!internalCommandTyping && autoLeftModeSelected)
             {
+                bool autoLeftHoldBindMode = ChkAutoLeftHoldBindMode.IsChecked == true;
                 bool autoLeftComboMode = ChkAutoLeftComboMode.IsChecked == true;
-                if (autoLeftComboMode)
+                if (autoLeftHoldBindMode)
+                {
+                    _autoLeftComboTriggerWasDown = false;
+                    _autoLeftComboStopWasDown = false;
+                    if (TryHandleAutoHoldBind(
+                        TxtAutoLeftKey.Text,
+                        ref _autoLeftBindWasDown,
+                        ref _autoLeftRuntimeEnabled,
+                        "AUTO LPM aktywowane (trzymanie bindu)",
+                        "AUTO LPM wyłączone (puszczono bind)",
+                        allowEnable: !cursorVisibleForActivation,
+                        blockedMessage: "Nie uruchomiono AUTO LPM: zamknij ekwipunek, chat lub inne GUI."))
+                    {
+                        if (_autoLeftRuntimeEnabled)
+                            StopExclusivePointerMacrosForClicker();
+                        changed = true;
+                    }
+                }
+                else if (autoLeftComboMode)
                 {
                     _autoLeftBindWasDown = IsConfiguredBindKeyDown(TxtAutoLeftKey.Text);
                     if (TryHandleAutoComboToggle(
@@ -8192,8 +8010,27 @@ namespace MinecraftHelper
 
             if (!internalCommandTyping && autoRightModeSelected)
             {
+                bool autoRightHoldBindMode = ChkAutoRightHoldBindMode.IsChecked == true;
                 bool autoRightComboMode = ChkAutoRightComboMode.IsChecked == true;
-                if (autoRightComboMode)
+                if (autoRightHoldBindMode)
+                {
+                    _autoRightComboTriggerWasDown = false;
+                    _autoRightComboStopWasDown = false;
+                    if (TryHandleAutoHoldBind(
+                        TxtAutoRightKey.Text,
+                        ref _autoRightBindWasDown,
+                        ref _autoRightRuntimeEnabled,
+                        "AUTO PPM aktywowane (trzymanie bindu)",
+                        "AUTO PPM wyłączone (puszczono bind)",
+                        allowEnable: !cursorVisibleForActivation,
+                        blockedMessage: "Nie uruchomiono AUTO PPM: zamknij ekwipunek, chat lub inne GUI."))
+                    {
+                        if (_autoRightRuntimeEnabled)
+                            StopExclusivePointerMacrosForClicker();
+                        changed = true;
+                    }
+                }
+                else if (autoRightComboMode)
                 {
                     _autoRightBindWasDown = IsConfiguredBindKeyDown(TxtAutoRightKey.Text);
                     if (TryHandleAutoComboToggle(
@@ -8260,7 +8097,10 @@ namespace MinecraftHelper
                 changed = true;
             }
 
-            if (!internalCommandTyping && bindyModeSelected && _bindyCommandStage == BindyCommandStage.None && TryGetPressedBindyEntry(out BindyEntry bindyEntry))
+            if (!internalCommandTyping
+                && bindyModeSelected
+                && _bindyCommandStage == BindyCommandStage.None
+                && TryGetPressedBindyEntry(allowActivation: !cursorVisibleForActivation, out BindyEntry bindyEntry))
             {
                 StartBindyRuntime(DateTime.UtcNow, bindyEntry);
                 changed = true;
@@ -8914,7 +8754,7 @@ namespace MinecraftHelper
             switch (_testAutoFishingRepairStage)
             {
                 case TestAutoFishingRepairStage.OpenChat:
-                    SendKeyTap(VK_T);
+                    SendChatOpenKeyTap();
                     _testAutoFishingRepairStage = TestAutoFishingRepairStage.TypeCommand;
                     _nextTestAutoFishingRepairStageAtUtc = now.AddMilliseconds(TestAutoFishingRepairDelayAfterOpenChatMs);
                     return true;
@@ -9263,7 +9103,9 @@ namespace MinecraftHelper
             ResetTestAutoFishingRuntimeState(now);
 
             _inventoryCleanupOwner = owner;
-            _inventoryCleanupStage = InventoryCleanupStage.WaitForInventory;
+            _inventoryCleanupStage = owner == InventoryCleanupOwner.Kopacz633
+                ? InventoryCleanupStage.ReturnToMiningStart
+                : InventoryCleanupStage.OpenInventory;
             _inventoryCleanupDetectionAttempts = 0;
             _inventoryCleanupDropPass = 0;
             _inventoryCleanupInitialMarkedStacks = 0;
@@ -9287,29 +9129,108 @@ namespace MinecraftHelper
             _inventoryCleanupEatingCompleted = false;
             _inventoryCleanupOpenedAtUtc = now;
             _inventoryCleanupLogStartError = string.Empty;
-            string cleanupOwnerLabel = GetInventoryCleanupOwnerLabel(owner);
+            if (owner == InventoryCleanupOwner.Kopacz633)
+            {
+                StartInventoryCleanupReturnToMiningStart(now);
+            }
+            else
+            {
+                _nextInventoryCleanupStageAtUtc = now;
+                UpdateInventoryCleanupStatus("Otwieranie ekwipunku...", "Orange");
+            }
+            return true;
+        }
+
+        private void StartInventoryCleanupLogSession()
+        {
+            if (!string.IsNullOrWhiteSpace(_inventoryCleanupLogSessionId))
+                return;
+
+            bool discardEverythingExceptCobblestone = ChkInventoryCleanupAllItemTypes.IsChecked == true;
             IReadOnlyList<string> selectedItemTypes = discardEverythingExceptCobblestone
                 ? Array.Empty<string>()
                 : GetSelectedInventoryCleanupItemTypes()
                     .Select(GetInventoryCleanupItemLabel)
                     .OrderBy(label => label, StringComparer.CurrentCultureIgnoreCase)
                     .ToList();
+
             if (!_miningLogService.StartInventorySession(
-                    cleanupOwnerLabel,
-                    GetMiningRunId(owner),
+                    GetInventoryCleanupOwnerLabel(_inventoryCleanupOwner),
+                    GetMiningRunId(_inventoryCleanupOwner),
                     discardEverythingExceptCobblestone ? "all-except-cobblestone" : "selected-items",
-                    cobbleXEnabled,
+                    ChkCobbleXEnabled.IsChecked == true,
                     _inventoryCleanupEatAfterCleanupPending,
-                    enabledSlots.OrderBy(slot => slot).ToList(),
+                    GetSelectedInventoryCleanupSlots().OrderBy(slot => slot).ToList(),
                     selectedItemTypes,
                     out _inventoryCleanupLogSessionId,
                     out string logStartError))
+            {
                 _inventoryCleanupLogStartError = logStartError;
+            }
+
             RefreshMiningLogsSummary();
-            SendKeyTap(VK_E);
-            _nextInventoryCleanupStageAtUtc = now.AddMilliseconds(InventoryCleanupOpenDelayMs);
-            UpdateInventoryCleanupStatus("Otwieranie ekwipunku...", "Orange");
-            return true;
+        }
+
+        private void StartInventoryCleanupReturnToMiningStart(DateTime now)
+        {
+            ReleaseInventoryCleanupReturnKeys();
+
+            bool upwardMode = CbKopacz633Direction.SelectedIndex == 2;
+            int leftBlocks = upwardMode
+                ? GetConfiguredKopacz633UpwardWidth()
+                : GetConfiguredKopacz633ForwardWidth();
+            int backwardBlocks = upwardMode
+                ? GetConfiguredKopacz633UpwardLength()
+                : 0;
+
+            _inventoryCleanupReturnLeftUntilUtc = now.AddMilliseconds(leftBlocks * Kopacz633MsPerBlock);
+            _inventoryCleanupReturnBackwardUntilUtc = backwardBlocks > 0
+                ? now.AddMilliseconds(backwardBlocks * Kopacz633MsPerBlock)
+                : DateTime.MinValue;
+
+            SetInventoryCleanupReturnLeft(down: true);
+            if (backwardBlocks > 0)
+                SetInventoryCleanupReturnBackward(down: true);
+
+            _nextInventoryCleanupStageAtUtc = backwardBlocks > 0
+                ? (_inventoryCleanupReturnLeftUntilUtc <= _inventoryCleanupReturnBackwardUntilUtc
+                    ? _inventoryCleanupReturnLeftUntilUtc
+                    : _inventoryCleanupReturnBackwardUntilUtc)
+                : _inventoryCleanupReturnLeftUntilUtc;
+
+            UpdateInventoryCleanupStatus(
+                upwardMode
+                    ? $"Auto EQ gotowe do startu. Wracam na początek: A ({leftBlocks} bl.) + S ({backwardBlocks} bl.)..."
+                    : $"Auto EQ gotowe do startu. Wracam na początek: A ({leftBlocks} bl.)...",
+                "Orange");
+        }
+
+        private void ProcessInventoryCleanupReturnToMiningStart(DateTime now)
+        {
+            if (_inventoryCleanupReturnLeftDown && now >= _inventoryCleanupReturnLeftUntilUtc)
+                SetInventoryCleanupReturnLeft(down: false);
+            if (_inventoryCleanupReturnBackwardDown && now >= _inventoryCleanupReturnBackwardUntilUtc)
+                SetInventoryCleanupReturnBackward(down: false);
+
+            if (_inventoryCleanupReturnLeftDown || _inventoryCleanupReturnBackwardDown)
+            {
+                DateTime nextReleaseAtUtc = DateTime.MaxValue;
+                if (_inventoryCleanupReturnLeftDown)
+                    nextReleaseAtUtc = _inventoryCleanupReturnLeftUntilUtc;
+                if (_inventoryCleanupReturnBackwardDown && _inventoryCleanupReturnBackwardUntilUtc < nextReleaseAtUtc)
+                    nextReleaseAtUtc = _inventoryCleanupReturnBackwardUntilUtc;
+
+                _nextInventoryCleanupStageAtUtc = nextReleaseAtUtc;
+                return;
+            }
+
+            // The upward route always restarts from its first (W) leg after A+S
+            // has pushed the player back into the starting corner.
+            _kopacz633UpwardLegIndex = 0;
+            _kopacz633MovementLegEndAtUtc = now;
+            _inventoryCleanupStage = InventoryCleanupStage.OpenInventory;
+            _nextInventoryCleanupStageAtUtc = now.AddMilliseconds(InventoryCleanupReturnSettleMs);
+            UpdateInventoryCleanupStatus("Pozycja startowa przywrócona. Za chwilę otwieram EQ...", "Orange");
         }
 
         private void ProcessInventoryCleanupStage(DateTime now)
@@ -9319,6 +9240,23 @@ namespace MinecraftHelper
 
             switch (_inventoryCleanupStage)
             {
+                case InventoryCleanupStage.ReturnToMiningStart:
+                    ProcessInventoryCleanupReturnToMiningStart(now);
+                    return;
+
+                case InventoryCleanupStage.OpenInventory:
+                    ReleaseInventoryCleanupReturnKeys();
+                    StartInventoryCleanupLogSession();
+                    SendKeyTap(VK_E);
+                    _inventoryCleanupStage = InventoryCleanupStage.WaitForInventory;
+                    _nextInventoryCleanupStageAtUtc = now.AddMilliseconds(InventoryCleanupOpenDelayMs);
+                    UpdateInventoryCleanupStatus(
+                        _inventoryCleanupOwner == InventoryCleanupOwner.Kopacz633
+                            ? "Pozycja startowa przywrócona. Otwieranie ekwipunku..."
+                            : "Otwieranie ekwipunku...",
+                        "Orange");
+                    return;
+
                 case InventoryCleanupStage.WaitForInventory:
                     DetectInventoryCleanupTargets(now);
                     return;
@@ -9349,9 +9287,10 @@ namespace MinecraftHelper
                     return;
 
                 case InventoryCleanupStage.PressDropKey:
-                    if (!SetInventoryCleanupQ(down: true))
+                    if (!SetInventoryCleanupDropKey(down: true))
                     {
-                        AbortInventoryCleanup(now, "Nie udało się nacisnąć Q.");
+                        string dropKey = NormalizeMinecraftControlKey(TxtDropItemKey.Text, "Q");
+                        AbortInventoryCleanup(now, $"Nie udało się nacisnąć klawisza wyrzucania ({dropKey}).");
                         return;
                     }
                     _inventoryCleanupStage = InventoryCleanupStage.ReleaseDropKeys;
@@ -9394,7 +9333,7 @@ namespace MinecraftHelper
                     return;
 
                 case InventoryCleanupStage.OpenCobbleXChat:
-                    SendKeyTap(VK_T);
+                    SendChatOpenKeyTap();
                     _inventoryCleanupStage = InventoryCleanupStage.TypeCobbleXCommand;
                     _nextInventoryCleanupStageAtUtc = now.AddMilliseconds(CobbleXDelayAfterOpenChatMs);
                     return;
@@ -9939,24 +9878,43 @@ namespace MinecraftHelper
             return true;
         }
 
-        private bool SetInventoryCleanupQ(bool down)
+        private bool SetInventoryCleanupDropKey(bool down)
         {
-            if (_inventoryCleanupQDown == down)
+            if (_inventoryCleanupDropKeyDown == down)
                 return true;
 
-            if (!NativeInput.SendKey(VK_Q, down))
+            if (down)
+            {
+                int virtualKey = GetConfiguredDropItemVirtualKey();
+                if (!NativeInput.SendKey(virtualKey, down: true))
+                    return false;
+
+                _inventoryCleanupDropVirtualKey = virtualKey;
+                _inventoryCleanupDropKeyDown = true;
+                return true;
+            }
+
+            int pressedVirtualKey = _inventoryCleanupDropVirtualKey != 0
+                ? _inventoryCleanupDropVirtualKey
+                : GetConfiguredDropItemVirtualKey();
+            if (!NativeInput.SendKey(pressedVirtualKey, down: false))
                 return false;
 
-            _inventoryCleanupQDown = down;
+            _inventoryCleanupDropKeyDown = false;
+            _inventoryCleanupDropVirtualKey = 0;
             return true;
         }
 
         private void ReleaseInventoryCleanupDropKeys()
         {
-            if (_inventoryCleanupQDown)
+            if (_inventoryCleanupDropKeyDown)
             {
-                NativeInput.SendKey(VK_Q, down: false);
-                _inventoryCleanupQDown = false;
+                int virtualKey = _inventoryCleanupDropVirtualKey != 0
+                    ? _inventoryCleanupDropVirtualKey
+                    : GetConfiguredDropItemVirtualKey();
+                NativeInput.SendKey(virtualKey, down: false);
+                _inventoryCleanupDropKeyDown = false;
+                _inventoryCleanupDropVirtualKey = 0;
             }
 
             if (_inventoryCleanupControlDown)
@@ -9964,6 +9922,38 @@ namespace MinecraftHelper
                 NativeInput.SendKey(VK_LCONTROL, down: false);
                 _inventoryCleanupControlDown = false;
             }
+        }
+
+        private void SetInventoryCleanupReturnLeft(bool down)
+        {
+            if (_inventoryCleanupReturnLeftDown == down)
+                return;
+
+            if (down)
+                SendKeyDown(VK_A);
+            else
+                SendKeyUp(VK_A);
+            _inventoryCleanupReturnLeftDown = down;
+        }
+
+        private void SetInventoryCleanupReturnBackward(bool down)
+        {
+            if (_inventoryCleanupReturnBackwardDown == down)
+                return;
+
+            if (down)
+                SendKeyDown(VK_S);
+            else
+                SendKeyUp(VK_S);
+            _inventoryCleanupReturnBackwardDown = down;
+        }
+
+        private void ReleaseInventoryCleanupReturnKeys()
+        {
+            SetInventoryCleanupReturnLeft(down: false);
+            SetInventoryCleanupReturnBackward(down: false);
+            _inventoryCleanupReturnLeftUntilUtc = DateTime.MinValue;
+            _inventoryCleanupReturnBackwardUntilUtc = DateTime.MinValue;
         }
 
         private InventoryCleanupStage GetInventoryCleanupPostCommandStage()
@@ -9991,6 +9981,7 @@ namespace MinecraftHelper
             }
 
             ReleaseInventoryCleanupDropKeys();
+            ReleaseInventoryCleanupReturnKeys();
             SetInventoryCleanupEatingHold(false);
             _inventoryCleanupStage = InventoryCleanupStage.None;
             _inventoryCleanupOwner = InventoryCleanupOwner.None;
@@ -10164,7 +10155,7 @@ namespace MinecraftHelper
             SetKopacz533MiningHold(false);
         }
 
-        private bool TryGetPressedBindyEntry(out BindyEntry entry)
+        private bool TryGetPressedBindyEntry(bool allowActivation, out BindyEntry entry)
         {
             entry = null!;
             var staleIds = new HashSet<string>(_bindyBindWasDownById.Keys, StringComparer.OrdinalIgnoreCase);
@@ -10192,6 +10183,11 @@ namespace MinecraftHelper
 
                 string command = (current.Command ?? string.Empty).Trim();
                 if (string.IsNullOrWhiteSpace(command))
+                    continue;
+
+                // Keep the edge state synchronized while chat, EQ or another GUI
+                // is open. The same held key cannot fire later when the GUI closes.
+                if (!allowActivation)
                     continue;
 
                 detectedEntry = current;
@@ -10248,7 +10244,7 @@ namespace MinecraftHelper
             switch (_bindyCommandStage)
             {
                 case BindyCommandStage.OpenChat:
-                    SendKeyTap(VK_T);
+                    SendChatOpenKeyTap();
                     _bindyCommandStage = BindyCommandStage.TypeCommand;
                     _nextBindyStageAtUtc = now.AddMilliseconds(BindyDelayAfterOpenChatMs);
                     return true;
@@ -10293,7 +10289,7 @@ namespace MinecraftHelper
             switch (_kopacz533CommandStage)
             {
                 case Kopacz533CommandStage.OpenChat:
-                    SendKeyTap(VK_T);
+                    SendChatOpenKeyTap();
                     _kopacz533CommandStage = Kopacz533CommandStage.TypeCommand;
                     _nextKopacz533StageAtUtc = now.AddMilliseconds(Kopacz533DelayAfterOpenChatMs);
                     return true;
@@ -10355,7 +10351,7 @@ namespace MinecraftHelper
             switch (_kopacz633CommandStage)
             {
                 case Kopacz633CommandStage.OpenChat:
-                    SendKeyTap(VK_T);
+                    SendChatOpenKeyTap();
                     _kopacz633CommandStage = Kopacz633CommandStage.TypeCommand;
                     _nextKopacz633StageAtUtc = now.AddMilliseconds(Kopacz633DelayAfterOpenChatMs);
                     return true;
@@ -10693,7 +10689,7 @@ namespace MinecraftHelper
             {
                 case JablkaCommandStage.OpenChat:
                     SendKeyTap(VK_1);
-                    SendKeyTap(VK_T);
+                    SendChatOpenKeyTap();
                     _jablkaCommandStage = JablkaCommandStage.PasteCommand;
                     _nextJablkaCommandStageAtUtc = now.AddMilliseconds(JablkaDelayAfterOpenChatMs);
                     return true;
@@ -11092,8 +11088,29 @@ namespace MinecraftHelper
             if (_isLoadingUi)
                 return;
 
+            if (ChkAutoLeftComboMode.IsChecked == true)
+                ChkAutoLeftHoldBindMode.IsChecked = false;
+
             _autoLeftRuntimeEnabled = false;
             SetAutoLeftDabHold(false);
+            _autoLeftComboTriggerWasDown = false;
+            _autoLeftComboStopWasDown = false;
+            _nextAutoLeftClickAtUtc = DateTime.UtcNow;
+            RefreshTopTiles();
+            MarkDirty();
+        }
+
+        private void ChkAutoLeftHoldBindMode_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_isLoadingUi)
+                return;
+
+            if (ChkAutoLeftHoldBindMode.IsChecked == true)
+                ChkAutoLeftComboMode.IsChecked = false;
+
+            _autoLeftRuntimeEnabled = false;
+            SetAutoLeftDabHold(false);
+            _autoLeftBindWasDown = IsConfiguredBindKeyDown(TxtAutoLeftKey.Text);
             _autoLeftComboTriggerWasDown = false;
             _autoLeftComboStopWasDown = false;
             _nextAutoLeftClickAtUtc = DateTime.UtcNow;
@@ -11121,7 +11138,27 @@ namespace MinecraftHelper
             if (_isLoadingUi)
                 return;
 
+            if (ChkAutoRightComboMode.IsChecked == true)
+                ChkAutoRightHoldBindMode.IsChecked = false;
+
             _autoRightRuntimeEnabled = false;
+            _autoRightComboTriggerWasDown = false;
+            _autoRightComboStopWasDown = false;
+            _nextAutoRightClickAtUtc = DateTime.UtcNow;
+            RefreshTopTiles();
+            MarkDirty();
+        }
+
+        private void ChkAutoRightHoldBindMode_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_isLoadingUi)
+                return;
+
+            if (ChkAutoRightHoldBindMode.IsChecked == true)
+                ChkAutoRightComboMode.IsChecked = false;
+
+            _autoRightRuntimeEnabled = false;
+            _autoRightBindWasDown = IsConfiguredBindKeyDown(TxtAutoRightKey.Text);
             _autoRightComboTriggerWasDown = false;
             _autoRightComboStopWasDown = false;
             _nextAutoRightClickAtUtc = DateTime.UtcNow;
@@ -11461,7 +11498,6 @@ namespace MinecraftHelper
             _dirtyTimer.Stop();
             _focusTimer.Stop();
             _macroTimer.Stop();
-            _f3AnalysisTimer.Stop();
             _autoReconnectTimer.Stop();
             _transientStatusTimer.Stop();
             _bindyHudClearTimer.Stop();
