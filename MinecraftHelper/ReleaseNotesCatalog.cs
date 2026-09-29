@@ -15,6 +15,17 @@ namespace MinecraftHelper
         private static readonly AppReleaseNotes[] Releases =
         {
             new AppReleaseNotes(
+                "1.1.6",
+                "Szybsza reakcja clickerów i bezpieczniejszy AUTO PPM",
+                new[]
+                {
+                    "AUTO PPM w trybie Trzymanie bindu wymaga teraz osobnego klawisza i nie może współdzielić go z AUTO LPM.",
+                    "Puszczenie bindu zatrzymuje AUTO LPM lub AUTO PPM bez oczekiwania na kolejną iterację interfejsu.",
+                    "Harmonogram kliknięć dodatkowo kontroluje stan trzymanego klawisza na własnym wątku, dzięki czemu zajęte GUI nie opóźnia zatrzymania.",
+                    "Pierwsze kliknięcie jest wykonywane natychmiast po aktywacji, a kolejne od początku zachowują pełny ustawiony rytm CPS.",
+                    "Starsza konfiguracja ze wspólnym bindem w trybie Trzymanie bindu AUTO PPM jest bezpiecznie rozdzielana przy wczytywaniu ustawień."
+                }),
+            new AppReleaseNotes(
                 "1.1.5",
                 "Wspólne bindy, czytelniejsze logi i aktualizacje",
                 new[]
@@ -102,7 +113,7 @@ namespace MinecraftHelper
             {
                 Version? version = typeof(ReleaseNotesCatalog).Assembly.GetName().Version;
                 if (version == null)
-                    return "1.1.5";
+                    return "1.1.6";
 
                 return $"{version.Major}.{version.Minor}.{Math.Max(0, version.Build)}";
             }

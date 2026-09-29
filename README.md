@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <strong>Windows 10/11</strong> · <strong>Minecraft 1.8.8</strong> · <strong>bez Forge i modów</strong> · <strong>wersja 1.1.5</strong>
+  <strong>Windows 10/11</strong> · <strong>Minecraft 1.8.8</strong> · <strong>bez Forge i modów</strong> · <strong>wersja 1.1.6</strong>
 </p>
 
 <p align="center">
@@ -81,7 +81,7 @@ W tej zakładce znajdują się funkcje związane z klikaniem oraz ich zabezpiecz
 - Tryb pełnoekranowy jest obsługiwany: przezroczysty kursor używany przez grę nie jest mylony z kursorem otwartego GUI.
 - Zakres minimalnego i maksymalnego CPS określa szybkość klikania.
 - W trybie klasycznym ustawiony bind włącza clicker, a kolejne naciśnięcie go wyłącza.
-- Tryb kombinacji uruchamia odpowiedni clicker podczas trzymania przypisanego bindu razem z fizycznym LPM albo PPM. AUTO LPM i AUTO PPM mogą korzystać z jednego wspólnego bindu, jeżeli każdy z nich ma włączony tryb kombinacji albo `Trzymanie bindu`. Wspólny bind jest blokowany w trybie klasycznym, aby jedno naciśnięcie nie przełączało przypadkowo obu makr.
+- Tryb kombinacji uruchamia odpowiedni clicker podczas trzymania przypisanego bindu razem z fizycznym LPM albo PPM. AUTO LPM i AUTO PPM mogą korzystać z jednego wspólnego bindu, jeżeli AUTO PPM działa w trybie kombinacji, a AUTO LPM w trybie kombinacji albo `Trzymanie bindu`. Tryb `Trzymanie bindu` dla AUTO PPM zawsze wymaga osobnego klawisza.
 - Opcjonalny tryb `DAB (O)` przytrzymuje klawisz `O` podczas działania AUTO LPM.
 
 Najpierw zaznacz wybrany moduł, rozwiń ustawienia, przypisz bind i zapisz konfigurację. Clicker działa tylko wtedy, gdy zapisane okno Minecrafta ma fokus.
@@ -302,6 +302,14 @@ Nie wybieraj procesu launchera. Wskaż właściwe okno Minecrafta lub używanego
 
 Jeżeli działają makra lub Kopacz, zamknięcie okna przyciskiem `X` pozostawia aplikację uruchomioną w tle. Aby całkowicie ją wyłączyć, użyj opcji `Zakończ aplikację` z menu ikony.
 
+## Zmiany w wersji 1.1.6
+
+- AUTO PPM w trybie `Trzymanie bindu` wymaga osobnego klawisza i nie może współdzielić go z AUTO LPM.
+- Puszczenie bindu natychmiast zatrzymuje AUTO LPM albo AUTO PPM, bez oczekiwania na kolejną iterację interfejsu.
+- Harmonogram kliknięć sam kontroluje stan trzymanego klawisza, dlatego chwilowo zajęte GUI nie powoduje dodatkowego kliknięcia po jego puszczeniu.
+- Pierwsze kliknięcie wykonywane jest od razu po aktywacji, a kolejne od początku zachowują pełny ustawiony rytm CPS.
+- Przy wczytywaniu starszej konfiguracji wspólny bind AUTO PPM w trybie trzymania jest bezpiecznie usuwany, aby oba clickery nie uruchomiły się jednocześnie.
+
 ## Zmiany w wersji 1.1.5
 
 - AUTO LPM i AUTO PPM mogą korzystać z jednego wspólnego bindu, jeżeli oba działają w trybie kombinacji albo `Trzymanie bindu`.
@@ -387,15 +395,15 @@ Jeżeli zauważysz błąd, problem z konfiguracją albo masz propozycję nowej f
 Najprościej uruchomić instalator:
 
 ```text
-MinecraftHelper-Setup-1.1.5.exe
+MinecraftHelper-Setup-1.1.6.exe
 ```
 
 Instalator działa dla bieżącego użytkownika, nie wymaga osobnej instalacji .NET 8, może utworzyć skrót na pulpicie i dodaje standardowy deinstalator Windows.
 
-Kontrola oficjalnego pliku instalatora wersji 1.1.5:
+Kontrola oficjalnego pliku instalatora wersji 1.1.6:
 
 ```text
-SHA-256: 5afceb59474fb28755d4e1daca536f12e7901b9e616520d46e7f752143295b4d
+SHA-256: 7e981a9b84e59d6dd5c2b59ae35a9911e3e3c7b13d08f2e72284bd7d2ef45e50
 ```
 
 ### Windows SmartScreen i Smart App Control
@@ -437,10 +445,10 @@ dotnet run --project MinecraftHelper/MinecraftHelper.csproj
 ### Budowanie instalatora
 
 ```powershell
-.\scripts\build-installer.ps1 -Version 1.1.5 -Rid win-x64 -SelfContained:$true -Clean
+.\scripts\build-installer.ps1 -Version 1.1.6 -Rid win-x64 -SelfContained:$true -Clean
 ```
 
-Wynik zostanie zapisany w `artifacts/installer/MinecraftHelper-Setup-1.1.5.exe`.
+Wynik zostanie zapisany w `artifacts/installer/MinecraftHelper-Setup-1.1.6.exe`.
 
 ### Odtworzenie paczki zasobów
 

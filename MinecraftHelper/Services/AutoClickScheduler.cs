@@ -26,6 +26,9 @@ namespace MinecraftHelper.Services
         [DllImport("user32.dll")]
         private static extern IntPtr GetForegroundWindow();
 
+        [DllImport("user32.dll")]
+        private static extern short GetAsyncKeyState(int virtualKey);
+
         [DllImport("winmm.dll", ExactSpelling = true)]
         private static extern uint timeBeginPeriod(uint periodMilliseconds);
 
@@ -47,8 +50,12 @@ namespace MinecraftHelper.Services
             int rightMinCps,
             int rightMaxCps,
             bool rightHoldPulseMode,
+            int leftRequiredHoldVirtualKey,
+            int rightRequiredHoldVirtualKey,
             IntPtr targetWindow)
         {
+            bool startLeftImmediately;
+            bool startRightImmediately;
             bool effectiveLeftEnabled;
             int effectiveLeftMinCps;
             int effectiveLeftMaxCps;
@@ -61,8 +68,22 @@ namespace MinecraftHelper.Services
                 if (_disposed)
                     return;
 
-                UpdateChannel(_left, leftEnabled, leftMinCps, leftMaxCps, holdPulseMode: false, targetWindow);
-                UpdateChannel(_right, rightEnabled, rightMinCps, rightMaxCps, rightHoldPulseMode, targetWindow);
+                startLeftImmediately = UpdateChannel(
+                    _left,
+                    leftEnabled,
+                    leftMinCps,
+                    leftMaxCps,
+                    holdPulseMode: false,
+                    leftRequiredHoldVirtualKey,
+                    targetWindow);
+                startRightImmediately = UpdateChannel(
+                    _right,
+                    rightEnabled,
+                    rightMinCps,
+                    rightMaxCps,
+                    rightHoldPulseMode,
+                    rightRequiredHoldVirtualKey,
+                    targetWindow);
                 UpdateTimerResolutionState();
                 effectiveLeftEnabled = _left.Enabled;
                 effectiveLeftMinCps = _left.MinCps;
@@ -82,11 +103,38 @@ namespace MinecraftHelper.Services
                 effectiveRightMaxCps,
                 effectiveRightHoldPulseMode,
                 targetWindow);
+
+            // Fire the first click synchronously instead of waiting for the
+            // ThreadPool timer to wake up. Following clicks keep the exact cadence.
+            if (startLeftImmediately)
+                OnTimer(_left);
+            if (startRightImmediately)
+                OnTimer(_right);
         }
 
         public void Stop()
         {
-            Update(false, 1, 1, false, 1, 1, rightHoldPulseMode: false, IntPtr.Zero);
+            Update(
+                false,
+                1,
+                1,
+                false,
+                1,
+                1,
+                rightHoldPulseMode: false,
+                leftRequiredHoldVirtualKey: 0,
+                rightRequiredHoldVirtualKey: 0,
+                IntPtr.Zero);
+        }
+
+        public void StopLeftImmediately()
+        {
+            StopChannelImmediately(_left);
+        }
+
+        public void StopRightImmediately()
+        {
+            StopChannelImmediately(_right);
         }
 
         public void Dispose()
@@ -107,12 +155,13 @@ namespace MinecraftHelper.Services
             }
         }
 
-        private void UpdateChannel(
+        private bool UpdateChannel(
             ClickChannel channel,
             bool enabled,
             int minCps,
             int maxCps,
             bool holdPulseMode,
+            int requiredHoldVirtualKey,
             IntPtr targetWindow)
         {
             enabled = enabled && targetWindow != IntPtr.Zero && minCps > 0 && maxCps > 0;
@@ -125,28 +174,46 @@ namespace MinecraftHelper.Services
                 || channel.MinCps != minCps
                 || channel.MaxCps != maxCps
                 || channel.HoldPulseMode != holdPulseMode
+                || channel.RequiredHoldVirtualKey != requiredHoldVirtualKey
                 || channel.TargetWindow != targetWindow;
             if (!changed)
-                return;
+                return false;
 
             channel.Generation++;
             channel.Enabled = enabled;
             channel.MinCps = minCps;
             channel.MaxCps = maxCps;
             channel.HoldPulseMode = holdPulseMode;
+            channel.RequiredHoldVirtualKey = requiredHoldVirtualKey;
             channel.TargetWindow = targetWindow;
             channel.NextClickTimestamp = enabled ? Stopwatch.GetTimestamp() : 0;
 
-            channel.Timer?.Change(enabled ? 0 : Timeout.Infinite, Timeout.Infinite);
+            // An enabled channel is started synchronously by Update after the lock
+            // is released. This avoids a slow ramp-up caused by timer startup.
+            channel.Timer?.Change(Timeout.Infinite, Timeout.Infinite);
+            return enabled;
         }
 
         private static void DisableChannel(ClickChannel channel)
         {
             channel.Generation++;
             channel.Enabled = false;
+            channel.RequiredHoldVirtualKey = 0;
             channel.TargetWindow = IntPtr.Zero;
             channel.NextClickTimestamp = 0;
             channel.Timer?.Change(Timeout.Infinite, Timeout.Infinite);
+        }
+
+        private void StopChannelImmediately(ClickChannel channel)
+        {
+            lock (_sync)
+            {
+                if (_disposed || !channel.Enabled)
+                    return;
+
+                DisableChannel(channel);
+                UpdateTimerResolutionState();
+            }
         }
 
         private void UpdateTimerResolutionState()
@@ -177,6 +244,7 @@ namespace MinecraftHelper.Services
             IntPtr targetWindow;
             bool leftButton;
             bool holdPulseMode;
+            int requiredHoldVirtualKey;
             lock (_sync)
             {
                 if (_disposed || !channel.Enabled || channel.Timer == null)
@@ -200,6 +268,24 @@ namespace MinecraftHelper.Services
                 targetWindow = channel.TargetWindow;
                 leftButton = channel.LeftButton;
                 holdPulseMode = channel.HoldPulseMode;
+                requiredHoldVirtualKey = channel.RequiredHoldVirtualKey;
+            }
+
+            // Hold-bind clickers must stop before another click can be emitted.
+            // This check runs on the scheduler thread and is independent from the
+            // WPF dispatcher, which can be temporarily busy rendering the GUI.
+            if (requiredHoldVirtualKey != 0 && !IsVirtualKeyDown(requiredHoldVirtualKey))
+            {
+                lock (_sync)
+                {
+                    if (!_disposed && channel.Generation == generation)
+                    {
+                        DisableChannel(channel);
+                        UpdateTimerResolutionState();
+                    }
+                }
+
+                return;
             }
 
             // Never hold _sync while SendInput synchronously passes through low-level
@@ -246,6 +332,11 @@ namespace MinecraftHelper.Services
             channel.Timer?.Change(delayMilliseconds, Timeout.Infinite);
         }
 
+        private static bool IsVirtualKeyDown(int virtualKey)
+        {
+            return (GetAsyncKeyState(virtualKey) & 0x8000) != 0;
+        }
+
         private sealed class ClickChannel
         {
             public ClickChannel(bool leftButton)
@@ -259,6 +350,7 @@ namespace MinecraftHelper.Services
             public int MinCps { get; set; } = 1;
             public int MaxCps { get; set; } = 1;
             public bool HoldPulseMode { get; set; }
+            public int RequiredHoldVirtualKey { get; set; }
             public IntPtr TargetWindow { get; set; }
             public volatile int Generation;
             public long NextClickTimestamp { get; set; }

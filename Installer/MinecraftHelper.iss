@@ -2,7 +2,7 @@
 #define MyAppExeName "MinecraftHelper.exe"
 
 #ifndef AppVersion
-  #define AppVersion "1.1.5"
+  #define AppVersion "1.1.6"
 #endif
 
 #ifndef PublishDir

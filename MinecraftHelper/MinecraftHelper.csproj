@@ -8,10 +8,10 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
-    <Version>1.1.5</Version>
-    <AssemblyVersion>1.1.5.0</AssemblyVersion>
-    <FileVersion>1.1.5.0</FileVersion>
-    <InformationalVersion>1.1.5</InformationalVersion>
+    <Version>1.1.6</Version>
+    <AssemblyVersion>1.1.6.0</AssemblyVersion>
+    <FileVersion>1.1.6.0</FileVersion>
+    <InformationalVersion>1.1.6</InformationalVersion>
     <DefaultItemExcludes>$(DefaultItemExcludes);**\bin\**;**\obj\**;bin_codex\**;obj_codex\**;bin_tmp\**;obj_codex_verify\**</DefaultItemExcludes>
   </PropertyGroup>
 

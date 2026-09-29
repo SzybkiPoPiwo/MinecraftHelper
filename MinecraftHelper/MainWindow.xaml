@@ -933,7 +933,7 @@
 
                                     <CheckBox Name="ChkAutoRightHoldBindMode"
                                               Margin="0,0,0,10"
-                                              Content="Trzymanie bindu: działa podczas trzymania (bind może być wspólny z AUTO LPM)"
+                                              Content="Trzymanie bindu: AUTO PPM działa tylko podczas trzymania osobnego bindu"
                                               Checked="ChkAutoRightHoldBindMode_Changed"
                                               Unchecked="ChkAutoRightHoldBindMode_Changed"/>
 

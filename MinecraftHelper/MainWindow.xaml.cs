@@ -1257,7 +1257,16 @@ namespace MinecraftHelper
             if (_settings.AutoLeftHoldBindMode)
                 _settings.AutoLeftComboMode = false;
             if (_settings.AutoRightHoldBindMode)
+            {
                 _settings.AutoRightComboMode = false;
+                if (!string.IsNullOrWhiteSpace(_settings.AutoRightButton.Key)
+                    && IsSameBindKey(_settings.AutoLeftButton.Key, _settings.AutoRightButton.Key))
+                {
+                    // AUTO PPM in hold-bind mode requires a separate key. Clear an
+                    // old shared assignment so both clickers cannot start together.
+                    _settings.AutoRightButton.Key = string.Empty;
+                }
+            }
 
             // These legacy modules are intentionally hidden from the streamlined UI.
             // Force them off so settings imported from an older build cannot run invisibly.
@@ -3948,13 +3957,11 @@ namespace MinecraftHelper
             bool autoLeftUsesHoldBasedActivation =
                 ChkAutoLeftComboMode.IsChecked == true
                 || ChkAutoLeftHoldBindMode.IsChecked == true;
-            bool autoRightUsesHoldBasedActivation =
-                ChkAutoRightComboMode.IsChecked == true
-                || ChkAutoRightHoldBindMode.IsChecked == true;
+            bool autoRightUsesShareableActivation = ChkAutoRightComboMode.IsChecked == true;
 
             return (isAutoLeftAndRightPair || isAutoRightAndLeftPair)
                 && autoLeftUsesHoldBasedActivation
-                && autoRightUsesHoldBasedActivation;
+                && autoRightUsesShareableActivation;
         }
 
         private bool AutoClickersUseSharedBind()
@@ -8016,6 +8023,8 @@ namespace MinecraftHelper
                     {
                         if (_autoLeftRuntimeEnabled)
                             StopExclusivePointerMacrosForClicker();
+                        else
+                            _autoClickScheduler.StopLeftImmediately();
                         changed = true;
                     }
                 }
@@ -8035,6 +8044,8 @@ namespace MinecraftHelper
                     {
                         if (_autoLeftRuntimeEnabled)
                             StopExclusivePointerMacrosForClicker();
+                        else
+                            _autoClickScheduler.StopLeftImmediately();
                         changed = true;
                     }
                 }
@@ -8054,6 +8065,8 @@ namespace MinecraftHelper
                             _autoLeftRuntimeEnabled = enabling;
                             if (_autoLeftRuntimeEnabled)
                                 StopExclusivePointerMacrosForClicker();
+                            else
+                                _autoClickScheduler.StopLeftImmediately();
                             UpdateStatusBar(_autoLeftRuntimeEnabled ? "AUTO LPM aktywowane" : "AUTO LPM wyłączone", "Orange");
                             changed = true;
                         }
@@ -8085,6 +8098,8 @@ namespace MinecraftHelper
                     {
                         if (_autoRightRuntimeEnabled)
                             StopExclusivePointerMacrosForClicker();
+                        else
+                            _autoClickScheduler.StopRightImmediately();
                         changed = true;
                     }
                 }
@@ -8104,6 +8119,8 @@ namespace MinecraftHelper
                     {
                         if (_autoRightRuntimeEnabled)
                             StopExclusivePointerMacrosForClicker();
+                        else
+                            _autoClickScheduler.StopRightImmediately();
                         changed = true;
                     }
                 }
@@ -8123,6 +8140,8 @@ namespace MinecraftHelper
                             _autoRightRuntimeEnabled = enabling;
                             if (_autoRightRuntimeEnabled)
                                 StopExclusivePointerMacrosForClicker();
+                            else
+                                _autoClickScheduler.StopRightImmediately();
                             UpdateStatusBar(_autoRightRuntimeEnabled ? "AUTO PPM aktywowane" : "AUTO PPM wyłączone", "Orange");
                             changed = true;
                         }
@@ -8173,11 +8192,13 @@ namespace MinecraftHelper
             if (!autoLeftModeSelected && _autoLeftRuntimeEnabled)
             {
                 _autoLeftRuntimeEnabled = false;
+                _autoClickScheduler.StopLeftImmediately();
                 changed = true;
             }
             if (!autoRightModeSelected && _autoRightRuntimeEnabled)
             {
                 _autoRightRuntimeEnabled = false;
+                _autoClickScheduler.StopRightImmediately();
                 changed = true;
             }
             if (!jablkaModeSelected && _jablkaRuntimeEnabled)
@@ -8377,6 +8398,8 @@ namespace MinecraftHelper
             int rightMinCps = 1;
             int rightMaxCps = 1;
             bool rightHoldPulseMode = false;
+            int leftRequiredHoldVirtualKey = 0;
+            int rightRequiredHoldVirtualKey = 0;
 
             if (!internalCommandTyping)
             {
@@ -8398,6 +8421,12 @@ namespace MinecraftHelper
                         TxtAutoLeftMaxCps.Text,
                         out leftMinCps,
                         out leftMaxCps);
+                    if (leftEnabled
+                        && ChkAutoLeftHoldBindMode.IsChecked == true
+                        && TryGetVirtualKey(TxtAutoLeftKey.Text, out int leftHoldKey))
+                    {
+                        leftRequiredHoldVirtualKey = leftHoldKey;
+                    }
                 }
 
                 if (holdModeSelected
@@ -8419,6 +8448,12 @@ namespace MinecraftHelper
                         TxtAutoRightMaxCps.Text,
                         out rightMinCps,
                         out rightMaxCps);
+                    if (rightEnabled
+                        && ChkAutoRightHoldBindMode.IsChecked == true
+                        && TryGetVirtualKey(TxtAutoRightKey.Text, out int rightHoldKey))
+                    {
+                        rightRequiredHoldVirtualKey = rightHoldKey;
+                    }
                 }
             }
 
@@ -8430,6 +8465,8 @@ namespace MinecraftHelper
                 rightMinCps,
                 rightMaxCps,
                 rightHoldPulseMode,
+                leftRequiredHoldVirtualKey,
+                rightRequiredHoldVirtualKey,
                 _targetGameWindowHandle);
         }
 
@@ -11239,12 +11276,16 @@ namespace MinecraftHelper
             if (_isLoadingUi)
                 return;
 
-            if (ChkAutoRightHoldBindMode.IsChecked != true
-                && ChkAutoRightComboMode.IsChecked != true
-                && AutoClickersUseSharedBind())
+            if (ChkAutoRightHoldBindMode.IsChecked == true && AutoClickersUseSharedBind())
             {
-                ChkAutoRightHoldBindMode.IsChecked = true;
-                ShowSharedAutoClickerBindModeConflict();
+                ChkAutoRightHoldBindMode.IsChecked = false;
+                UpdateStatusBar("AUTO PPM — Trzymanie bindu wymaga osobnego klawisza.", "Orange");
+                var dialog = new BindConflictDialogWindow(
+                    "AUTO PPM — Trzymanie bindu",
+                    TxtAutoRightKey.Text,
+                    "AUTO LPM");
+                dialog.Owner = this;
+                dialog.ShowDialog();
                 return;
             }
 
