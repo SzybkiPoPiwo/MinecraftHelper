@@ -1,5 +1,5 @@
 param(
-    [string]$Version = "1.1.6",
+    [string]$Version = "1.1.7",
     [ValidateSet("win-x64", "win-x86")]
     [string]$Rid = "win-x64",
     [bool]$SelfContained = $true,
@@ -10,50 +10,66 @@ param(
 $ErrorActionPreference = "Stop"
 
 function Resolve-IsccPath {
-    if ($env:ISCC_PATH -and (Test-Path $env:ISCC_PATH)) {
-        return $env:ISCC_PATH
+    if (-not [string]::IsNullOrWhiteSpace($env:ISCC_PATH) -and [IO.File]::Exists($env:ISCC_PATH)) {
+        return [IO.Path]::GetFullPath($env:ISCC_PATH)
     }
 
     $candidates = @(
         "C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
         "C:\Program Files\Inno Setup 6\ISCC.exe",
-        (Join-Path $env:LOCALAPPDATA "Programs\Inno Setup 6\ISCC.exe")
+        [IO.Path]::Combine($env:LOCALAPPDATA, "Programs", "Inno Setup 6", "ISCC.exe")
     )
 
     foreach ($path in $candidates) {
-        if (Test-Path $path) {
-            return $path
+        if ([IO.File]::Exists($path)) {
+            return [IO.Path]::GetFullPath($path)
         }
     }
 
-    $fromPath = Get-Command ISCC.exe -ErrorAction SilentlyContinue
-    if ($fromPath) {
-        return $fromPath.Source
+    foreach ($directory in ($env:PATH -split [IO.Path]::PathSeparator)) {
+        if ([string]::IsNullOrWhiteSpace($directory)) {
+            continue
+        }
+
+        $path = [IO.Path]::Combine($directory.Trim(), "ISCC.exe")
+        if ([IO.File]::Exists($path)) {
+            return [IO.Path]::GetFullPath($path)
+        }
     }
 
-    throw "Nie znaleziono Inno Setup Compiler (ISCC.exe). Zainstaluj Inno Setup 6 lub ustaw zmienną ISCC_PATH."
+    throw "Nie znaleziono Inno Setup Compiler (ISCC.exe). Zainstaluj Inno Setup 6 lub ustaw zmienna ISCC_PATH."
 }
 
-$repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
-$projectPath = Join-Path $repoRoot "MinecraftHelper\MinecraftHelper.csproj"
-$issPath = Join-Path $repoRoot "Installer\MinecraftHelper.iss"
-$publishDir = Join-Path $repoRoot ("artifacts\publish\" + $Rid)
-$installerOutputDir = Join-Path $repoRoot "artifacts\installer"
+function Assert-ChildPath([string]$Parent, [string]$Child) {
+    $parentPrefix = [IO.Path]::GetFullPath($Parent).TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
+    $childPath = [IO.Path]::GetFullPath($Child)
+    if (-not $childPath.StartsWith($parentPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+        throw "Odmowa operacji poza katalogiem repozytorium: $childPath"
+    }
+}
+
+$repoRoot = [IO.Path]::GetFullPath([IO.Path]::Combine($PSScriptRoot, ".."))
+$projectPath = [IO.Path]::Combine($repoRoot, "MinecraftHelper", "MinecraftHelper.csproj")
+$issPath = [IO.Path]::Combine($repoRoot, "Installer", "MinecraftHelper.iss")
+$publishDir = [IO.Path]::Combine($repoRoot, "artifacts", "publish", $Rid)
+$installerOutputDir = [IO.Path]::Combine($repoRoot, "artifacts", "installer")
+Assert-ChildPath $repoRoot $publishDir
+Assert-ChildPath $repoRoot $installerOutputDir
 
 if ($Clean) {
-    if (Test-Path $publishDir) { Remove-Item $publishDir -Recurse -Force }
-    if (Test-Path $installerOutputDir) { Remove-Item $installerOutputDir -Recurse -Force }
+    if ([IO.Directory]::Exists($publishDir)) { [IO.Directory]::Delete($publishDir, $true) }
+    if ([IO.Directory]::Exists($installerOutputDir)) { [IO.Directory]::Delete($installerOutputDir, $true) }
 }
 
-New-Item -ItemType Directory -Path $publishDir -Force | Out-Null
-New-Item -ItemType Directory -Path $installerOutputDir -Force | Out-Null
+[void][IO.Directory]::CreateDirectory($publishDir)
+[void][IO.Directory]::CreateDirectory($installerOutputDir)
 
 $selfContainedValue = if ($SelfContained) { "true" } else { "false" }
 $publishSingleFileValue = if ($SingleFile) { "true" } else { "false" }
 $includeNativeSelfExtractValue = if ($SingleFile) { "true" } else { "false" }
 $includeAllContentSelfExtractValue = if ($SingleFile) { "true" } else { "false" }
 
-Write-Host "Publikowanie aplikacji ($Rid, self-contained=$selfContainedValue, single-file=$publishSingleFileValue)..." -ForegroundColor Cyan
+[Console]::WriteLine("Publikowanie aplikacji ($Rid, self-contained=$selfContainedValue, single-file=$publishSingleFileValue)...")
 dotnet publish $projectPath `
     -c Release `
     -r $Rid `
@@ -68,24 +84,30 @@ dotnet publish $projectPath `
     -p:DebugType=None `
     -p:DebugSymbols=false `
     -o $publishDir
+if ($LASTEXITCODE -ne 0) {
+    throw "dotnet publish zakonczyl sie kodem $LASTEXITCODE."
+}
 
-$publishedExe = Join-Path $publishDir "MinecraftHelper.exe"
-if (Test-Path $publishedExe) {
-    Write-Host "Sprawdź ręcznie przed instalatorem: $publishedExe" -ForegroundColor Yellow
+$publishedExe = [IO.Path]::Combine($publishDir, "MinecraftHelper.exe")
+if ([IO.File]::Exists($publishedExe)) {
+    [Console]::WriteLine("Sprawdz recznie przed instalatorem: $publishedExe")
 }
 
 $isccPath = Resolve-IsccPath
-Write-Host "Budowanie instalatora przez ISCC: $isccPath" -ForegroundColor Cyan
+[Console]::WriteLine("Budowanie instalatora przez ISCC: $isccPath")
 
 & $isccPath `
     "/DAppVersion=$Version" `
     "/DPublishDir=$publishDir" `
     "/DInstallerOutputDir=$installerOutputDir" `
     $issPath
+if ($LASTEXITCODE -ne 0) {
+    throw "ISCC zakonczyl sie kodem $LASTEXITCODE."
+}
 
-$installerFile = Join-Path $installerOutputDir ("MinecraftHelper-Setup-" + $Version + ".exe")
-if (Test-Path $installerFile) {
-    Write-Host "Gotowe: $installerFile" -ForegroundColor Green
+$installerFile = [IO.Path]::Combine($installerOutputDir, "MinecraftHelper-Setup-" + $Version + ".exe")
+if ([IO.File]::Exists($installerFile)) {
+    [Console]::WriteLine("Gotowe: $installerFile")
 } else {
-    Write-Host "Instalator zbudowany. Sprawdź folder: $installerOutputDir" -ForegroundColor Yellow
+    throw "ISCC zakonczyl prace bez oczekiwanego pliku: $installerFile"
 }

@@ -15,6 +15,17 @@ namespace MinecraftHelper
         private static readonly AppReleaseNotes[] Releases =
         {
             new AppReleaseNotes(
+                "1.1.7",
+                "Płynniejsze działanie i pełna kontrola nad Kopaczem",
+                new[]
+                {
+                    "Globalna obsługa myszy jest aktywna tylko podczas pracy makr, dzięki czemu samo uruchomienie Minecraft Helper nie powoduje przycięć gry.",
+                    "Bind Kopacza natychmiast zatrzymuje pracę także podczas Auto EQ, wyrzucania, CobbleX, jedzenia, wpisywania komend i Auto Reconnect.",
+                    "Wyniki skanowania EQ i rozpoznawania ekranów wykonywane w tle są bezpiecznie odrzucane po zatrzymaniu albo ponownym uruchomieniu automatyzacji.",
+                    "Odliczanie komend Kopacza zatrzymuje się na czas całej sekwencji Auto EQ, CobbleX i jedzenia, a następnie wraca z zachowanym czasem.",
+                    "Logi Auto EQ pokazują teraz bezpośredni wynik czyszczenia, liczbę pozostałych stosów oraz jasny powód zakończenia lub przerwania operacji."
+                }),
+            new AppReleaseNotes(
                 "1.1.6",
                 "Szybsza reakcja clickerów i bezpieczniejszy AUTO PPM",
                 new[]
@@ -113,7 +124,7 @@ namespace MinecraftHelper
             {
                 Version? version = typeof(ReleaseNotesCatalog).Assembly.GetName().Version;
                 if (version == null)
-                    return "1.1.6";
+                    return "1.1.7";
 
                 return $"{version.Major}.{version.Minor}.{Math.Max(0, version.Build)}";
             }

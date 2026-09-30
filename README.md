@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <strong>Windows 10/11</strong> · <strong>Minecraft 1.8.8</strong> · <strong>bez Forge i modów</strong> · <strong>wersja 1.1.6</strong>
+  <strong>Windows 10/11</strong> · <strong>Minecraft 1.8.8</strong> · <strong>bez Forge i modów</strong> · <strong>wersja 1.1.7</strong>
 </p>
 
 <p align="center">
@@ -302,6 +302,14 @@ Nie wybieraj procesu launchera. Wskaż właściwe okno Minecrafta lub używanego
 
 Jeżeli działają makra lub Kopacz, zamknięcie okna przyciskiem `X` pozostawia aplikację uruchomioną w tle. Aby całkowicie ją wyłączyć, użyj opcji `Zakończ aplikację` z menu ikony.
 
+## Zmiany w wersji 1.1.7
+
+- Globalna obsługa myszy działa tylko podczas aktywnej automatyzacji. Samo uruchomienie Minecraft Helper nie powinno już powodować przycięć gry.
+- Bind Kopacza natychmiast kończy pracę również podczas Auto EQ, wyrzucania, tworzenia CobbleX, jedzenia, wykonywania komend i Auto Reconnect.
+- Spóźnione wyniki skanowania EQ i rozpoznawania ekranów są ignorowane po zatrzymaniu lub ponownym uruchomieniu automatyzacji.
+- Odliczanie zaplanowanych komend Kopacza zatrzymuje się na czas Auto EQ, CobbleX i jedzenia, a po zakończeniu rusza od zachowanej wartości.
+- Logi Auto EQ mają czytelniejsze wyniki: pokazują, czy EQ było czyste, ile stosów pozostało oraz dlaczego działanie zostało przerwane.
+
 ## Zmiany w wersji 1.1.6
 
 - AUTO PPM w trybie `Trzymanie bindu` wymaga osobnego klawisza i nie może współdzielić go z AUTO LPM.
@@ -395,15 +403,15 @@ Jeżeli zauważysz błąd, problem z konfiguracją albo masz propozycję nowej f
 Najprościej uruchomić instalator:
 
 ```text
-MinecraftHelper-Setup-1.1.6.exe
+MinecraftHelper-Setup-1.1.7.exe
 ```
 
 Instalator działa dla bieżącego użytkownika, nie wymaga osobnej instalacji .NET 8, może utworzyć skrót na pulpicie i dodaje standardowy deinstalator Windows.
 
-Kontrola oficjalnego pliku instalatora wersji 1.1.6:
+Kontrola oficjalnego pliku instalatora wersji 1.1.7:
 
 ```text
-SHA-256: 7e981a9b84e59d6dd5c2b59ae35a9911e3e3c7b13d08f2e72284bd7d2ef45e50
+SHA-256: c80525805650d4a43b63f7114aed90eaef798f137c0c5681c3f5c6f29ec6d302
 ```
 
 ### Windows SmartScreen i Smart App Control
@@ -445,10 +453,10 @@ dotnet run --project MinecraftHelper/MinecraftHelper.csproj
 ### Budowanie instalatora
 
 ```powershell
-.\scripts\build-installer.ps1 -Version 1.1.6 -Rid win-x64 -SelfContained:$true -Clean
+.\scripts\build-installer.ps1 -Version 1.1.7 -Rid win-x64 -SelfContained:$true -Clean
 ```
 
-Wynik zostanie zapisany w `artifacts/installer/MinecraftHelper-Setup-1.1.6.exe`.
+Wynik zostanie zapisany w `artifacts/installer/MinecraftHelper-Setup-1.1.7.exe`.
 
 ### Odtworzenie paczki zasobów
 
