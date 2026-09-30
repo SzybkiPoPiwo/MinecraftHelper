@@ -63,6 +63,15 @@ namespace MinecraftHelper.Services
             LogsFolderName,
             LogFileName);
 
+        public void RecordMouseHookState(bool enabled)
+        {
+            lock (_stateSync)
+            {
+                if (!_disposed)
+                    QueueLine($"MOUSE_HOOK enabled={(enabled ? 1 : 0)}");
+            }
+        }
+
         public void UpdateMacroState(
             bool leftEnabled,
             int leftMinCps,

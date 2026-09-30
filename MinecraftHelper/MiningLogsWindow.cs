@@ -748,12 +748,47 @@ namespace MinecraftHelper
 
             return entry.Status switch
             {
-                MiningLogStatuses.Completed when entry.RemainingStacks > 0 => $"Zakończono z ostrzeżeniem • {entry.DropPasses} przeb.",
-                MiningLogStatuses.Completed => $"Zakończono • {entry.DropPasses} przeb.",
-                MiningLogStatuses.Aborted => "Przerwano",
-                MiningLogStatuses.Interrupted => "Niedokończono",
-                _ => "Skanowanie w toku"
+                MiningLogStatuses.Completed when entry.RemainingStacks > 0 =>
+                    $"Nie wszystko wyrzucono • {FormatRemainingStacks(entry.RemainingStacks)} • {FormatDropPasses(entry.DropPasses)}",
+                MiningLogStatuses.Completed when entry.DropPasses == 0 => "Zakończono — EQ było czyste",
+                MiningLogStatuses.Completed => $"Zakończono — EQ wyczyszczone • {FormatDropPasses(entry.DropPasses)}",
+                MiningLogStatuses.Aborted => "Przerwano — sprawdź powód",
+                MiningLogStatuses.Interrupted => "Niedokończono — program lub makro zatrzymane",
+                _ => "Auto EQ w toku"
             };
+        }
+
+        private static string FormatRemainingStacks(int count)
+        {
+            count = Math.Max(0, count);
+            if (count == 1)
+                return "pozostał 1 stos";
+            if (UsesPolishPaucalForm(count))
+                return $"pozostały {count:N0} stosy";
+            return $"pozostało {count:N0} stosów";
+        }
+
+        private static string FormatDropPasses(int count)
+        {
+            count = Math.Max(0, count);
+            if (count == 1)
+                return "1 przebieg";
+            if (UsesPolishPaucalForm(count))
+                return $"{count:N0} przebiegi";
+            return $"{count:N0} przebiegów";
+        }
+
+        private static string FormatDropPassesAfter(int count)
+        {
+            count = Math.Max(0, count);
+            return count == 1 ? "1 przebiegu" : $"{count:N0} przebiegach";
+        }
+
+        private static bool UsesPolishPaucalForm(int count)
+        {
+            int lastTwoDigits = count % 100;
+            int lastDigit = count % 10;
+            return lastDigit is >= 2 and <= 4 && lastTwoDigits is not (>= 12 and <= 14);
         }
 
         private static Brush GetStatusBrush(MiningLogEntry entry)
@@ -812,7 +847,7 @@ namespace MinecraftHelper
             }
             if (!string.IsNullOrWhiteSpace(entry.Owner))
                 AddDetailLine(panel, "Tryb", entry.Owner, Brush(127, 200, 255));
-            AddDetailLine(panel, "Status", GetStatusLabel(entry), GetStatusBrush(entry));
+            AddDetailLine(panel, isSession ? "Wynik Auto EQ" : "Status", GetStatusLabel(entry), GetStatusBrush(entry));
 
             if (isSession)
             {
@@ -843,8 +878,20 @@ namespace MinecraftHelper
                         ? entry.EatingCompleted ? "Wykonano — slot 2, PPM 4 s, powrót na slot 1" : "Włączone, ale nie zakończono"
                         : "Wyłączone",
                     entry.EatingCompleted ? Brush(56, 214, 180) : entry.EatAfterCleanup ? Brush(251, 191, 36) : Brush(146, 166, 193));
-                AddDetailLine(panel, "Przebiegi EQ", Math.Max(0, entry.DropPasses).ToString("N0"), Brush(127, 200, 255));
-                AddDetailLine(panel, "Pozostałe stosy", Math.Max(0, entry.RemainingStacks).ToString("N0"), entry.RemainingStacks > 0 ? Brush(251, 191, 36) : Brush(56, 214, 180));
+                AddDetailLine(panel, "Przebiegi EQ", FormatDropPasses(entry.DropPasses), Brush(127, 200, 255));
+                AddDetailLine(
+                    panel,
+                    "Wynik wyrzucania",
+                    entry.RemainingStacks > 0 ? FormatRemainingStacks(entry.RemainingStacks) : "Brak pozostałych stosów — EQ czyste",
+                    entry.RemainingStacks > 0 ? Brush(251, 191, 36) : Brush(56, 214, 180));
+                if (entry.RemainingStacks > 0)
+                {
+                    AddDetailLine(
+                        panel,
+                        "Dlaczego przerwano wyrzucanie",
+                        $"Po {FormatDropPassesAfter(entry.DropPasses)} skaner nadal wykrywał przedmioty do wyrzucenia. Program zamknął EQ, aby uniknąć nieskończonej pętli.",
+                        Brush(251, 191, 36));
+                }
 
                 panel.Children.Add(new Border
                 {
