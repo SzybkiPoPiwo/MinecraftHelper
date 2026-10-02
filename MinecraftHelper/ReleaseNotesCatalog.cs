@@ -15,6 +15,17 @@ namespace MinecraftHelper
         private static readonly AppReleaseNotes[] Releases =
         {
             new AppReleaseNotes(
+                "1.1.8",
+                "AutoWater i rozbudowana ochrona Kopacza",
+                new[]
+                {
+                    "Dodano eksperymentalny AutoWater z własnym bindem, wyborem slotu wody i slotu powrotnego oraz regulowanym czasem prób PPM i zebrania wody.",
+                    "AutoWater kalibruje wzorzec pustego wiadra, pozwala przetestować rozpoznawanie przed użyciem i pokazuje bieżący etap w HUD.",
+                    "Czas prób PPM można dopasować ręcznie do wysokości, opóźnień i zachowania konkretnego serwera.",
+                    "Awaryjna ochrona Kopacza łączy wykrywanie dźwięku obrażeń, wyjście z serwera, reconnect, kontrolę kilofa i bezpieczny powrót do odpowiedniego home.",
+                    "Rozbudowano komunikaty, HUD oraz logi przebiegu ochrony awaryjnej i Auto Reconnect."
+                }),
+            new AppReleaseNotes(
                 "1.1.7",
                 "Płynniejsze działanie i pełna kontrola nad Kopaczem",
                 new[]
@@ -124,7 +135,7 @@ namespace MinecraftHelper
             {
                 Version? version = typeof(ReleaseNotesCatalog).Assembly.GetName().Version;
                 if (version == null)
-                    return "1.1.7";
+                    return "1.1.8";
 
                 return $"{version.Major}.{version.Minor}.{Math.Max(0, version.Build)}";
             }

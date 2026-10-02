@@ -5,11 +5,11 @@
 <h1 align="center">Minecraft Helper</h1>
 
 <p align="center">
-  Clickery, automatyczne kopanie, Auto EQ, CobbleX, Auto Reconnect, logi i HUD dla Minecraft 1.8.8.
+  Clickery, automatyczne kopanie, Auto EQ, Auto zbroja, CobbleX, ochrona awaryjna, Auto Reconnect, logi i HUD dla Minecraft 1.8.8.
 </p>
 
 <p align="center">
-  <strong>Windows 10/11</strong> · <strong>Minecraft 1.8.8</strong> · <strong>bez Forge i modów</strong> · <strong>wersja 1.1.7</strong>
+  <strong>Windows 10/11</strong> · <strong>Minecraft 1.8.8</strong> · <strong>bez Forge i modów</strong> · <strong>wersja 1.1.8</strong>
 </p>
 
 <p align="center">
@@ -35,7 +35,7 @@ Jeżeli korzystasz z programu pierwszy raz:
 2. Uruchom Minecraft lub BlazingPack w wersji 1.8.8 i wejdź do gry.
 3. W Minecraft Helper otwórz zakładkę `Ustawienia`.
 4. Kliknij `Odśwież`, wybierz właściwy proces gry i kliknij `Zapisz program`. Nie wybieraj launchera.
-5. Jeżeli chcesz używać Auto EQ lub Auto Reconnect, zainstaluj [paczkę zasobów Minecraft Helper](#wymagana-paczka-zasobów).
+5. Jeżeli chcesz używać Auto EQ, ochrony awaryjnej lub Auto Reconnect, zainstaluj [paczkę zasobów Minecraft Helper](#wymagana-paczka-zasobów).
 6. Otwórz interesującą Cię zakładkę, zaznacz moduł i skonfiguruj jego ustawienia.
 7. Ustaw bind, zapisz ustawienia i przejdź do Minecrafta.
 
@@ -59,7 +59,7 @@ Przy uruchomieniu program sprawdza także najnowsze publiczne wydanie na GitHubi
 | `PVP` | Automatyczne klikanie LPM i PPM, obsługa bindów oraz pauza po otwarciu GUI. |
 | `Kopacz` | Automatyczne kopanie, harmonogram komend, czyszczenie ekwipunku i tworzenie CobbleX. |
 | `BINDY` | Własne skróty, które wpisują i wysyłają przygotowane komendy na czacie. |
-| `Experimental` | Automatyczne łowienie oraz profile Auto Reconnect z powrotem do kopania. |
+| `Experimental` | Auto zbroja, AutoWater, awaryjna ochrona Kopacza, profile Auto Reconnect oraz automatyczne łowienie. |
 | `Ustawienia` | Wybór procesu Minecrafta, konfiguracja HUD, import i eksport ustawień oraz działanie aplikacji w tle. |
 
 ## PVP
@@ -180,6 +180,9 @@ Po rozwinięciu sesji widoczne są chronologicznie:
 
 - kolejne automatyczne otwarcia i skany EQ,
 - uruchomienie, wynik i wznowienie po Auto Reconnect,
+- alarm wykrycia dźwięku obrażeń i rozpoczęcie ochrony awaryjnej,
+- dołączenie do serwera, wynik kontroli kilofa oraz wykonany powrót do home,
+- wznowienie poprzedniego trybu Kopacza albo bezpieczne zakończenie programu,
 - kontrola stanu kopania,
 - wykrycie braku diamentowego kilofa i powrót do home,
 - zakończenie sesji Kopacza.
@@ -218,15 +221,46 @@ Moduł pozwala przypisać własne komendy do klawiszy. Każdy wpis może mieć o
 
 <p align="center">
   <a href="docs/images/app-experimental.png">
-    <img src="docs/images/app-experimental.png" alt="Auto Reconnect w zakładce Experimental" width="49%">
+    <img src="docs/images/app-experimental.png" alt="Awaryjna ochrona i Auto Reconnect w zakładce Experimental" width="49%">
   </a>
   <a href="docs/images/app-experimental-fishing.png">
     <img src="docs/images/app-experimental-fishing.png" alt="Auto łowienie w zakładce Experimental" width="49%">
   </a><br>
-  <sub>Auto Reconnect i autołowienie — kliknij wybrany obraz, aby otworzyć go w pełnym rozmiarze.</sub>
+  <sub>Awaryjna ochrona, Auto Reconnect i autołowienie — kliknij wybrany obraz, aby otworzyć go w pełnym rozmiarze.</sub>
 </p>
 
 Zakładka zawiera funkcje będące nadal w fazie testów. Mogą wymagać dokładniejszego ustawienia i nie zawsze zachowywać się identycznie na każdym kliencie.
+
+### Auto zbroja
+
+`Auto zbroja` podmienia aktualnie założony komplet pancerza z drugim setem przygotowanym w ekwipunku. Każdy element ma dwa niezależnie kalibrowane miejsca: slot założonej części zbroi oraz slot odpowiadającej jej części drugiego zestawu. Stary element trafia dokładnie w miejsce nowego, dzięki czemu po zakończeniu oba komplety są zamienione miejscami.
+
+Konfiguracja obejmuje osiem pól: hełm, napierśnik, spodnie i buty w kolumnie `Założony set` oraz te same cztery elementy w kolumnie `Drugi set w EQ`. Każde miejsce ustawia się osobno:
+
+1. Włącz `Auto zbroję` i ustaw jej bind.
+2. Kliknij przycisk wybranego elementu w małym panelu kalibracji.
+3. Przejdź do Minecrafta, otwórz ekwipunek i najedź kursorem na właściwy slot.
+4. Naciśnij lewy `Ctrl`. Poprawny zapis zostanie oznaczony symbolem `✓`.
+5. Powtórz czynność dla wszystkich ośmiu pól.
+6. Zamknij EQ i uruchom podmianę ustawionym bindem.
+
+Po użyciu binda program sam otwiera ekwipunek. Dla każdego elementu podnosi założoną część, zamienia ją z częścią drugiego setu i zakłada nową. Po podmianie wszystkich czterech elementów zamyka EQ. Odstęp pomiędzy kliknięciami można ustawić w zakresie `25–200 ms`; na początek zalecane jest domyślne `45 ms`.
+
+Drugi komplet musi znajdować się dokładnie w czterech skalibrowanych miejscach. Pusty albo błędnie wskazany slot może spowodować pozostawienie odpowiedniej części zbroi w ekwipunku zamiast jej założenia. Przed normalnym użyciem wykonaj próbę w bezpiecznym miejscu.
+
+Kalibracja jest zapisywana względem środka wybranego okna Minecrafta, dlatego samo przesunięcie okna jej nie psuje. Po zmianie rozdzielczości, rozmiaru okna, trybu pełnoekranowego albo ustawienia `GUI Scale` należy skalibrować wszystkie pola ponownie. Funkcja nie wymaga znaczników paczki Auto EQ, ponieważ korzysta z ręcznie zapisanych punktów.
+
+Podmiana działa wyłącznie w widocznym i aktywnym oknie gry. Ponowne naciśnięcie binda zleca przerwanie, ale dla bezpieczeństwa program najpierw kończy trzy kliknięcia bieżącego elementu, aby nie pozostawić zbroi na kursorze. Overlay pokazuje kalibrowane pole, aktualny etap podmiany, następne kliknięcie oraz bezpieczne anulowanie.
+
+### AutoWater
+
+`AutoWater` pomaga wykonać water clutch podczas spadania. Po naciśnięciu ustawionego bindu program wybiera slot z wiadrem wody, wykonuje próby PPM, rozpoznaje zmianę ikony na puste wiadro, po określonym czasie próbuje zebrać wodę i wraca na wybrany slot. Ponowne naciśnięcie bindu natychmiast anuluje sekwencję.
+
+Przed pierwszym użyciem trzeba skalibrować pustą ikonę wiadra. Umieść puste wiadro w wybranym slocie, otwórz chat Minecrafta, najedź kursorem na charakterystyczny jasnoniebieski lub szary fragment ikony i naciśnij lewy `Ctrl`. Następnie użyj przycisku `Testuj rozpoznawanie`, aby sprawdzić wynik.
+
+Ustawienie `Próba PPM co` trzeba dobrać ręcznie i przetestować na konkretnym serwerze. Przykładowo przy spadaniu z około 150 kratek dobrze może działać `40 ms`, natomiast przy mniejszych wysokościach około `50–65 ms`. Właściwa wartość zależy od serwera, opóźnień połączenia i używanego klienta.
+
+AutoWater działa tylko przy widocznym i aktywnym oknie Minecrafta. Otwarty chat, ekwipunek, inne GUI albo utrata fokusu bezpiecznie przerywają działanie. Bieżący etap jest widoczny w HUD.
 
 ### Auto łowienie
 
@@ -234,14 +268,40 @@ Zakładka zawiera funkcje będące nadal w fazie testów. Mogą wymagać dokład
 
 Po włączeniu HUD panel łowienia pokazuje godzinę rozpoczęcia i czas trwania sesji, bieżący etap detekcji, położenie spławika, liczbę brań oraz czas od ostatniego złowienia.
 
-### Auto Reconnect i powrót do kopania
+### Awaryjna ochrona Kopacza
 
-`Auto reconnect + kontrola kopania` jest mechanizmem testowym uruchamianym razem z Auto EQ. Nie otwiera ekwipunku w dodatkowym interwale — sprawdzenie odbywa się podczas zaplanowanego cyklu czyszczenia. Jeżeli gra nie otworzy EQ albo program nie rozpozna jego układu po kolejnych próbach, automat analizuje ekran i rozpoczyna odzyskiwanie połączenia.
+`Awaryjna ochrona Kopacza` łączy wykrywanie dźwięku obrażeń, wyjście z serwera, Auto Reconnect, kontrolę kilofa oraz powrót do odpowiedniego home w jeden przebieg. Funkcja jest przeznaczona dla aktywnego Kopacza 5/3/3 lub 6/3/3 i nie uruchamia automatycznej reakcji, gdy Kopacz nie pracuje.
 
-Każdy serwer ma osobny profil zawierający:
+#### Wymagania i przygotowanie
+
+- W `Ustawieniach` wybierz właściwy proces Minecrafta, a w Experimental profil serwera używany do powrotu.
+- Używaj aktualnej [paczki zasobów Minecraft Helper](#wymagana-paczka-zasobów) ze stałymi dźwiękami obrażeń `hit1`–`hit4` i znacznikami Auto EQ. Starsze paczki Minecraft Helper powinny być wyłączone.
+- Ustaw w grze `GUI Scale: Large` i sprawdź znaczniki przyciskiem `Sprawdź EQ`.
+- W profilu skonfiguruj zwykły home dla poprawnego kilofa oraz osobny home używany po potwierdzeniu jego braku.
+- Sprawdź automatycznie wykryte źródło dźwięku Minecrafta. Urządzenie awaryjne jest używane tylko wtedy, gdy Windows nie udostępnia sesji audio wybranego procesu gry.
+- Dobierz próg podobieństwa dźwięku i najpierw wykonaj próbę przyciskiem `Testuj nasłuch (15 s)`.
+
+`Tryb testowy` zapisuje alarm i pokazuje go w programie, ale nie zatrzymuje Kopacza ani nie wychodzi z serwera. Dopiero wyłączenie trybu testowego uzbraja prawdziwą reakcję `ESC → Disconnect`.
+
+#### Pełny przebieg ochrony
+
+1. Podczas aktywnego kopania program nasłuchuje dźwięku obrażeń i porównuje go ze wzorcami `hit1`–`hit4`.
+2. Po wykryciu alarmu natychmiast zatrzymuje Kopacza, zwalnia trzymane klawisze, naciska `ESC` i klika `Disconnect`.
+3. Po ustawionej liczbie sekund rozpoczyna odzyskiwanie połączenia, rozpoznaje ekran Minecrafta i korzysta z adresu `Direct Connect` zapisanego w wybranym profilu.
+4. Po wejściu na serwer otwiera EQ i kontroluje 27 pól głównego ekwipunku oraz hotbar, korzystając ze znaczników dołączonej paczki zasobów.
+5. Jeżeli wykryje diamentowy kilof, wysyła zwykłą komendę home, w razie potrzeby wybiera zapisane pole GUI, czeka na teleportację, przełącza hotbar na slot 1 i wznawia dokładnie ten tryb Kopacza, który działał przed alarmem.
+6. Jeżeli potwierdzi brak diamentowego kilofa, korzysta z osobnego home `brak kilofa`, czeka na teleportację i zamyka Minecraft Helper bez wznawiania kopania.
+
+Nasłuch obrażeń pozostaje aktywny od alarmu aż do zakończenia kontroli kilofa. Jeżeli w tym czasie ponownie pojawi się dźwięk obrażeń, procedura ponownie wykona awaryjne wyjście. Gdy ekran jest nieznany, wykryto bana albo nie udało się wiarygodnie potwierdzić układu EQ, automat zatrzymuje się bez przypadkowego klikania i bez wysyłania zastępczej komendy home.
+
+Do czasu teleportacji ustawionego w profilu program automatycznie dodaje `2 sekundy` buforu bezpieczeństwa. Przykładowo ustawienie `10 s` oznacza, że slot 1 zostanie wybrany, a kopanie wznowione dopiero po około `12 s` od wykonania home.
+
+#### Profile i dodatkowa kontrola Auto Reconnect
+
+Każdy serwer może mieć osobny profil zawierający:
 
 - nazwę profilu i adres `Direct Connect`,
-- komendę powrotu, np. `/home kopalnia`,
+- zwykłą komendę powrotu, np. `/home kopalnia`,
 - informację, czy komenda otwiera GUI,
 - czas oczekiwania, rozmiar GUI oraz pole, które należy kliknąć,
 - czas po dołączeniu, czas teleportacji i maksymalną liczbę prób,
@@ -249,18 +309,19 @@ Każdy serwer ma osobny profil zawierający:
 
 Edytor GUI obsługuje od 1 do 6 rzędów i od 1 do 9 kolumn. Rzędy są dodawane od dołu, a kolumny z prawej strony. Jeżeli `/home` nie ma GUI, wpisz w profilu pełną komendę — po jej wysłaniu program przejdzie bezpośrednio do oczekiwania na teleportację.
 
-Pełny przebieg może rozpoznać ekran śmierci, rozłączenie, przycisk `Reconnect`, listę serwerów i ekran `Direct Connect`. Następnie program wpisuje zapisany adres, zatwierdza go klawiszem `Enter`, wykonuje powrót do home, sprawdza EQ i wznawia dokładnie ten kanał Kopacza, który działał przed przerwą. Ekran bana lub nieznany stan zatrzymuje automat bez dalszego klikania.
+Opcjonalna kontrola Auto Reconnect może także działać podczas zaplanowanego cyklu Auto EQ. Nie otwiera ekwipunku w osobnym interwale. Jeśli gra nie otworzy EQ albo program nie rozpozna jego układu po kolejnych próbach, automat analizuje ekran i może rozpocząć odzyskiwanie połączenia.
 
-Brak znacznika diamentowego kilofa uruchamia oddzielny przebieg: program nie wykonuje ponownego Direct Connect, tylko używa skonfigurowanej komendy home i kończy bieżące kopanie. Kontrola obejmuje 27 pól głównego EQ oraz hotbar.
+Mechanizm rozpoznaje między innymi ekran śmierci, rozłączenie, przycisk `Reconnect`, listę serwerów oraz ekran `Direct Connect`. Ekran bana lub nieznany stan zatrzymuje automat bez dalszego klikania.
 
 Zalecana kolejność testów profilu:
 
 1. użyj `Rozpoznaj ekran` na ekranach rozłączenia, listy serwerów i Direct Connect,
 2. uruchom `Sprawdź EQ` z aktywną paczką zasobów i `GUI Scale: Large`,
-3. sprawdź wybrany slot przyciskiem `Test /home`,
-4. dopiero na końcu uruchom `Pełny reconnect`.
+3. sprawdź oba warianty powrotu do home,
+4. przetestuj wykrywanie dźwięku w `Trybie testowym`,
+5. dopiero na końcu uruchom `Pełny reconnect` i uzbrój tryb realny ochrony.
 
-> Auto Reconnect wymaga widocznego i aktywnego okna gry. Nie zapewnia kopania w tle, gdy Minecraft jest zminimalizowany, zasłonięty albo działa na nieaktywnym pulpicie wirtualnym Windows.
+> Ochrona awaryjna i Auto Reconnect wymagają widocznego, aktywnego okna gry. Nie zapewniają kopania w tle, gdy Minecraft jest zminimalizowany, zasłonięty albo działa na nieaktywnym pulpicie wirtualnym Windows. Są to funkcje eksperymentalne — przed użyciem bez nadzoru sprawdź cały przebieg na swoim kliencie i serwerze.
 
 ## Ustawienia i HUD
 
@@ -279,7 +340,9 @@ To tutaj należy rozpocząć konfigurację programu:
 - `Animowane tło gwiazd` włącza lub wyłącza lekki efekt tła w głównym oknie.
 - `Panel HUD (overlay)` pokazuje stan uruchomionych funkcji na ekranie.
 - HUD pozwala wybrać monitor, narożnik oraz wyłączyć animacje.
+- Podczas kalibracji i działania Auto zbroi HUD pokazuje wybrany element, etap podmiany oraz następną wykonywaną akcję.
 - Podczas kopania HUD aktualizuje etap pracy, godzinę startu, czas działania, bieżący skan EQ oraz łączne wyniki wyrzucania i tworzenia CobbleX.
+- Podczas ochrony awaryjnej HUD pokazuje pola `Teraz` i `Następnie`, używany profil i tryb Kopacza, odliczanie do reconnectu lub końca teleportacji oraz informację, czy automat wznowi kopanie, czy zakończy program.
 - `Eksportuj` zapisuje kopię konfiguracji, a `Importuj` przywraca ją z pliku JSON.
 
 Główne okno uruchamia się wyśrodkowane i w rozmiarze dostosowanym do monitorów 1080p. Program pozwala uruchomić tylko jedną kopię Minecraft Helper jednocześnie, aby dwa procesy nie nadpisywały wspólnego pliku ustawień.
@@ -301,6 +364,17 @@ Nie wybieraj procesu launchera. Wskaż właściwe okno Minecrafta lub używanego
 - Menu zasobnika korzysta z ciemnego motywu zgodnego z pozostałą częścią interfejsu.
 
 Jeżeli działają makra lub Kopacz, zamknięcie okna przyciskiem `X` pozostawia aplikację uruchomioną w tle. Aby całkowicie ją wyłączyć, użyj opcji `Zakończ aplikację` z menu ikony.
+
+## Zmiany w wersji 1.1.8
+
+- Dodano eksperymentalną Auto zbroję, która pod bindem zamienia założony komplet z drugim setem przygotowanym w ekwipunku.
+- Każdy z ośmiu punktów podmiany można ręcznie skalibrować lewym `Ctrl`; konfiguracja zawiera osobne pola dla założonej zbroi i drugiego setu.
+- Dodano regulowany odstęp kliknięć, bezpieczne anulowanie po zakończeniu bieżącego elementu oraz pełny podgląd kalibracji i podmiany w HUD.
+- Dodano eksperymentalny AutoWater z bindem, wyborem slotu wody i slotu powrotnego oraz regulowanymi czasami prób PPM i zebrania wody.
+- Dodano kalibrację pustego wiadra, test rozpoznawania oraz pełny podgląd etapów AutoWater w HUD.
+- Czas prób PPM można ręcznie dopasować do wysokości, opóźnień i zachowania konkretnego serwera.
+- Awaryjna ochrona Kopacza łączy wykrywanie dźwięku obrażeń, wyjście z serwera, reconnect, kontrolę kilofa i powrót do odpowiedniego home.
+- Rozbudowano komunikaty, HUD i logi przebiegu ochrony awaryjnej oraz Auto Reconnect.
 
 ## Zmiany w wersji 1.1.7
 
@@ -403,15 +477,15 @@ Jeżeli zauważysz błąd, problem z konfiguracją albo masz propozycję nowej f
 Najprościej uruchomić instalator:
 
 ```text
-MinecraftHelper-Setup-1.1.7.exe
+MinecraftHelper-Setup-1.1.8.exe
 ```
 
 Instalator działa dla bieżącego użytkownika, nie wymaga osobnej instalacji .NET 8, może utworzyć skrót na pulpicie i dodaje standardowy deinstalator Windows.
 
-Kontrola oficjalnego pliku instalatora wersji 1.1.7:
+Kontrola oficjalnego pliku instalatora wersji 1.1.8:
 
 ```text
-SHA-256: c80525805650d4a43b63f7114aed90eaef798f137c0c5681c3f5c6f29ec6d302
+SHA-256: b8e878b116baf1634169cb2f7e472e363e4222e48ff7b898e6ad5cb026caafde
 ```
 
 ### Windows SmartScreen i Smart App Control
@@ -453,10 +527,10 @@ dotnet run --project MinecraftHelper/MinecraftHelper.csproj
 ### Budowanie instalatora
 
 ```powershell
-.\scripts\build-installer.ps1 -Version 1.1.7 -Rid win-x64 -SelfContained:$true -Clean
+.\scripts\build-installer.ps1 -Version 1.1.8 -Rid win-x64 -SelfContained:$true -Clean
 ```
 
-Wynik zostanie zapisany w `artifacts/installer/MinecraftHelper-Setup-1.1.7.exe`.
+Wynik zostanie zapisany w `artifacts/installer/MinecraftHelper-Setup-1.1.8.exe`.
 
 ### Odtworzenie paczki zasobów
 
@@ -474,6 +548,6 @@ Planowane kierunki dalszego rozwoju:
 - możliwość zminimalizowania Minecrafta i dalszego kopania w tle,
 - zdalna obsługa własnego klienta Minecraft za pomocą telefonu,
 - odczytywanie i prezentowanie informacji z czatu,
-- dalsze testy i dopracowanie eksperymentalnego `auto reconnectu`.
+- dalsze testy ochrony awaryjnej i Auto Reconnect na różnych klientach oraz serwerach.
 
 Lista przedstawia pomysły na przyszłość i nie oznacza jeszcze konkretnego terminu ich wdrożenia.

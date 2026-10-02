@@ -684,6 +684,15 @@ namespace MinecraftHelper
                     MiningLogEventTypes.HealthCheckFinished => "Kontrola kopania • wynik",
                     MiningLogEventTypes.MissingPickaxeRecovery => "Brak kilofa • powrót do home",
                     MiningLogEventTypes.MissingPickaxeRecoveryFinished => "Powrót do home • wynik",
+                    MiningLogEventTypes.EmergencyDamageSoundDetected => "Alarm obrażeń • awaryjne wyjście",
+                    MiningLogEventTypes.EmergencyProtectionStarted => "Ochrona awaryjna • start",
+                    MiningLogEventTypes.EmergencyReconnectJoined => "Ochrona awaryjna • dołączono",
+                    MiningLogEventTypes.EmergencyPickaxeDetected => "Kontrola kilofa • wykryto",
+                    MiningLogEventTypes.EmergencyPickaxeMissing => "Kontrola kilofa • brak",
+                    MiningLogEventTypes.EmergencyHomeCommandSent => "Ochrona awaryjna • home",
+                    MiningLogEventTypes.EmergencyMiningResumed => "Ochrona awaryjna • wznowiono kopanie",
+                    MiningLogEventTypes.EmergencyShutdown => "Ochrona awaryjna • zamknięcie programu",
+                    MiningLogEventTypes.EmergencyProtectionFinished => "Ochrona awaryjna • wynik",
                     _ => "Zdarzenie automatyzacji"
                 };
             }
@@ -731,7 +740,8 @@ namespace MinecraftHelper
             {
                 if (entry.EventType is MiningLogEventTypes.AutoReconnectStarted
                     or MiningLogEventTypes.HealthCheckStarted
-                    or MiningLogEventTypes.MissingPickaxeRecovery)
+                    or MiningLogEventTypes.MissingPickaxeRecovery
+                    or MiningLogEventTypes.EmergencyProtectionStarted)
                 {
                     return "Uruchomiono";
                 }

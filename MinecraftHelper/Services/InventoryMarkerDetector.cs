@@ -21,6 +21,7 @@ namespace MinecraftHelper.Services
                 Left + (SlotStartX + column * SlotStep + 8) * Scale,
                 Top + (SlotStartY + row * SlotStep + 8) * Scale);
         }
+
     }
 
     internal sealed class InventoryMarkerDetection
@@ -32,6 +33,7 @@ namespace MinecraftHelper.Services
         public IReadOnlyList<DetectedInventoryItem> Items { get; init; } = Array.Empty<DetectedInventoryItem>();
         public IReadOnlyList<int> AllNonCobblestoneSlots { get; init; } = Array.Empty<int>();
         public IReadOnlyList<DetectedInventoryItem> AllNonCobblestoneItems { get; init; } = Array.Empty<DetectedInventoryItem>();
+
         public IReadOnlyList<int> UnknownMarkerSlots { get; init; } = Array.Empty<int>();
         public IReadOnlyList<int> FullCobblestoneSlots { get; init; } = Array.Empty<int>();
     }
@@ -54,6 +56,7 @@ namespace MinecraftHelper.Services
         private const int SlotStep = 18;
         private const int MaximumGuiScale = 8;
         private const int ColorTolerance = 18;
+        private const int EnchantedPickaxeMarkerColorTolerance = 90;
         private const int MinimumFallbackMarkers = 2;
         private const int BlazingGuiWidth = 193;
         private const int BlazingGuiHeight = 196;
@@ -716,6 +719,24 @@ namespace MinecraftHelper.Services
                 }
             }
 
+            // Zaklęty kilof ma animowany fioletowy połysk, który potrafi zmienić
+            // kolory małego znacznika na pojedynczej klatce. Pozostałe przedmioty
+            // nadal wymagają ścisłego dopasowania, a dla kilofa zachowujemy cały
+            // dziewięciopolowy wzór i zwiększamy jedynie tolerancję koloru.
+            ItemMarkerDefinition pickaxe = ItemMarkers[^1];
+            if (string.Equals(pickaxe.Id, "diamond_pickaxe", StringComparison.Ordinal)
+                && MatchesScaledPatternNear(
+                    pixels,
+                    markerX,
+                    markerY,
+                    scale,
+                    pickaxe.Pattern,
+                    EnchantedPickaxeMarkerColorTolerance))
+            {
+                itemId = pickaxe.Id;
+                return true;
+            }
+
             itemId = string.Empty;
             return false;
         }
@@ -898,14 +919,15 @@ namespace MinecraftHelper.Services
             int startX,
             int startY,
             int scale,
-            MarkerColor[,] pattern)
+            MarkerColor[,] pattern,
+            int tolerance = ColorTolerance)
         {
             int radius = Math.Max(2, scale / 2);
             for (int offsetY = -radius; offsetY <= radius; offsetY++)
             {
                 for (int offsetX = -radius; offsetX <= radius; offsetX++)
                 {
-                    if (MatchesScaledPattern(pixels, startX + offsetX, startY + offsetY, scale, pattern))
+                    if (MatchesScaledPattern(pixels, startX + offsetX, startY + offsetY, scale, pattern, tolerance))
                         return true;
                 }
             }
@@ -948,7 +970,8 @@ namespace MinecraftHelper.Services
             int startX,
             int startY,
             int scale,
-            MarkerColor[,] pattern)
+            MarkerColor[,] pattern,
+            int tolerance = ColorTolerance)
         {
             int rows = pattern.GetLength(0);
             int columns = pattern.GetLength(1);
@@ -960,7 +983,7 @@ namespace MinecraftHelper.Services
                 {
                     int x = startX + column * scale + sampleOffset;
                     int y = startY + row * scale + sampleOffset;
-                    if (!pixels.Matches(x, y, pattern[row, column], ColorTolerance))
+                    if (!pixels.Matches(x, y, pattern[row, column], tolerance))
                         return false;
                 }
             }

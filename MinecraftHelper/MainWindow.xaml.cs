@@ -52,6 +52,7 @@ namespace MinecraftHelper
         private readonly DispatcherTimer _bindyHudClearTimer;
         private readonly MacroDiagnosticsService _macroDiagnosticsService;
         private readonly AutoClickScheduler _autoClickScheduler;
+        private readonly DamageSoundDetector _damageSoundDetector;
 
         private bool _isMinecraftFocused;
         private IntPtr _targetGameWindowHandle = IntPtr.Zero;
@@ -67,6 +68,17 @@ namespace MinecraftHelper
         private bool _kopacz633RuntimeEnabled;
         private bool _testFastUpExitRuntimeEnabled;
         private bool _testAutoFishingRuntimeEnabled;
+        private bool _emergencyDamageSoundMonitoringForMiner;
+        private bool _emergencyDamageSoundManualTestActive;
+        private bool _emergencyDamageSoundHandlingAlarm;
+        private DateTime _emergencyDamageSoundManualTestUntilUtc = DateTime.MinValue;
+        private DateTime _emergencyDamageSoundLastAlarmAtUtc = DateTime.MinValue;
+        private bool _emergencyReconnectActive;
+        private bool _emergencyReconnectSoundGuardActive;
+        private bool _emergencyReconnectResumeKopacz533;
+        private bool _emergencyReconnectResumeKopacz633;
+        private bool _emergencyReconnectShutdownAfterHome;
+        private int _emergencyReconnectInventoryAttempts;
 
         private bool _holdBindWasDown;
         private bool _autoLeftBindWasDown;
@@ -280,6 +292,7 @@ namespace MinecraftHelper
         private int _autoReconnectActiveHomeGuiRows = 3;
         private int _autoReconnectActiveHomeGuiColumns = 9;
         private int _autoReconnectActiveHomeSlot = 11;
+        private int _autoReconnectActiveTeleportDelaySeconds = 10;
         private string _pendingAutoReconnectProfileDeleteId = string.Empty;
         private DateTime _pendingAutoReconnectProfileDeleteUntilUtc = DateTime.MinValue;
         private const double OverlayScreenMargin = 16;
@@ -298,6 +311,7 @@ namespace MinecraftHelper
         private const int TestAutoFishingRepairDelayAfterOpenChatMs = 180;
         private const int TestAutoFishingRepairDelayAfterTypeCommandMs = 110;
         private const int TestAutoFishingRepairRecastDelayMs = 190;
+        private const int AutoReconnectTeleportSafetyBufferSeconds = 2;
         private const int TestAutoFishingRepairIntervalMaxSeconds = 3600;
         // BlazingPack can block Back for about 5 s and the next connection for
         // about 6 s. One extra second avoids clicking on the boundary.
@@ -324,6 +338,8 @@ namespace MinecraftHelper
             JablkaZLisci,
             FastUpExit,
             TestCaptureArea,
+            AutoArmor,
+            AutoWater,
             TestAutoFishing,
             TestAutoFishingCaptureArea,
             ChatOpen,
@@ -383,6 +399,9 @@ namespace MinecraftHelper
         private enum AutoReconnectStage
         {
             None,
+            EmergencyWaitBeforeReconnect,
+            EmergencyOpenInventory,
+            EmergencyVerifyInventory,
             HealthOpenInventory,
             HealthVerifyInventory,
             AnalyzeScreen,
@@ -737,6 +756,7 @@ namespace MinecraftHelper
             _settings = _settingsService.Load();
             EnsureSettingsConsistency();
             _currentAppVersion = ReleaseNotesCatalog.CurrentVersion;
+            Title = $"Minecraft Helper {_currentAppVersion}";
             _showStartupNotice = _isFirstRun
                 || !string.Equals(
                     _settings.LastAcknowledgedVersion,
@@ -744,6 +764,10 @@ namespace MinecraftHelper
                     StringComparison.OrdinalIgnoreCase);
             _macroDiagnosticsService = new MacroDiagnosticsService();
             _autoClickScheduler = new AutoClickScheduler(_macroDiagnosticsService);
+            _damageSoundDetector = new DamageSoundDetector();
+            _damageSoundDetector.ProgressChanged += DamageSoundDetector_ProgressChanged;
+            _damageSoundDetector.DamageDetected += DamageSoundDetector_DamageDetected;
+            _damageSoundDetector.CaptureFailed += DamageSoundDetector_CaptureFailed;
 
             _dirtyTimer = new DispatcherTimer
             {
@@ -927,6 +951,7 @@ namespace MinecraftHelper
             if (_holdMacroRuntimeEnabled || _autoLeftRuntimeEnabled || _autoRightRuntimeEnabled
                 || _jablkaRuntimeEnabled || _kopacz533RuntimeEnabled || _kopacz633RuntimeEnabled
                 || _testFastUpExitRuntimeEnabled || _testAutoFishingRuntimeEnabled
+                || IsAutoArmorRunning
                 || _inventoryCleanupStage != InventoryCleanupStage.None
                 || _autoReconnectStage != AutoReconnectStage.None
                 || _holdRightInjectedButtonDown || _inventoryCleanupEatingRightButtonDown
@@ -1388,9 +1413,32 @@ namespace MinecraftHelper
             _settings.JablkaZLisciCommand ??= string.Empty;
             _settings.TestCustomCaptureBind ??= string.Empty;
             _settings.TestFastUpExitBind ??= string.Empty;
+            NormalizeAutoArmorSettings();
+            NormalizeAutoWaterSettings();
             _settings.TestAutoFishingBind ??= string.Empty;
             _settings.TestAutoFishingCaptureBind ??= string.Empty;
             _settings.TestAutoFishingRepairCommand ??= string.Empty;
+            _settings.EmergencyDamageSoundDeviceId ??= string.Empty;
+            _settings.EmergencyDamageSoundSimilarityPercent = Math.Clamp(_settings.EmergencyDamageSoundSimilarityPercent, 70, 99);
+            _settings.EmergencyDamageSoundMinimumDb = Math.Clamp(_settings.EmergencyDamageSoundMinimumDb, -70.0, -10.0);
+            _settings.EmergencyDamageSoundTemplates ??= new List<List<double>>();
+            _settings.EmergencyDamageSoundTemplates = _settings.EmergencyDamageSoundTemplates
+                .Where(template => template != null
+                    && template.Count == DamageSoundDetector.FingerprintBandCount
+                    && template.All(double.IsFinite))
+                .Take(24)
+                .Select(template => template.ToList())
+                .ToList();
+            // Starsze ustawienia miały dwa osobne przełączniki. Od tej wersji
+            // jeden przełącznik "Awaryjna ochrona Kopacza" steruje całym flow.
+            bool emergencyProtectionEnabled = _settings.EmergencyDamageSoundEnabled
+                || _settings.EmergencyReconnectEnabled;
+            _settings.EmergencyDamageSoundEnabled = emergencyProtectionEnabled;
+            _settings.EmergencyReconnectEnabled = emergencyProtectionEnabled;
+            _settings.EmergencyReconnectDelaySeconds = Math.Clamp(
+                _settings.EmergencyReconnectDelaySeconds <= 0 ? 30 : _settings.EmergencyReconnectDelaySeconds,
+                1,
+                600);
             _settings.AutoReconnectProfile ??= "Arivi";
             _settings.AutoReconnectServerAddress ??= string.Empty;
             _settings.AutoReconnectHomeCommand ??= "/home";
@@ -1859,6 +1907,7 @@ namespace MinecraftHelper
             _kopacz633RuntimeEnabled = false;
             _testFastUpExitRuntimeEnabled = false;
             _testAutoFishingRuntimeEnabled = false;
+            ResetAutoWaterRuntimeState();
             ResetJablkaRuntimeState();
             ResetKopacz533RuntimeState();
             ResetKopacz633RuntimeState();
@@ -1947,11 +1996,21 @@ namespace MinecraftHelper
             TxtTestCustomCaptureBind.Text = _settings.TestCustomCaptureBind;
             ChkTestFastUpExitEnabled.IsChecked = _settings.TestFastUpExitEnabled;
             TxtTestFastUpExitBind.Text = _settings.TestFastUpExitBind;
+            LoadAutoArmorToUi();
+            LoadAutoWaterToUi();
             ChkTestAutoFishingEnabled.IsChecked = _settings.TestAutoFishingEnabled;
             TxtTestAutoFishingBind.Text = _settings.TestAutoFishingBind;
             TxtTestAutoFishingCaptureBind.Text = _settings.TestAutoFishingCaptureBind;
             TxtTestAutoFishingRepairCommand.Text = _settings.TestAutoFishingRepairCommand;
             TxtTestAutoFishingRepairEverySeconds.Text = _settings.TestAutoFishingRepairEverySeconds.ToString(CultureInfo.InvariantCulture);
+            ChkEmergencyDamageSoundEnabled.IsChecked = _settings.EmergencyDamageSoundEnabled;
+            ChkEmergencyDamageSoundTestMode.IsChecked = _settings.EmergencyDamageSoundTestMode;
+            SlEmergencyDamageSoundSimilarity.Value = _settings.EmergencyDamageSoundSimilarityPercent;
+            TxtEmergencyDamageSoundSimilarityValue.Text = $"{_settings.EmergencyDamageSoundSimilarityPercent}%";
+            LoadBundledDamageSoundReferences(showStatus: false);
+            RefreshEmergencyDamageSoundDevices();
+            UpdateEmergencyDamageSoundReferenceInfo();
+            TxtEmergencyReconnectDelaySeconds.Text = _settings.EmergencyReconnectDelaySeconds.ToString(CultureInfo.InvariantCulture);
             ChkAutoReconnectEnabled.IsChecked = _settings.AutoReconnectEnabled;
             CbAutoReconnectProfile.SelectedIndex = string.Equals(_settings.AutoReconnectProfile, "Standard", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
             TxtAutoReconnectServerAddress.Text = _settings.AutoReconnectServerAddress;
@@ -1963,6 +2022,7 @@ namespace MinecraftHelper
             TxtAutoReconnectMaxAttempts.Text = _settings.AutoReconnectMaxAttempts.ToString(CultureInfo.InvariantCulture);
             RefreshAutoReconnectHomeSlotGrid();
             RefreshAutoReconnectServerProfileCards();
+            RefreshEmergencyReconnectProfileSummary();
             CbTestFastUpExitBlockSlot.SelectedIndex = Math.Clamp(_settings.TestFastUpExitBlockSlot, 1, 9) - 1;
             CbTestFastUpExitPickaxeSlot.SelectedIndex = Math.Clamp(_settings.TestFastUpExitPickaxeSlot, 1, 9) - 1;
             string selectedPickaxeType = NormalizeFastUpPickaxeType(_settings.TestFastUpExitPickaxeType);
@@ -2564,6 +2624,7 @@ namespace MinecraftHelper
             }
 
             RefreshAutoReconnectSelectedProfileSummary();
+            RefreshEmergencyReconnectProfileSummary();
         }
 
         private void RefreshAutoReconnectSelectedProfileSummary()
@@ -2581,7 +2642,7 @@ namespace MinecraftHelper
                 ? $"{profile.MissingPickaxeHomeCommand} → GUI {profile.MissingPickaxeHomeGuiRows}×{profile.MissingPickaxeHomeGuiColumns}, slot {profile.MissingPickaxeHomeGuiSlot}"
                 : $"{profile.MissingPickaxeHomeCommand} → bez GUI";
             TxtAutoReconnectSelectedProfileTiming.Text =
-                $"dołączenie {profile.JoinDelaySeconds} s • teleport {profile.TeleportDelaySeconds} s • próby {profile.MaxAttempts}" +
+                $"dołączenie {profile.JoinDelaySeconds} s • teleport {profile.TeleportDelaySeconds} s + {AutoReconnectTeleportSafetyBufferSeconds} s buforu • próby {profile.MaxAttempts}" +
                 (profile.MissingPickaxeRecoveryEnabled
                     ? $" • brak kilofa: {missingPickaxeHome}"
                     : " • kontrola kilofa wyłączona");
@@ -2719,6 +2780,11 @@ namespace MinecraftHelper
                 ApplyAutoReconnectServerProfile(selected, updateUi: false);
         }
 
+        private static int CalculateAutoReconnectTeleportWaitSeconds(int configuredSeconds)
+        {
+            return Math.Clamp(configuredSeconds, 1, 120) + AutoReconnectTeleportSafetyBufferSeconds;
+        }
+
         private void ConfigureActiveAutoReconnectHome(bool missingPickaxeRecovery)
         {
             AutoReconnectServerProfile? profile = GetSelectedAutoReconnectServerProfile();
@@ -2733,6 +2799,10 @@ namespace MinecraftHelper
                     _settings.AutoReconnectHomeSlot,
                     1,
                     _autoReconnectActiveHomeGuiRows * _autoReconnectActiveHomeGuiColumns);
+                _autoReconnectActiveTeleportDelaySeconds = Math.Clamp(
+                    _settings.AutoReconnectTeleportDelaySeconds,
+                    1,
+                    120);
                 return;
             }
 
@@ -2745,6 +2815,7 @@ namespace MinecraftHelper
                 _autoReconnectActiveHomeGuiRows = profile.MissingPickaxeHomeGuiRows;
                 _autoReconnectActiveHomeGuiColumns = profile.MissingPickaxeHomeGuiColumns;
                 _autoReconnectActiveHomeSlot = profile.MissingPickaxeHomeGuiSlot;
+                _autoReconnectActiveTeleportDelaySeconds = Math.Clamp(profile.TeleportDelaySeconds, 1, 120);
                 return;
             }
 
@@ -2754,6 +2825,7 @@ namespace MinecraftHelper
             _autoReconnectActiveHomeGuiRows = profile.HomeGuiRows;
             _autoReconnectActiveHomeGuiColumns = profile.HomeGuiColumns;
             _autoReconnectActiveHomeSlot = profile.HomeGuiSlot;
+            _autoReconnectActiveTeleportDelaySeconds = Math.Clamp(profile.TeleportDelaySeconds, 1, 120);
         }
 
         private void UpdateAutoReconnectStatus(string message, string colorName = "Default")
@@ -2769,6 +2841,9 @@ namespace MinecraftHelper
                             ? new SolidColorBrush(Color.FromRgb(251, 191, 36))
                             : new SolidColorBrush(Color.FromRgb(146, 166, 193));
             }
+
+            if (_emergencyReconnectActive)
+                UpdateEmergencyReconnectStatus(message, colorName);
 
             UpdateStatusBar(message, colorName);
         }
@@ -2816,6 +2891,161 @@ namespace MinecraftHelper
             SetKopacz633AttackHold(false);
             SetKopacz633StrafeDirection(Kopacz633StrafeDirection.None);
             _autoClickScheduler.Stop();
+        }
+
+        private void BeginEmergencyReconnectAfterDisconnect(DateTime now)
+        {
+            AutoReconnectServerProfile? profile = GetSelectedAutoReconnectServerProfile();
+            if (profile == null)
+            {
+                ClearEmergencyReconnectRuntimeState(stopSoundMonitoring: true);
+                UpdateEmergencyReconnectStatus("Nie uruchomiono reconnectu: brak wybranego profilu serwera.", "Red");
+                return;
+            }
+
+            ReadAutoReconnectSettingsFromUi();
+            ConfigureActiveAutoReconnectHome(missingPickaxeRecovery: false);
+            _emergencyReconnectActive = true;
+            _emergencyReconnectSoundGuardActive = true;
+            _emergencyReconnectShutdownAfterHome = false;
+            _emergencyReconnectInventoryAttempts = 0;
+            _autoReconnectManualRun = false;
+            _autoReconnectInventoryOnly = false;
+            _autoReconnectAttempt = 0;
+            _autoReconnectInventoryFailures = 0;
+            _autoReconnectReturningHomeAfterMissingPickaxe = false;
+            _autoReconnectResumeKopacz533 = _emergencyReconnectResumeKopacz533;
+            _autoReconnectResumeKopacz633 = _emergencyReconnectResumeKopacz633;
+            _autoReconnectLogOwner = _emergencyReconnectResumeKopacz533
+                ? GetInventoryCleanupOwnerLabel(InventoryCleanupOwner.Kopacz533)
+                : _emergencyReconnectResumeKopacz633
+                    ? GetInventoryCleanupOwnerLabel(InventoryCleanupOwner.Kopacz633)
+                    : "Awaryjny reconnect";
+            _autoReconnectStage = AutoReconnectStage.EmergencyWaitBeforeReconnect;
+            int delaySeconds = Math.Clamp(_settings.EmergencyReconnectDelaySeconds, 1, 600);
+            _nextAutoReconnectActionAtUtc = now.AddSeconds(delaySeconds);
+            _autoReconnectLastCountdownSecond = -1;
+            RecordAutomationLogEvent(
+                MiningLogEventTypes.EmergencyProtectionStarted,
+                MiningLogStatuses.Completed,
+                $"Alarm obrażeń: wyjście z serwera zakończone. Awaryjny reconnect za {delaySeconds} s; profil: {profile.Name}.");
+            UpdateEmergencyReconnectStatus(
+                $"Rozłączono. Reconnect za {delaySeconds} s. Nasłuch obrażeń pozostaje aktywny do kontroli kilofa.",
+                "Orange");
+            UpdateEnabledStates();
+        }
+
+        private void ResetAutoReconnectStageForEmergencyRedetection()
+        {
+            _autoReconnectGeneration++;
+            _autoReconnectStage = AutoReconnectStage.None;
+            _autoReconnectOcrInProgress = false;
+            _autoReconnectManualRun = false;
+            _autoReconnectInventoryOnly = false;
+            _autoReconnectInventoryFailures = 0;
+            _autoReconnectLastCountdownSecond = -1;
+            _autoReconnectPendingScreenKind = AutoReconnectScreenKind.Unknown;
+            _autoReconnectReturningHomeAfterMissingPickaxe = false;
+            _nextAutoReconnectActionAtUtc = DateTime.UtcNow;
+        }
+
+        private void ClearEmergencyReconnectRuntimeState(bool stopSoundMonitoring)
+        {
+            _emergencyReconnectActive = false;
+            _emergencyReconnectSoundGuardActive = false;
+            _emergencyReconnectResumeKopacz533 = false;
+            _emergencyReconnectResumeKopacz633 = false;
+            _emergencyReconnectShutdownAfterHome = false;
+            _emergencyReconnectInventoryAttempts = 0;
+            if (stopSoundMonitoring
+                && !_kopacz533RuntimeEnabled
+                && !_kopacz633RuntimeEnabled
+                && _damageSoundDetector.IsRunning)
+            {
+                StopEmergencyDamageSoundListening(updateStatus: false);
+            }
+        }
+
+        private void CompleteEmergencyReconnectAndResumeMining()
+        {
+            bool resumeKopacz533 = _emergencyReconnectResumeKopacz533;
+            bool resumeKopacz633 = _emergencyReconnectResumeKopacz633;
+            int teleportWaitSeconds = CalculateAutoReconnectTeleportWaitSeconds(
+                _autoReconnectActiveTeleportDelaySeconds);
+            string plannedMiner = resumeKopacz533 && ChkKopacz533Enabled?.IsChecked == true
+                ? "Kopacz 5/3/3"
+                : resumeKopacz633 && ChkKopacz633Enabled?.IsChecked == true && IsKopacz633DirectionSelected()
+                    ? "Kopacz 6/3/3"
+                    : string.Empty;
+            if (!string.IsNullOrEmpty(plannedMiner))
+            {
+                RecordAutomationLogEvent(
+                    MiningLogEventTypes.EmergencyMiningResumed,
+                    MiningLogStatuses.Completed,
+                    $"Odczekano {teleportWaitSeconds} s od wyboru home ({_autoReconnectActiveTeleportDelaySeconds} s z profilu + {AutoReconnectTeleportSafetyBufferSeconds} s bezpieczeństwa). Wybrano slot 1 i wznowiono {plannedMiner}.");
+            }
+            StopAutoReconnect(
+                "Awaryjny reconnect zakończony: wykonano powrót do wybranego home.",
+                resumeMining: false,
+                warning: false);
+
+            DateTime now = DateTime.UtcNow;
+            string resumedMiner = string.Empty;
+            if (resumeKopacz533 && ChkKopacz533Enabled?.IsChecked == true)
+            {
+                SendKeyTap(VK_1);
+                _kopacz533RuntimeEnabled = true;
+                StopClickerRuntimesForExclusivePointerMacro();
+                StopOtherExclusivePointerMacros(keepKopacz533: true);
+                StartKopacz533Runtime(now);
+                resumedMiner = "Kopacz 5/3/3";
+            }
+            else if (resumeKopacz633
+                && ChkKopacz633Enabled?.IsChecked == true
+                && IsKopacz633DirectionSelected())
+            {
+                SendKeyTap(VK_1);
+                _kopacz633RuntimeEnabled = true;
+                StopClickerRuntimesForExclusivePointerMacro();
+                StopOtherExclusivePointerMacros(keepKopacz633: true);
+                StartKopacz633Runtime(now);
+                resumedMiner = "Kopacz 6/3/3";
+            }
+
+            if (string.IsNullOrEmpty(resumedMiner))
+            {
+                UpdateEmergencyReconnectStatus(
+                    "Powrót do home zakończony, ale nie wznowiono Kopacza — jego kanał lub kierunek jest obecnie wyłączony.",
+                    "Orange");
+                UpdateStatusBar("Awaryjny reconnect zakończony bez wznowienia Kopacza.", "Orange");
+            }
+            else
+            {
+                UpdateEmergencyReconnectStatus($"Powrót zakończony po {teleportWaitSeconds} s. Wybrano slot 1 i wznowiono {resumedMiner}.", "Green");
+                UpdateStatusBar($"Awaryjny reconnect zakończony — slot 1 wybrany, wznowiono {resumedMiner}.", "Green");
+            }
+
+            RefreshTopTiles();
+            UpdateEnabledStates();
+            UpdateEmergencyDamageSoundMonitoring();
+        }
+
+        private void CompleteEmergencyReconnectAndShutdown()
+        {
+            int teleportWaitSeconds = CalculateAutoReconnectTeleportWaitSeconds(
+                _autoReconnectActiveTeleportDelaySeconds);
+            RecordAutomationLogEvent(
+                MiningLogEventTypes.EmergencyShutdown,
+                MiningLogStatuses.Completed,
+                $"Po wyborze awaryjnego home odczekano {teleportWaitSeconds} s ({_autoReconnectActiveTeleportDelaySeconds} s z profilu + {AutoReconnectTeleportSafetyBufferSeconds} s bezpieczeństwa). Minecraft Helper zostaje zamknięty.");
+            StopAutoReconnect(
+                "Awaryjny home osiągnięty bez diamentowego kilofa. Kopanie pozostaje wyłączone; zamykam program.",
+                resumeMining: false,
+                warning: false);
+            UpdateEmergencyReconnectStatus(
+                "Awaryjny home osiągnięty. Program zostaje zamknięty zgodnie z ustawioną procedurą.",
+                "Green");
+            ExitFromTray();
         }
 
         private void BeginAutoReconnectHealthCheck(bool manual, bool inventoryOnly)
@@ -2868,6 +3098,7 @@ namespace MinecraftHelper
         private void StopAutoReconnect(string message, bool resumeMining, bool warning)
         {
             _autoReconnectGeneration++;
+            bool wasEmergencyReconnect = _emergencyReconnectActive;
             bool hadActiveStage = _autoReconnectStage != AutoReconnectStage.None;
             bool wasInventoryOnly = _autoReconnectInventoryOnly;
             bool wasMissingPickaxeRecovery = _autoReconnectReturningHomeAfterMissingPickaxe;
@@ -2875,8 +3106,10 @@ namespace MinecraftHelper
             if (hadActiveStage)
             {
                 RecordAutomationLogEvent(
-                    wasMissingPickaxeRecovery
-                        ? MiningLogEventTypes.MissingPickaxeRecoveryFinished
+                    wasEmergencyReconnect
+                        ? MiningLogEventTypes.EmergencyProtectionFinished
+                        : wasMissingPickaxeRecovery
+                            ? MiningLogEventTypes.MissingPickaxeRecoveryFinished
                         : wasInventoryOnly
                             ? MiningLogEventTypes.HealthCheckFinished
                             : MiningLogEventTypes.AutoReconnectFinished,
@@ -2909,7 +3142,13 @@ namespace MinecraftHelper
             _autoReconnectResumeKopacz633 = false;
             _autoReconnectLogMiningRunId = string.Empty;
             _autoReconnectLogOwner = string.Empty;
+            if (wasEmergencyReconnect)
+            {
+                ClearEmergencyReconnectRuntimeState(stopSoundMonitoring: true);
+                UpdateEmergencyReconnectStatus(message, warning ? "Red" : "Green");
+            }
             UpdateAutoReconnectStatus(message, warning ? "Red" : "Green");
+            UpdateEnabledStates();
         }
 
         private async void RunAutoReconnectTick(object? sender, EventArgs e)
@@ -2921,9 +3160,27 @@ namespace MinecraftHelper
             if (_autoReconnectStage == AutoReconnectStage.None)
                 return;
 
+            // RunMacroTickCore intentionally stops before refreshing the normal
+            // HUD while reconnect owns the input. Keep the reconnect tile and
+            // its countdown alive from the slower reconnect timer instead.
+            RefreshOverlayHud(now);
+
             if (_targetGameWindowHandle == IntPtr.Zero || GetForegroundWindow() != _targetGameWindowHandle)
             {
                 UpdateAutoReconnectStatus("Reconnect wstrzymany: Minecraft musi być aktywnym oknem.", "Orange");
+                return;
+            }
+            if (_autoReconnectStage == AutoReconnectStage.EmergencyWaitBeforeReconnect
+                && now < _nextAutoReconnectActionAtUtc)
+            {
+                int remainingSeconds = Math.Max(1, (int)Math.Ceiling((_nextAutoReconnectActionAtUtc - now).TotalSeconds));
+                if (remainingSeconds != _autoReconnectLastCountdownSecond)
+                {
+                    _autoReconnectLastCountdownSecond = remainingSeconds;
+                    UpdateAutoReconnectStatus(
+                        $"Awaryjny reconnect za {remainingSeconds} s. Nasłuch obrażeń nadal działa.",
+                        "Orange");
+                }
                 return;
             }
             if (_autoReconnectStage == AutoReconnectStage.WaitForDisconnectButtonUnlock
@@ -2950,6 +3207,13 @@ namespace MinecraftHelper
             {
                 switch (_autoReconnectStage)
                 {
+                    case AutoReconnectStage.EmergencyWaitBeforeReconnect:
+                        _autoReconnectLastCountdownSecond = -1;
+                        _autoReconnectStage = AutoReconnectStage.AnalyzeScreen;
+                        _nextAutoReconnectActionAtUtc = now;
+                        UpdateAutoReconnectStatus("Minął czas oczekiwania. Rozpoznaję ekran i rozpoczynam reconnect...", "Orange");
+                        break;
+
                     case AutoReconnectStage.HealthOpenInventory:
                         PauseMiningForAutoReconnect();
                         SendKeyTap(VK_E);
@@ -3111,8 +3375,123 @@ namespace MinecraftHelper
                             UpdateAutoReconnectStatus("Po czasie oczekiwania nadal widać ekran GUI. Sprawdzam jego typ...", "Orange");
                             break;
                         }
+                        if (_emergencyReconnectActive)
+                        {
+                            RecordAutomationLogEvent(
+                                MiningLogEventTypes.EmergencyReconnectJoined,
+                                MiningLogStatuses.Completed,
+                                $"Dołączono do serwera po {_autoReconnectAttempt} próbach. Otwieram EQ i rozpoczynam kontrolę diamentowego kilofa.");
+                            _autoReconnectStage = AutoReconnectStage.EmergencyOpenInventory;
+                            _nextAutoReconnectActionAtUtc = now.AddMilliseconds(350);
+                            UpdateAutoReconnectStatus("Dołączono do gry. Otwieram EQ i sprawdzam diamentowy kilof...", "Orange");
+                        }
+                        else
+                        {
+                            _autoReconnectStage = AutoReconnectStage.OpenHomeChat;
+                            _nextAutoReconnectActionAtUtc = now;
+                        }
+                        break;
+
+                    case AutoReconnectStage.EmergencyOpenInventory:
+                        SendKeyTap(VK_E);
+                        _autoReconnectStage = AutoReconnectStage.EmergencyVerifyInventory;
+                        _nextAutoReconnectActionAtUtc = now.AddMilliseconds(700);
+                        UpdateAutoReconnectStatus("Sprawdzam EQ i obecność diamentowego kilofa...", "Orange");
+                        break;
+
+                    case AutoReconnectStage.EmergencyVerifyInventory:
+                        var emergencyScan = await InspectOpenMinecraftInventoryAsync();
+                        if (!IsAutoReconnectResultCurrent(generation, AutoReconnectStage.EmergencyVerifyInventory, targetWindow))
+                            return;
+
+                        if (!emergencyScan.Found)
+                        {
+                            SendKeyTap(VK_ESCAPE);
+                            _emergencyReconnectInventoryAttempts++;
+                            if (_emergencyReconnectInventoryAttempts < 3)
+                            {
+                                _autoReconnectStage = AutoReconnectStage.EmergencyOpenInventory;
+                                _nextAutoReconnectActionAtUtc = now.AddMilliseconds(500);
+                                UpdateAutoReconnectStatus(
+                                    $"Nie potwierdzono otwartego EQ. Ponawiam próbę {_emergencyReconnectInventoryAttempts + 1}/3...",
+                                    "Orange");
+                                break;
+                            }
+
+                            StopAutoReconnect(
+                                "Awaryjny reconnect zatrzymany: po 3 próbach nie wykryto znaczników EQ. Nie wysłano żadnej komendy /home.",
+                                resumeMining: false,
+                                warning: true);
+                            break;
+                        }
+
+                        if (emergencyScan.PickaxePresent)
+                        {
+                            SendKeyTap(VK_E);
+                            _emergencyReconnectInventoryAttempts = 0;
+                            _emergencyReconnectSoundGuardActive = false;
+                            StopEmergencyDamageSoundListening(updateStatus: false);
+                            ConfigureActiveAutoReconnectHome(missingPickaxeRecovery: false);
+                            RecordAutomationLogEvent(
+                                MiningLogEventTypes.EmergencyPickaxeDetected,
+                                MiningLogStatuses.Completed,
+                                $"Wykryto diamentowy kilof po {_emergencyReconnectInventoryAttempts + 1} odczytach EQ (GUI x{emergencyScan.Scale}). Wybrano podstawowy home: {_autoReconnectActiveHomeCommand}.");
+                            _emergencyReconnectShutdownAfterHome = false;
+                            _autoReconnectReturningHomeAfterMissingPickaxe = false;
+                            _autoReconnectStage = AutoReconnectStage.OpenHomeChat;
+                            _nextAutoReconnectActionAtUtc = now.AddMilliseconds(350);
+                            UpdateAutoReconnectStatus(
+                                $"Wykryto diamentowy kilof (GUI x{emergencyScan.Scale}). Wysyłam {_autoReconnectActiveHomeCommand}, a po teleporcie wznowię Kopacza.",
+                                "Green");
+                            break;
+                        }
+
+                        _emergencyReconnectInventoryAttempts++;
+                        const int emergencyPickaxeScanLimit = 5;
+                        if (_emergencyReconnectInventoryAttempts < emergencyPickaxeScanLimit)
+                        {
+                            _autoReconnectStage = AutoReconnectStage.EmergencyVerifyInventory;
+                            _nextAutoReconnectActionAtUtc = now.AddMilliseconds(320);
+                            UpdateAutoReconnectStatus(
+                                $"Nie odczytano jeszcze znacznika kilofa. Potwierdzam wynik {_emergencyReconnectInventoryAttempts + 1}/{emergencyPickaxeScanLimit}...",
+                                "Orange");
+                            break;
+                        }
+
+                        SendKeyTap(VK_E);
+                        _emergencyReconnectSoundGuardActive = false;
+                        StopEmergencyDamageSoundListening(updateStatus: false);
+                        if (!emergencyScan.HasGuiMarkers)
+                        {
+                            StopAutoReconnect(
+                                "Nie potwierdzono znaczników aktualnej paczki Minecraft Helper. Nie uznaję tego za brak kilofa i nie wykonuję awaryjnego /home.",
+                                resumeMining: false,
+                                warning: true);
+                            break;
+                        }
+
+                        AutoReconnectServerProfile? emergencyProfile = GetSelectedAutoReconnectServerProfile();
+                        if (emergencyProfile?.MissingPickaxeRecoveryEnabled != true)
+                        {
+                            StopAutoReconnect(
+                                "Nie wykryto diamentowego kilofa, ale w wybranym profilu nie włączono awaryjnego home. Kopacz pozostaje wyłączony.",
+                                resumeMining: false,
+                                warning: true);
+                            break;
+                        }
+
+                        ConfigureActiveAutoReconnectHome(missingPickaxeRecovery: true);
+                        _emergencyReconnectShutdownAfterHome = true;
+                        _autoReconnectReturningHomeAfterMissingPickaxe = true;
+                        RecordAutomationLogEvent(
+                            MiningLogEventTypes.EmergencyPickaxeMissing,
+                            MiningLogStatuses.Completed,
+                            $"Po {emergencyPickaxeScanLimit} odczytach EQ nie wykryto diamentowego kilofa. Wybrano awaryjny home: {_autoReconnectActiveHomeCommand}; po teleporcie aplikacja zostanie zamknięta.");
                         _autoReconnectStage = AutoReconnectStage.OpenHomeChat;
-                        _nextAutoReconnectActionAtUtc = now;
+                        _nextAutoReconnectActionAtUtc = now.AddMilliseconds(350);
+                        UpdateAutoReconnectStatus(
+                            $"Brak diamentowego kilofa. Wysyłam awaryjne {_autoReconnectActiveHomeCommand}; po teleporcie program zostanie zamknięty.",
+                            "Red");
                         break;
 
                     case AutoReconnectStage.OpenHomeChat:
@@ -3134,6 +3513,13 @@ namespace MinecraftHelper
 
                     case AutoReconnectStage.SubmitHomeCommand:
                         SendKeyTap(VK_RETURN);
+                        if (_emergencyReconnectActive)
+                        {
+                            RecordAutomationLogEvent(
+                                MiningLogEventTypes.EmergencyHomeCommandSent,
+                                MiningLogStatuses.Completed,
+                                $"Wysłano {_autoReconnectActiveHomeCommand}. Tryb: {(_emergencyReconnectShutdownAfterHome ? "awaryjny home bez kilofa" : "podstawowy home i wznowienie kopania")}. Po zatwierdzeniu home program odczeka {CalculateAutoReconnectTeleportWaitSeconds(_autoReconnectActiveTeleportDelaySeconds)} s przed następną akcją.");
+                        }
                         if (_autoReconnectActiveHomeHasGui)
                         {
                             _autoReconnectStage = AutoReconnectStage.WaitForHomeMenu;
@@ -3142,9 +3528,13 @@ namespace MinecraftHelper
                         }
                         else
                         {
+                            int teleportWaitSeconds = CalculateAutoReconnectTeleportWaitSeconds(
+                                _autoReconnectActiveTeleportDelaySeconds);
                             _autoReconnectStage = AutoReconnectStage.WaitForTeleport;
-                            _nextAutoReconnectActionAtUtc = now.AddSeconds(_settings.AutoReconnectTeleportDelaySeconds);
-                            UpdateAutoReconnectStatus("Czekam na teleport...", "Orange");
+                            _nextAutoReconnectActionAtUtc = now.AddSeconds(teleportWaitSeconds);
+                            UpdateAutoReconnectStatus(
+                                $"Czekam {teleportWaitSeconds} s na teleport ({_autoReconnectActiveTeleportDelaySeconds} s z profilu + {AutoReconnectTeleportSafetyBufferSeconds} s bezpieczeństwa)...",
+                                "Orange");
                         }
                         break;
 
@@ -3167,14 +3557,24 @@ namespace MinecraftHelper
                             StopAutoReconnect("Nie udało się wyznaczyć pozycji slotu home.", resumeMining: false, warning: true);
                             break;
                         }
+                        int teleportWaitSecondsAfterClick = CalculateAutoReconnectTeleportWaitSeconds(
+                            _autoReconnectActiveTeleportDelaySeconds);
                         _autoReconnectStage = AutoReconnectStage.WaitForTeleport;
-                        _nextAutoReconnectActionAtUtc = now.AddSeconds(_settings.AutoReconnectTeleportDelaySeconds);
+                        _nextAutoReconnectActionAtUtc = now.AddSeconds(teleportWaitSecondsAfterClick);
                         UpdateAutoReconnectStatus(
-                            $"Kliknięto home w slocie {_autoReconnectActiveHomeSlot} układu {_autoReconnectActiveHomeGuiRows}×{_autoReconnectActiveHomeGuiColumns}. Czekam na teleport...",
+                            $"Kliknięto home w slocie {_autoReconnectActiveHomeSlot} układu {_autoReconnectActiveHomeGuiRows}×{_autoReconnectActiveHomeGuiColumns}. Czekam {teleportWaitSecondsAfterClick} s na teleport ({_autoReconnectActiveTeleportDelaySeconds} s + {AutoReconnectTeleportSafetyBufferSeconds} s bezpieczeństwa)...",
                             "Orange");
                         break;
 
                     case AutoReconnectStage.WaitForTeleport:
+                        if (_emergencyReconnectActive)
+                        {
+                            if (_emergencyReconnectShutdownAfterHome)
+                                CompleteEmergencyReconnectAndShutdown();
+                            else
+                                CompleteEmergencyReconnectAndResumeMining();
+                            break;
+                        }
                         _autoReconnectStage = AutoReconnectStage.OpenVerificationInventory;
                         _nextAutoReconnectActionAtUtc = now.AddSeconds(1);
                         UpdateAutoReconnectStatus("Teleport zakończony. Czekam dodatkową 1 s przed otwarciem EQ...", "Orange");
@@ -3246,20 +3646,20 @@ namespace MinecraftHelper
                 && GetForegroundWindow() == targetWindow;
         }
 
-        private async Task<(bool Found, int Scale, bool PickaxePresent)> InspectOpenMinecraftInventoryAsync()
+        private async Task<(bool Found, int Scale, bool PickaxePresent, bool HasGuiMarkers)> InspectOpenMinecraftInventoryAsync()
         {
             if (!TryCaptureTargetClient(out Drawing.Bitmap? bitmap, out _))
-                return (false, 0, false);
+                return (false, 0, false, false);
 
             using (bitmap)
             {
                 return await Task.Run(() =>
                 {
                     if (!InventoryMarkerDetector.TryDetect(bitmap!, null, null, out InventoryMarkerDetection detection))
-                        return (false, 0, false);
+                        return (false, 0, false, false);
                     bool pickaxePresent = InventoryMarkerDetector.ContainsMarkedItem(
                         bitmap!, detection.Layout, "diamond_pickaxe", includeHotbar: true);
-                    return (true, detection.Layout.Scale, pickaxePresent);
+                    return (true, detection.Layout.Scale, pickaxePresent, detection.HasGuiMarkers);
                 });
             }
         }
@@ -3465,7 +3865,10 @@ namespace MinecraftHelper
 
         private static AutoReconnectScreenKind ClassifyAutoReconnectScreen(string? text)
         {
-            string normalized = Regex.Replace((text ?? string.Empty).ToUpperInvariant(), @"\s+", " ");
+            // OCR często zostawia nawiasy/tagi serwera (np. "[MH] DIRECT CONNECT")
+            // albo rozdziela wyrazy znakami. Do klasyfikacji liczą się same tokeny.
+            string normalized = Regex.Replace((text ?? string.Empty).ToUpperInvariant(), @"\s+", " ").Trim();
+            string tokens = Regex.Replace(normalized, @"[^A-Z0-9]+", " ").Trim();
             if (normalized.Contains("BANNED") || normalized.Contains(" BAN ") || normalized.Contains("ZABLOKOW") || normalized.Contains("BAN ENDS"))
                 return AutoReconnectScreenKind.Banned;
             if (normalized.Contains("ALREADY CONNECTED") || normalized.Contains("POLACZENIE Z PROXY") || normalized.Contains("POŁĄCZENIE Z PROXY"))
@@ -3478,7 +3881,13 @@ namespace MinecraftHelper
                 return AutoReconnectScreenKind.Disconnected;
             if (normalized.Contains("SERVER ADDRESS"))
                 return AutoReconnectScreenKind.DirectConnect;
-            if (normalized.Contains("DIRECT CONNECT") || normalized.Contains("SERVER LIST") || normalized.Contains("JOIN SERVER"))
+            bool hasMultiplayerScreen = tokens.Contains("MULTIPLAYER")
+                || (tokens.Contains("PLAY") && tokens.Contains("MULTI"));
+            bool hasDirectConnectButton = tokens.Contains("DIRECT") && tokens.Contains("CONNECT");
+            if (hasMultiplayerScreen
+                || hasDirectConnectButton
+                || normalized.Contains("SERVER LIST")
+                || normalized.Contains("JOIN SERVER"))
                 return AutoReconnectScreenKind.ServerList;
             return AutoReconnectScreenKind.Unknown;
         }
@@ -3489,10 +3898,19 @@ namespace MinecraftHelper
             switch (kind)
             {
                 case AutoReconnectScreenKind.Inventory:
-                    SendKeyTap(VK_E);
-                    _autoReconnectStage = AutoReconnectStage.OpenHomeChat;
-                    _nextAutoReconnectActionAtUtc = now.AddMilliseconds(350);
-                    UpdateAutoReconnectStatus("Wykryto otwarte EQ. Zamykam je i przechodzę do /home...", "Orange");
+                    if (_emergencyReconnectActive)
+                    {
+                        _autoReconnectStage = AutoReconnectStage.EmergencyVerifyInventory;
+                        _nextAutoReconnectActionAtUtc = now;
+                        UpdateAutoReconnectStatus("Wykryto otwarte EQ. Sprawdzam diamentowy kilof...", "Orange");
+                    }
+                    else
+                    {
+                        SendKeyTap(VK_E);
+                        _autoReconnectStage = AutoReconnectStage.OpenHomeChat;
+                        _nextAutoReconnectActionAtUtc = now.AddMilliseconds(350);
+                        UpdateAutoReconnectStatus("Wykryto otwarte EQ. Zamykam je i przechodzę do /home...", "Orange");
+                    }
                     return;
 
                 case AutoReconnectScreenKind.PlayerDead:
@@ -3706,11 +4124,19 @@ namespace MinecraftHelper
         {
             if (_isLoadingUi)
                 return;
-            if (ChkAutoReconnectEnabled.IsChecked != true && _autoReconnectStage != AutoReconnectStage.None)
+            if (ChkAutoReconnectEnabled.IsChecked != true
+                && !_emergencyReconnectActive
+                && _autoReconnectStage != AutoReconnectStage.None)
                 StopAutoReconnect("Auto reconnect wyłączony.", resumeMining: true, warning: false);
             _nextAutoReconnectHealthCheckAtUtc = DateTime.UtcNow.AddSeconds(Math.Clamp(ParseNonNegativeInt(TxtAutoReconnectWatchdogSeconds?.Text ?? string.Empty), 15, 3600));
             UpdateEnabledStates();
             MarkDirty();
+        }
+
+        private bool IsPeriodicAutoReconnectEnabled()
+        {
+            return ChkEmergencyDamageSoundEnabled?.IsChecked == true
+                && ChkAutoReconnectEnabled?.IsChecked == true;
         }
 
         private void AutoReconnectSetting_Changed(object sender, SelectionChangedEventArgs e)
@@ -3937,6 +4363,8 @@ namespace MinecraftHelper
                 BindTarget.JablkaZLisci => "Jabłka z liści",
                 BindTarget.FastUpExit => "Szybkie wyjście do góry",
                 BindTarget.TestCaptureArea => "Experimental OCR (obszar)",
+                BindTarget.AutoArmor => "Auto zbroja",
+                BindTarget.AutoWater => "AutoWater",
                 BindTarget.TestAutoFishing => "Auto łowienie wędką",
                 BindTarget.TestAutoFishingCaptureArea => "Auto łowienie (zaznaczanie obszaru)",
                 BindTarget.ChatOpen => "otwieranie chatu",
@@ -3967,6 +4395,8 @@ namespace MinecraftHelper
                 BindTarget.JablkaZLisci => BtnJablkaZLisciCapture,
                 BindTarget.FastUpExit => BtnTestFastUpExitBind,
                 BindTarget.TestCaptureArea => BtnTestCustomCaptureBind,
+                BindTarget.AutoArmor => BtnAutoArmorBind,
+                BindTarget.AutoWater => BtnAutoWaterBind,
                 BindTarget.TestAutoFishing => BtnTestAutoFishingBind,
                 BindTarget.TestAutoFishingCaptureArea => BtnTestAutoFishingCaptureBind,
                 BindTarget.ChatOpen => BtnChatOpenKeySave,
@@ -3987,6 +4417,8 @@ namespace MinecraftHelper
                 BindTarget.JablkaZLisci => TxtJablkaZLisciKey,
                 BindTarget.FastUpExit => TxtTestFastUpExitBind,
                 BindTarget.TestCaptureArea => TxtTestCustomCaptureBind,
+                BindTarget.AutoArmor => TxtAutoArmorBind,
+                BindTarget.AutoWater => TxtAutoWaterBind,
                 BindTarget.TestAutoFishing => TxtTestAutoFishingBind,
                 BindTarget.TestAutoFishingCaptureArea => TxtTestAutoFishingCaptureBind,
                 BindTarget.ChatOpen => TxtChatOpenKey,
@@ -4005,6 +4437,8 @@ namespace MinecraftHelper
             yield return BindTarget.JablkaZLisci;
             yield return BindTarget.FastUpExit;
             yield return BindTarget.TestCaptureArea;
+            yield return BindTarget.AutoArmor;
+            yield return BindTarget.AutoWater;
             yield return BindTarget.TestAutoFishing;
             yield return BindTarget.TestAutoFishingCaptureArea;
             yield return BindTarget.ChatOpen;
@@ -4023,6 +4457,8 @@ namespace MinecraftHelper
                 BindTarget.JablkaZLisci => "core:jablka",
                 BindTarget.FastUpExit => "core:fast-up-exit",
                 BindTarget.TestCaptureArea => "core:test-capture",
+                BindTarget.AutoArmor => "core:auto-armor",
+                BindTarget.AutoWater => "core:auto-water",
                 BindTarget.TestAutoFishing => "core:test-auto-fishing",
                 BindTarget.TestAutoFishingCaptureArea => "core:test-auto-fishing-capture",
                 BindTarget.ChatOpen => "minecraft-control:chat-open",
@@ -4108,6 +4544,8 @@ namespace MinecraftHelper
                 BindTarget.JablkaZLisci,
                 BindTarget.FastUpExit,
                 BindTarget.TestCaptureArea,
+                BindTarget.AutoArmor,
+                BindTarget.AutoWater,
                 BindTarget.TestAutoFishing,
                 BindTarget.TestAutoFishingCaptureArea
             };
@@ -4203,6 +4641,8 @@ namespace MinecraftHelper
             RefreshBindSaveButton(BindTarget.JablkaZLisci);
             RefreshBindSaveButton(BindTarget.FastUpExit);
             RefreshBindSaveButton(BindTarget.TestCaptureArea);
+            RefreshBindSaveButton(BindTarget.AutoArmor);
+            RefreshBindSaveButton(BindTarget.AutoWater);
             RefreshBindSaveButton(BindTarget.TestAutoFishing);
             RefreshBindSaveButton(BindTarget.TestAutoFishingCaptureArea);
             RefreshBindSaveButton(BindTarget.ChatOpen);
@@ -4606,7 +5046,10 @@ namespace MinecraftHelper
             bool inventoryCleanupSelected = ChkInventoryCleanupEnabled.IsChecked == true;
             bool testEntitiesModeSelected = ChkTestEntitiesEnabled.IsChecked == true;
             bool fastUpModeSelected = ChkTestFastUpExitEnabled.IsChecked == true;
+            bool autoArmorModeSelected = ChkAutoArmorEnabled.IsChecked == true;
+            bool autoWaterModeSelected = ChkAutoWaterEnabled.IsChecked == true;
             bool autoFishingModeSelected = ChkTestAutoFishingEnabled.IsChecked == true;
+            bool emergencyProtectionSelected = ChkEmergencyDamageSoundEnabled?.IsChecked == true;
 
             if (_isPausedByCursorVisibility)
             {
@@ -4614,6 +5057,16 @@ namespace MinecraftHelper
                     "PAUZA (KURSOR)",
                     "Makra klikające są tymczasowo wstrzymane.",
                     OverlayHudTone.Warning));
+            }
+
+            bool emergencyProtectionArmedForActiveMiner = emergencyProtectionSelected
+                && (_kopacz533RuntimeEnabled || _kopacz633RuntimeEnabled);
+            if (emergencyProtectionArmedForActiveMiner
+                || _emergencyReconnectActive
+                || _emergencyDamageSoundManualTestActive
+                || _autoReconnectStage != AutoReconnectStage.None)
+            {
+                entries.Add(BuildEmergencyProtectionOverlayEntry(now));
             }
 
             if (IsBindyHudNotificationActive(now))
@@ -4648,6 +5101,15 @@ namespace MinecraftHelper
             if (fastUpModeSelected && _testFastUpExitRuntimeEnabled)
                 entries.Add(BuildFastUpExitOverlayEntry());
 
+            if (autoArmorModeSelected && (IsAutoArmorRunning || _autoArmorCalibrationPending))
+                entries.Add(BuildAutoArmorOverlayEntry());
+
+            if (autoWaterModeSelected
+                && (_autoWaterStage != AutoWaterStage.None || _autoWaterCalibrationPending || _autoWaterRecognitionTestPending))
+            {
+                entries.Add(BuildAutoWaterOverlayEntry(now));
+            }
+
             if (autoFishingModeSelected && _testAutoFishingRuntimeEnabled)
                 entries.Add(BuildTestAutoFishingOverlayEntry(now));
 
@@ -4662,6 +5124,157 @@ namespace MinecraftHelper
             }
 
             return entries;
+        }
+
+        private OverlayHudEntry BuildEmergencyProtectionOverlayEntry(DateTime now)
+        {
+            AutoReconnectServerProfile? profile = GetSelectedAutoReconnectServerProfile();
+            string profileName = profile?.Name?.Trim() ?? "brak profilu";
+            string owner = _emergencyReconnectResumeKopacz533 || _kopacz533RuntimeEnabled
+                ? "Kopacz 5/3/3"
+                : _emergencyReconnectResumeKopacz633 || _kopacz633RuntimeEnabled
+                    ? "Kopacz 6/3/3"
+                    : "oczekiwanie na Kopacza";
+
+            string state;
+            string nextAction;
+            string detail;
+            OverlayHudTone tone;
+            if (_emergencyDamageSoundHandlingAlarm)
+            {
+                state = "ALARM — WYJŚCIE Z SERWERA";
+                nextAction = "Odliczanie do reconnectu";
+                detail = "Zatrzymywanie Kopacza i wykonywanie ESC → Disconnect";
+                tone = OverlayHudTone.Warning;
+            }
+            else if (_emergencyDamageSoundManualTestActive)
+            {
+                int seconds = Math.Max(0, (int)Math.Ceiling((_emergencyDamageSoundManualTestUntilUtc - now).TotalSeconds));
+                state = "TEST NASŁUCHU";
+                nextAction = "Po alarmie tylko wpis w logach";
+                detail = $"Pozostało: {seconds} s • bez wychodzenia z serwera";
+                tone = OverlayHudTone.Warning;
+            }
+            else if (_autoReconnectStage != AutoReconnectStage.None)
+            {
+                state = GetAutoReconnectOverlayStageLabel(_autoReconnectStage);
+                nextAction = GetAutoReconnectOverlayNextAction(
+                    _autoReconnectStage,
+                    _emergencyReconnectShutdownAfterHome);
+                if (_autoReconnectStage == AutoReconnectStage.EmergencyWaitBeforeReconnect)
+                {
+                    int seconds = Math.Max(0, (int)Math.Ceiling((_nextAutoReconnectActionAtUtc - now).TotalSeconds));
+                    detail = $"Reconnect za: {seconds} s • nasłuch nadal aktywny";
+                }
+                else if (_autoReconnectStage == AutoReconnectStage.WaitForDisconnectButtonUnlock)
+                {
+                    int seconds = Math.Max(0, (int)Math.Ceiling((_nextAutoReconnectActionAtUtc - now).TotalSeconds));
+                    detail = $"Kliknięcie możliwe za: {seconds} s";
+                }
+                else if (_autoReconnectStage == AutoReconnectStage.WaitForTeleport)
+                {
+                    int seconds = Math.Max(0, (int)Math.Ceiling((_nextAutoReconnectActionAtUtc - now).TotalSeconds));
+                    detail = _emergencyReconnectShutdownAfterHome
+                        ? $"Teleport i bezpieczne zamknięcie za: {seconds} s"
+                        : $"Teleport i wznowienie Kopacza za: {seconds} s";
+                }
+                else if (_emergencyReconnectShutdownAfterHome)
+                {
+                    detail = "Brak kilofa → awaryjny home → zamknięcie programu";
+                }
+                else
+                {
+                    detail = _emergencyReconnectActive
+                        ? "Kilof → wybrany home → slot 1 → wznowienie Kopacza"
+                        : "Trwa operacja Auto Reconnect";
+                }
+                tone = OverlayHudTone.Warning;
+            }
+            else if (_damageSoundDetector.IsRunning)
+            {
+                bool testMode = _settings.EmergencyDamageSoundTestMode;
+                state = testMode ? "NASŁUCH TESTOWY" : "OCHRONA UZBROJONA";
+                nextAction = testMode
+                    ? "Po alarmie tylko komunikat i log"
+                    : "Po alarmie zatrzymanie Kopacza i Disconnect";
+                detail = testMode
+                    ? "Alarm zostanie zapisany bez wyjścia z serwera"
+                    : "Oczekiwanie na dźwięk obrażeń";
+                tone = testMode ? OverlayHudTone.Warning : OverlayHudTone.Active;
+            }
+            else
+            {
+                state = "GOTOWA";
+                nextAction = owner == "oczekiwanie na Kopacza"
+                    ? "Uruchom Kopacza, aby uzbroić nasłuch"
+                    : "Uruchomienie nasłuchu obrażeń";
+                detail = owner == "oczekiwanie na Kopacza"
+                    ? "Nasłuch uruchomi się razem z Kopaczem"
+                    : "Uruchamianie nasłuchu obrażeń";
+                tone = OverlayHudTone.Active;
+            }
+
+            string body =
+                $"Teraz: {state}\n" +
+                $"Następnie: {nextAction}\n" +
+                $"Tryb: {owner} • Profil: {profileName}\n" +
+                detail;
+            string title = _emergencyReconnectActive || ChkEmergencyDamageSoundEnabled?.IsChecked == true
+                ? "AWARYJNA OCHRONA KOPACZA"
+                : "AUTO RECONNECT";
+            return new OverlayHudEntry(title, body, tone, Emphasize: _emergencyReconnectActive);
+        }
+
+        private static string GetAutoReconnectOverlayStageLabel(AutoReconnectStage stage)
+        {
+            return stage switch
+            {
+                AutoReconnectStage.EmergencyWaitBeforeReconnect => "OCZEKIWANIE NA RECONNECT",
+                AutoReconnectStage.AnalyzeScreen or AutoReconnectStage.WaitForScreenAnalysis => "ROZPOZNAWANIE EKRANU",
+                AutoReconnectStage.WaitForDisconnectButtonUnlock => "OCZEKIWANIE NA PRZYCISK",
+                AutoReconnectStage.WaitAfterScreenClick => "POWRÓT DO LISTY SERWERÓW",
+                AutoReconnectStage.OpenDirectConnect or AutoReconnectStage.WaitForDirectConnect => "OTWIERANIE DIRECT CONNECT",
+                AutoReconnectStage.EnterServerAddress => "WPISYWANIE ADRESU SERWERA",
+                AutoReconnectStage.WaitForServerJoin => "DOŁĄCZANIE DO SERWERA",
+                AutoReconnectStage.EmergencyOpenInventory => "OTWIERANIE EQ",
+                AutoReconnectStage.EmergencyVerifyInventory => "KONTROLA DIAMENTOWEGO KILOFA",
+                AutoReconnectStage.OpenHomeChat or AutoReconnectStage.TypeHomeCommand or AutoReconnectStage.SubmitHomeCommand => "WYSYŁANIE KOMENDY HOME",
+                AutoReconnectStage.WaitForHomeMenu => "OCZEKIWANIE NA MENU HOME",
+                AutoReconnectStage.ClickHomeSlot => "WYBÓR HOME",
+                AutoReconnectStage.WaitForTeleport => "TELEPORT NA HOME",
+                AutoReconnectStage.HealthOpenInventory or AutoReconnectStage.HealthVerifyInventory => "KONTROLA POŁĄCZENIA I EQ",
+                AutoReconnectStage.OpenVerificationInventory or AutoReconnectStage.VerifyAfterTeleport => "WERYFIKACJA EQ PO TELEPORCIE",
+                AutoReconnectStage.RetryDelay => "PONOWIENIE RECONNECTU",
+                _ => "AUTO RECONNECT"
+            };
+        }
+
+        private static string GetAutoReconnectOverlayNextAction(
+            AutoReconnectStage stage,
+            bool shutdownAfterHome)
+        {
+            return stage switch
+            {
+                AutoReconnectStage.EmergencyWaitBeforeReconnect => "Rozpoznanie ekranu i wejście przez Direct Connect",
+                AutoReconnectStage.AnalyzeScreen or AutoReconnectStage.WaitForScreenAnalysis => "Kliknięcie właściwego przycisku reconnectu",
+                AutoReconnectStage.WaitForDisconnectButtonUnlock => "Kliknięcie Reconnect lub Back to Server List",
+                AutoReconnectStage.WaitAfterScreenClick => "Otwarcie Direct Connect",
+                AutoReconnectStage.OpenDirectConnect or AutoReconnectStage.WaitForDirectConnect => "Wpisanie adresu serwera",
+                AutoReconnectStage.EnterServerAddress => "Dołączenie do serwera",
+                AutoReconnectStage.WaitForServerJoin => "Otwarcie EQ i kontrola diamentowego kilofa",
+                AutoReconnectStage.EmergencyOpenInventory => "Odczyt znaczników EQ",
+                AutoReconnectStage.EmergencyVerifyInventory => "Wybór właściwego home na podstawie kilofa",
+                AutoReconnectStage.OpenHomeChat or AutoReconnectStage.TypeHomeCommand or AutoReconnectStage.SubmitHomeCommand => "Otwarcie menu home lub rozpoczęcie oczekiwania",
+                AutoReconnectStage.WaitForHomeMenu => "Kliknięcie zapisanego slotu home",
+                AutoReconnectStage.ClickHomeSlot => "Odliczanie czasu teleportacji",
+                AutoReconnectStage.WaitForTeleport => shutdownAfterHome
+                    ? "Bezpieczne zamknięcie Minecraft Helper"
+                    : "Slot 1 i wznowienie Kopacza",
+                AutoReconnectStage.HealthOpenInventory or AutoReconnectStage.HealthVerifyInventory => "Decyzja: kontynuacja albo odzyskanie połączenia",
+                AutoReconnectStage.OpenVerificationInventory or AutoReconnectStage.VerifyAfterTeleport => "Zakończenie reconnectu albo ponowienie próby",
+                AutoReconnectStage.RetryDelay => "Ponowne rozpoznanie ekranu",
+                _ => "Oczekiwanie na kolejny krok"
+            };
         }
 
         private OverlayHudEntry BuildTestEntitiesOverlayEntry()
@@ -5446,8 +6059,12 @@ namespace MinecraftHelper
             bool testEntitiesOn = ChkTestEntitiesEnabled?.IsChecked == true;
             bool testCustomOn = testEntitiesOn;
             bool testFastUpOn = ChkTestFastUpExitEnabled?.IsChecked == true;
+            UpdateAutoArmorEnabledState();
+            UpdateAutoWaterEnabledState();
             bool testAutoFishingOn = ChkTestAutoFishingEnabled?.IsChecked == true;
-            bool autoReconnectOn = ChkAutoReconnectEnabled?.IsChecked == true;
+            bool emergencyDamageSoundOn = ChkEmergencyDamageSoundEnabled?.IsChecked == true;
+            bool emergencyReconnectOn = emergencyDamageSoundOn;
+            bool autoReconnectOn = IsPeriodicAutoReconnectEnabled();
             if (PanelTestEntitiesContent != null)
                 PanelTestEntitiesContent.Visibility = testEntitiesOn ? Visibility.Visible : Visibility.Collapsed;
             if (TxtTestCustomCaptureBind != null)
@@ -5530,9 +6147,38 @@ namespace MinecraftHelper
                 ResetTestAutoFishingRuntimeState();
             }
             UpdateTestAutoFishingStatusLabel();
+            if (PanelEmergencyDamageSoundContent != null)
+                SetExpandableSectionState(PanelEmergencyDamageSoundContent, emergencyDamageSoundOn);
+            if (CbEmergencyDamageSoundDevice != null)
+                CbEmergencyDamageSoundDevice.IsEnabled = emergencyDamageSoundOn;
+            if (BtnEmergencyDamageSoundRefreshDevices != null)
+                BtnEmergencyDamageSoundRefreshDevices.IsEnabled = emergencyDamageSoundOn;
+            if (ChkEmergencyDamageSoundTestMode != null)
+                ChkEmergencyDamageSoundTestMode.IsEnabled = emergencyDamageSoundOn;
+            if (SlEmergencyDamageSoundSimilarity != null)
+                SlEmergencyDamageSoundSimilarity.IsEnabled = emergencyDamageSoundOn;
+            if (BtnEmergencyDamageSoundReloadReferences != null)
+                BtnEmergencyDamageSoundReloadReferences.IsEnabled = emergencyDamageSoundOn && !_damageSoundDetector.IsRunning;
+            if (BtnEmergencyDamageSoundTest != null)
+                BtnEmergencyDamageSoundTest.IsEnabled = emergencyDamageSoundOn
+                    && _settings.EmergencyDamageSoundTemplates.Count > 0;
+            if (BtnEmergencyDamageSoundStop != null)
+                BtnEmergencyDamageSoundStop.IsEnabled = emergencyDamageSoundOn && _damageSoundDetector.IsRunning;
+            if (!emergencyDamageSoundOn)
+                StopEmergencyDamageSoundListening(updateStatus: true);
+            if (PanelEmergencyReconnectContent != null)
+                SetExpandableSectionState(PanelEmergencyReconnectContent, emergencyReconnectOn);
+            if (TxtEmergencyReconnectDelaySeconds != null)
+                TxtEmergencyReconnectDelaySeconds.IsEnabled = emergencyReconnectOn && !_emergencyReconnectActive;
+            if (BtnEmergencyReconnectStop != null)
+                BtnEmergencyReconnectStop.IsEnabled = _emergencyReconnectActive;
             if (PanelAutoReconnectContent != null)
-                SetExpandableSectionState(PanelAutoReconnectContent, autoReconnectOn);
-            if (!autoReconnectOn && _autoReconnectStage != AutoReconnectStage.None)
+                SetExpandableSectionState(PanelAutoReconnectContent, emergencyDamageSoundOn);
+            if (ChkAutoReconnectEnabled != null)
+                ChkAutoReconnectEnabled.IsEnabled = emergencyDamageSoundOn;
+            if (!autoReconnectOn
+                && !_emergencyReconnectActive
+                && _autoReconnectStage != AutoReconnectStage.None)
                 StopAutoReconnect("Auto reconnect wyłączony.", resumeMining: true, warning: false);
 
             bool overlayHudOn = ChkOverlayHudEnabled.IsChecked == true;
@@ -6201,6 +6847,15 @@ namespace MinecraftHelper
 
                 case BindTarget.TestCaptureArea:
                     _testCaptureBindWasDown = false;
+                    break;
+                case BindTarget.AutoArmor:
+                    _autoArmorBindWasDown = false;
+                    if (IsAutoArmorRunning)
+                        RequestCancelAutoArmor("Auto zbroja: usunięto bind — kończę bezpiecznie bieżące przełożenie.");
+                    break;
+                case BindTarget.AutoWater:
+                    _autoWaterBindWasDown = false;
+                    CancelAutoWater("AutoWater: usunięto bind.", Brushes.Orange, restoreSlot: false);
                     break;
                 case BindTarget.TestAutoFishing:
                     _testAutoFishingBindWasDown = false;
@@ -6958,11 +7613,25 @@ namespace MinecraftHelper
             _settings.TestCustomCaptureBind = TxtTestCustomCaptureBind.Text.Trim();
             _settings.TestFastUpExitEnabled = ChkTestFastUpExitEnabled.IsChecked ?? false;
             _settings.TestFastUpExitBind = TxtTestFastUpExitBind.Text.Trim();
+            ReadAutoArmorFromUi();
+            ReadAutoWaterFromUi();
             _settings.TestAutoFishingEnabled = ChkTestAutoFishingEnabled.IsChecked ?? false;
             _settings.TestAutoFishingBind = TxtTestAutoFishingBind.Text.Trim();
             _settings.TestAutoFishingCaptureBind = TxtTestAutoFishingCaptureBind.Text.Trim();
             _settings.TestAutoFishingRepairCommand = TxtTestAutoFishingRepairCommand.Text.Trim();
             _settings.TestAutoFishingRepairEverySeconds = Math.Clamp(ParseNonNegativeInt(TxtTestAutoFishingRepairEverySeconds.Text), 0, TestAutoFishingRepairIntervalMaxSeconds);
+            _settings.EmergencyDamageSoundEnabled = ChkEmergencyDamageSoundEnabled.IsChecked == true;
+            _settings.EmergencyDamageSoundTestMode = ChkEmergencyDamageSoundTestMode.IsChecked != false;
+            _settings.EmergencyDamageSoundDeviceId = GetSelectedEmergencyDamageSoundDeviceId();
+            _settings.EmergencyDamageSoundSimilarityPercent = Math.Clamp(
+                (int)Math.Round(SlEmergencyDamageSoundSimilarity.Value),
+                70,
+                99);
+            _settings.EmergencyReconnectEnabled = _settings.EmergencyDamageSoundEnabled;
+            _settings.EmergencyReconnectDelaySeconds = Math.Clamp(
+                ParseNonNegativeInt(TxtEmergencyReconnectDelaySeconds.Text),
+                1,
+                600);
             _settings.AutoReconnectEnabled = ChkAutoReconnectEnabled.IsChecked == true;
             AutoReconnectServerProfile? selectedAutoReconnectProfile = GetSelectedAutoReconnectServerProfile();
             if (selectedAutoReconnectProfile != null)
@@ -7912,6 +8581,7 @@ namespace MinecraftHelper
             {
                 // Also runs after early returns (focus loss, bind capture, etc.).
                 SuspendMouseHookWhenIdle();
+                UpdateEmergencyDamageSoundMonitoring();
             }
         }
 
@@ -7946,6 +8616,8 @@ namespace MinecraftHelper
                 bool kop633Down = IsConfiguredBindKeyDown(TxtKopacz633Key.Text);
                 bool testCaptureDown = IsConfiguredBindKeyDown(TxtTestCustomCaptureBind.Text);
                 bool fastUpDown = IsConfiguredBindKeyDown(TxtTestFastUpExitBind.Text);
+                bool autoArmorDown = IsConfiguredBindKeyDown(TxtAutoArmorBind.Text);
+                bool autoWaterDown = IsConfiguredBindKeyDown(TxtAutoWaterBind.Text);
                 bool autoFishingDown = IsConfiguredBindKeyDown(TxtTestAutoFishingBind.Text);
                 bool autoFishingCaptureDown = IsConfiguredBindKeyDown(TxtTestAutoFishingCaptureBind.Text);
                 bool bindyDown = IsAnyBindyKeyDown();
@@ -7958,11 +8630,13 @@ namespace MinecraftHelper
                 _kopacz633BindWasDown = kop633Down;
                 _testCaptureBindWasDown = testCaptureDown;
                 _testFastUpExitBindWasDown = fastUpDown;
+                _autoArmorBindWasDown = autoArmorDown;
+                _autoWaterBindWasDown = autoWaterDown;
                 _testAutoFishingBindWasDown = autoFishingDown;
                 _testAutoFishingCaptureBindWasDown = autoFishingCaptureDown;
                 SyncAutoComboStates();
 
-                if (holdDown || autoLeftDown || autoRightDown || jablkaDown || kop533Down || kop633Down || testCaptureDown || fastUpDown || autoFishingDown || autoFishingCaptureDown || bindyDown)
+                if (holdDown || autoLeftDown || autoRightDown || jablkaDown || kop533Down || kop633Down || testCaptureDown || fastUpDown || autoArmorDown || autoWaterDown || autoFishingDown || autoFishingCaptureDown || bindyDown)
                 {
                     _autoClickScheduler.Stop();
                     SetAutoLeftDabHold(false);
@@ -7999,6 +8673,8 @@ namespace MinecraftHelper
                 _kopacz633BindWasDown = IsConfiguredBindKeyDown(TxtKopacz633Key.Text);
                 _testCaptureBindWasDown = IsConfiguredBindKeyDown(TxtTestCustomCaptureBind.Text);
                 _testFastUpExitBindWasDown = IsConfiguredBindKeyDown(TxtTestFastUpExitBind.Text);
+                _autoArmorBindWasDown = IsConfiguredBindKeyDown(TxtAutoArmorBind.Text);
+                _autoWaterBindWasDown = IsConfiguredBindKeyDown(TxtAutoWaterBind.Text);
                 _testAutoFishingBindWasDown = IsConfiguredBindKeyDown(TxtTestAutoFishingBind.Text);
                 _testAutoFishingCaptureBindWasDown = IsConfiguredBindKeyDown(TxtTestAutoFishingCaptureBind.Text);
                 SyncBindyKeyStates();
@@ -8012,6 +8688,10 @@ namespace MinecraftHelper
                 SetKopacz633StrafeDirection(Kopacz633StrafeDirection.None);
                 ResetTestFastUpExitRuntimeState();
                 ResetTestAutoFishingRuntimeState();
+                if (IsAutoArmorRunning)
+                    CancelAutoArmor("Auto zbroja przerwana po utracie fokusu. Sprawdź EQ przed kolejną próbą.", Brushes.OrangeRed, closeInventory: false);
+                if (_autoWaterStage != AutoWaterStage.None)
+                    CancelAutoWater("AutoWater przerwany po utracie fokusu Minecrafta.", Brushes.OrangeRed, restoreSlot: false);
                 ResetHoldLeftToggleState(clearToggleEnabled: false);
                 ResetBindyRuntimeState();
                 SetInventoryCleanupEatingHold(false);
@@ -8035,6 +8715,12 @@ namespace MinecraftHelper
                 return;
             }
 
+            DateTime autoWaterNow = DateTime.UtcNow;
+            if (TryHandleAutoArmorCalibration(autoWaterNow))
+                return;
+            if (TryHandleAutoWaterCalibrationOrTest(autoWaterNow))
+                return;
+
             bool changed = false;
 
             bool holdModeSelected = ChkMacroManualEnabled.IsChecked == true;
@@ -8046,6 +8732,8 @@ namespace MinecraftHelper
             bool bindyModeSelected = ChkBindyEnabled.IsChecked == true;
             bool testCaptureModeSelected = ChkTestEntitiesEnabled.IsChecked == true;
             bool fastUpModeSelected = ChkTestFastUpExitEnabled.IsChecked == true;
+            bool autoArmorModeSelected = ChkAutoArmorEnabled.IsChecked == true;
+            bool autoWaterModeSelected = ChkAutoWaterEnabled.IsChecked == true;
             bool autoFishingModeSelected = ChkTestAutoFishingEnabled.IsChecked == true;
             bool internalCommandTyping =
                 _jablkaCommandStage != JablkaCommandStage.None ||
@@ -8067,6 +8755,8 @@ namespace MinecraftHelper
                 _kopacz633BindWasDown = IsConfiguredBindKeyDown(TxtKopacz633Key.Text);
                 _testCaptureBindWasDown = IsConfiguredBindKeyDown(TxtTestCustomCaptureBind.Text);
                 _testFastUpExitBindWasDown = IsConfiguredBindKeyDown(TxtTestFastUpExitBind.Text);
+                _autoArmorBindWasDown = IsConfiguredBindKeyDown(TxtAutoArmorBind.Text);
+                _autoWaterBindWasDown = IsConfiguredBindKeyDown(TxtAutoWaterBind.Text);
                 _testAutoFishingBindWasDown = IsConfiguredBindKeyDown(TxtTestAutoFishingBind.Text);
                 _testAutoFishingCaptureBindWasDown = IsConfiguredBindKeyDown(TxtTestAutoFishingCaptureBind.Text);
                 SyncBindyKeyStates();
@@ -8078,6 +8768,54 @@ namespace MinecraftHelper
 
             if (!internalCommandTyping && autoFishingModeSelected && IsBindPressed(TxtTestAutoFishingCaptureBind.Text, ref _testAutoFishingCaptureBindWasDown))
                 BeginTestAutoFishingAreaSelectionFromBind();
+
+            if (!internalCommandTyping
+                && autoArmorModeSelected
+                && IsBindPressed(TxtAutoArmorBind.Text, ref _autoArmorBindWasDown))
+            {
+                if (IsAutoArmorRunning)
+                    RequestCancelAutoArmor("Anulowanie bindem — kończę bezpiecznie bieżące przełożenie.");
+                else
+                    TryStartAutoArmor(DateTime.UtcNow);
+                changed = true;
+            }
+
+            if (IsAutoArmorRunning)
+            {
+                _autoClickScheduler.Stop();
+                SetAutoLeftDabHold(false);
+                ReleaseHoldRightInjectedButton();
+                RunAutoArmorTick(DateTime.UtcNow);
+                RefreshLiveTopTiles(DateTime.UtcNow);
+                RefreshOverlayHud(DateTime.UtcNow);
+                return;
+            }
+
+            if (!internalCommandTyping
+                && autoWaterModeSelected
+                && IsBindPressed(TxtAutoWaterBind.Text, ref _autoWaterBindWasDown))
+            {
+                if (_autoWaterStage != AutoWaterStage.None)
+                {
+                    CancelAutoWater("AutoWater anulowany bindem.", Brushes.Orange, restoreSlot: true);
+                    UpdateStatusBar("AutoWater anulowany", "Orange");
+                }
+                else
+                {
+                    TryStartAutoWater(DateTime.UtcNow);
+                }
+                changed = true;
+            }
+
+            if (_autoWaterStage != AutoWaterStage.None)
+            {
+                _autoClickScheduler.Stop();
+                SetAutoLeftDabHold(false);
+                RunAutoWaterTick(DateTime.UtcNow);
+                RefreshLiveTopTiles(DateTime.UtcNow);
+                RefreshOverlayHud(DateTime.UtcNow);
+                return;
+            }
 
             if (!internalCommandTyping && IsBindPressed(TxtTestFastUpExitBind.Text, ref _testFastUpExitBindWasDown) && fastUpModeSelected)
             {
@@ -8374,6 +9112,11 @@ namespace MinecraftHelper
                 _testAutoFishingRuntimeEnabled = false;
                 ResetTestAutoFishingRuntimeState();
                 UpdateTestAutoFishingStatusLabel();
+                changed = true;
+            }
+            if (!autoWaterModeSelected && _autoWaterStage != AutoWaterStage.None)
+            {
+                CancelAutoWater("AutoWater zatrzymany: moduł został wyłączony.", Brushes.Orange, restoreSlot: false);
                 changed = true;
             }
             if (!bindyModeSelected)
@@ -9935,7 +10678,7 @@ namespace MinecraftHelper
             InventoryMarkerDetection detection,
             DateTime now)
         {
-            if (ChkAutoReconnectEnabled?.IsChecked != true
+            if (!IsPeriodicAutoReconnectEnabled()
                 || !_settings.AutoReconnectMissingPickaxeRecoveryEnabled)
             {
                 return false;
@@ -10203,7 +10946,7 @@ namespace MinecraftHelper
                 ? _kopacz533RuntimeEnabled
                 : owner == InventoryCleanupOwner.Kopacz633 && _kopacz633RuntimeEnabled;
             if (startReconnectIfEnabled
-                && ChkAutoReconnectEnabled?.IsChecked == true
+                && IsPeriodicAutoReconnectEnabled()
                 && ownerStillRunning
                 && _autoReconnectStage == AutoReconnectStage.None)
             {
@@ -11694,6 +12437,778 @@ namespace MinecraftHelper
             MarkDirty();
         }
 
+        private void RefreshEmergencyDamageSoundDevices()
+        {
+            if (CbEmergencyDamageSoundDevice == null)
+                return;
+
+            string preferredId = GetSelectedEmergencyDamageSoundDeviceId();
+            if (string.IsNullOrWhiteSpace(preferredId))
+                preferredId = _settings.EmergencyDamageSoundDeviceId;
+
+            bool previousLoading = _isLoadingUi;
+            _isLoadingUi = true;
+            try
+            {
+                CbEmergencyDamageSoundDevice.Items.Clear();
+                IReadOnlyList<AudioOutputDeviceInfo> devices = DamageSoundDetector.GetOutputDevices();
+                foreach (AudioOutputDeviceInfo device in devices)
+                {
+                    CbEmergencyDamageSoundDevice.Items.Add(new ComboBoxItem
+                    {
+                        Content = device.IsDefault ? $"{device.Name} (domyślne)" : device.Name,
+                        Tag = device.Id
+                    });
+                }
+
+                int selectedIndex = -1;
+                for (int i = 0; i < CbEmergencyDamageSoundDevice.Items.Count; i++)
+                {
+                    if (CbEmergencyDamageSoundDevice.Items[i] is ComboBoxItem item
+                        && string.Equals(item.Tag as string, preferredId, StringComparison.OrdinalIgnoreCase))
+                    {
+                        selectedIndex = i;
+                        break;
+                    }
+                }
+                CbEmergencyDamageSoundDevice.SelectedIndex = selectedIndex >= 0
+                    ? selectedIndex
+                    : (CbEmergencyDamageSoundDevice.Items.Count > 0 ? 0 : -1);
+            }
+            catch (Exception ex)
+            {
+                CbEmergencyDamageSoundDevice.Items.Add(new ComboBoxItem
+                {
+                    Content = "Nie udało się odczytać urządzeń audio",
+                    IsEnabled = false
+                });
+                CbEmergencyDamageSoundDevice.SelectedIndex = 0;
+                UpdateEmergencyDamageSoundStatus("Błąd urządzeń audio: " + ex.Message, "Red");
+            }
+            finally
+            {
+                _isLoadingUi = previousLoading;
+            }
+
+            UpdateEmergencyDamageSoundSourcePreview();
+        }
+
+        private string GetSelectedEmergencyDamageSoundDeviceId()
+        {
+            return CbEmergencyDamageSoundDevice?.SelectedItem is ComboBoxItem item
+                ? item.Tag as string ?? string.Empty
+                : string.Empty;
+        }
+
+        private string ResolveEmergencyDamageSoundDeviceId(out string sourceDescription, out bool matchedMinecraft)
+        {
+            matchedMinecraft = false;
+            if (TryGetCurrentMinecraftProcessId(out int minecraftProcessId)
+                && DamageSoundDetector.TryGetOutputDeviceForProcess(minecraftProcessId, out AudioOutputDeviceInfo? minecraftDevice)
+                && minecraftDevice != null)
+            {
+                matchedMinecraft = true;
+                sourceDescription = $"Minecraft [{minecraftProcessId}] → {minecraftDevice.Name}";
+                return minecraftDevice.Id;
+            }
+
+            string fallbackDeviceId = GetSelectedEmergencyDamageSoundDeviceId();
+            string fallbackName = CbEmergencyDamageSoundDevice?.SelectedItem is ComboBoxItem fallbackItem
+                ? fallbackItem.Content?.ToString() ?? "domyślne urządzenie Windows"
+                : "domyślne urządzenie Windows";
+            sourceDescription = TryGetCurrentMinecraftProcessId(out int unresolvedProcessId)
+                ? $"Nie znaleziono sesji Minecraft [{unresolvedProcessId}] — awaryjnie: {fallbackName}"
+                : $"Brak zapisanego procesu Minecraft — awaryjnie: {fallbackName}";
+            return fallbackDeviceId;
+        }
+
+        private bool TryGetCurrentMinecraftProcessId(out int processId)
+        {
+            processId = 0;
+            IntPtr targetWindow = _targetGameWindowHandle;
+            if (targetWindow == IntPtr.Zero && TryResolveTargetWindow(allowPendingSelection: false, out IntPtr resolvedWindow))
+            {
+                targetWindow = resolvedWindow;
+                _targetGameWindowHandle = resolvedWindow;
+            }
+
+            if (targetWindow != IntPtr.Zero)
+            {
+                _ = GetWindowThreadProcessId(targetWindow, out uint processIdRaw);
+                if (processIdRaw > 0 && processIdRaw <= int.MaxValue)
+                {
+                    processId = (int)processIdRaw;
+                    return true;
+                }
+            }
+
+            int configuredProcessId = _settings.TargetProcessId;
+            if (configuredProcessId <= 0)
+                return false;
+            try
+            {
+                using Process configuredProcess = Process.GetProcessById(configuredProcessId);
+                string configuredName = (_settings.TargetProcessName ?? string.Empty).Trim();
+                if (!string.IsNullOrWhiteSpace(configuredName)
+                    && !string.Equals(configuredProcess.ProcessName, configuredName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+
+                processId = configuredProcessId;
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private void UpdateEmergencyDamageSoundSourcePreview()
+        {
+            if (TxtEmergencyDamageSoundSource == null)
+                return;
+
+            try
+            {
+                _ = ResolveEmergencyDamageSoundDeviceId(out string sourceDescription, out bool matchedMinecraft);
+                TxtEmergencyDamageSoundSource.Text = matchedMinecraft
+                    ? "Automatycznie: " + sourceDescription
+                    : sourceDescription;
+                TxtEmergencyDamageSoundSource.Foreground = matchedMinecraft
+                    ? new SolidColorBrush(Color.FromRgb(56, 214, 180))
+                    : new SolidColorBrush(Color.FromRgb(251, 191, 36));
+            }
+            catch (Exception ex)
+            {
+                TxtEmergencyDamageSoundSource.Text = "Nie udało się sprawdzić sesji Minecrafta: " + ex.Message;
+                TxtEmergencyDamageSoundSource.Foreground = new SolidColorBrush(Color.FromRgb(255, 107, 107));
+            }
+        }
+
+        private void UpdateEmergencyDamageSoundReferenceInfo()
+        {
+            if (TxtEmergencyDamageSoundReferenceInfo == null)
+                return;
+            int count = _settings.EmergencyDamageSoundTemplates?.Count ?? 0;
+            TxtEmergencyDamageSoundReferenceInfo.Text = count > 0
+                ? $"Stały wzorzec gotowy: hit1–hit4 • {count} profili widma • minimalny poziom {_settings.EmergencyDamageSoundMinimumDb:0} dB."
+                : "Nie udało się wczytać stałych wzorców hit1–hit4 z plików aplikacji.";
+            TxtEmergencyDamageSoundReferenceInfo.Foreground = count > 0
+                ? new SolidColorBrush(Color.FromRgb(56, 214, 180))
+                : new SolidColorBrush(Color.FromRgb(146, 166, 193));
+        }
+
+        private void UpdateEmergencyDamageSoundStatus(string message, string colorName = "Default")
+        {
+            if (TxtEmergencyDamageSoundStatus == null)
+                return;
+            TxtEmergencyDamageSoundStatus.Text = message;
+            TxtEmergencyDamageSoundStatus.Foreground = colorName == "Red"
+                ? new SolidColorBrush(Color.FromRgb(255, 107, 107))
+                : colorName == "Green"
+                    ? new SolidColorBrush(Color.FromRgb(56, 214, 180))
+                    : colorName == "Orange"
+                        ? new SolidColorBrush(Color.FromRgb(251, 191, 36))
+                        : new SolidColorBrush(Color.FromRgb(146, 166, 193));
+        }
+
+        private void UpdateEmergencyReconnectStatus(string message, string colorName = "Default")
+        {
+            if (TxtEmergencyReconnectStatus == null)
+                return;
+            TxtEmergencyReconnectStatus.Text = message;
+            TxtEmergencyReconnectStatus.Foreground = colorName == "Red"
+                ? new SolidColorBrush(Color.FromRgb(255, 107, 107))
+                : colorName == "Green"
+                    ? new SolidColorBrush(Color.FromRgb(56, 214, 180))
+                    : colorName == "Orange"
+                        ? new SolidColorBrush(Color.FromRgb(251, 191, 36))
+                        : new SolidColorBrush(Color.FromRgb(146, 166, 193));
+        }
+
+        private void RefreshEmergencyReconnectProfileSummary()
+        {
+            if (TxtEmergencyReconnectProfileSummary == null)
+                return;
+
+            AutoReconnectServerProfile? profile = GetSelectedAutoReconnectServerProfile();
+            if (profile == null)
+            {
+                TxtEmergencyReconnectProfileSummary.Text = "Brak profilu Auto reconnect. Dodaj i wybierz profil serwera.";
+                TxtEmergencyReconnectProfileSummary.Foreground = new SolidColorBrush(Color.FromRgb(255, 107, 107));
+                return;
+            }
+
+            NormalizeAutoReconnectHomeSettings(profile);
+            string normalHome = profile.HomeHasGui
+                ? $"{profile.HomeCommand} → GUI {profile.HomeGuiRows}×{profile.HomeGuiColumns}, slot {profile.HomeGuiSlot}"
+                : $"{profile.HomeCommand} → bez GUI";
+            string missingHome = profile.MissingPickaxeHomeHasGui == true
+                ? $"{profile.MissingPickaxeHomeCommand} → GUI {profile.MissingPickaxeHomeGuiRows}×{profile.MissingPickaxeHomeGuiColumns}, slot {profile.MissingPickaxeHomeGuiSlot}"
+                : $"{profile.MissingPickaxeHomeCommand} → bez GUI";
+            TxtEmergencyReconnectProfileSummary.Text =
+                $"Profil: {profile.Name} • serwer: {profile.ServerAddress}\n" +
+                $"Kilof wykryty: {normalHome} → wznowienie Kopacza\n" +
+                $"Brak kilofa: {missingHome} → teleport i zamknięcie programu";
+            TxtEmergencyReconnectProfileSummary.Foreground = profile.MissingPickaxeRecoveryEnabled
+                ? new SolidColorBrush(Color.FromRgb(146, 166, 193))
+                : new SolidColorBrush(Color.FromRgb(251, 191, 36));
+            if (!profile.MissingPickaxeRecoveryEnabled)
+                TxtEmergencyReconnectProfileSummary.Text += "\nUWAGA: w profilu jest wyłączona obsługa braku kilofa.";
+        }
+
+        private void EmergencyReconnectSetting_Changed(object sender, TextChangedEventArgs e)
+        {
+            if (_isLoadingUi)
+                return;
+            _settings.EmergencyReconnectDelaySeconds = Math.Clamp(
+                ParseNonNegativeInt(TxtEmergencyReconnectDelaySeconds.Text),
+                1,
+                600);
+            MarkDirty();
+        }
+
+        private void BtnEmergencyReconnectStop_Click(object sender, RoutedEventArgs e)
+        {
+            if (_autoReconnectStage != AutoReconnectStage.None)
+                StopAutoReconnect("Awaryjna procedura zatrzymana ręcznie.", resumeMining: false, warning: true);
+            else
+                ClearEmergencyReconnectRuntimeState(stopSoundMonitoring: true);
+            UpdateEmergencyReconnectStatus("Awaryjna procedura zatrzymana ręcznie.", "Orange");
+            UpdateEnabledStates();
+        }
+
+        private void ChkEmergencyDamageSoundEnabled_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_isLoadingUi)
+                return;
+
+            _settings.EmergencyDamageSoundEnabled = ChkEmergencyDamageSoundEnabled.IsChecked == true;
+            _settings.EmergencyReconnectEnabled = _settings.EmergencyDamageSoundEnabled;
+            if (!_settings.EmergencyDamageSoundEnabled)
+            {
+                if (_emergencyReconnectActive)
+                    StopAutoReconnect("Awaryjna ochrona wyłączona przez użytkownika.", resumeMining: false, warning: true);
+                StopEmergencyDamageSoundListening(updateStatus: true);
+                UpdateEmergencyReconnectStatus("Ochrona awaryjna jest wyłączona.");
+            }
+            else if (_settings.EmergencyDamageSoundTemplates.Count == 0)
+            {
+                UpdateEmergencyDamageSoundStatus("Włączono, ale brakuje stałych wzorców hit1–hit4.", "Orange");
+                UpdateEmergencyReconnectStatus("Brakuje wzorców hit1–hit4 — procedura nie jest jeszcze uzbrojona.", "Orange");
+            }
+            else
+            {
+                UpdateEmergencyDamageSoundStatus("Gotowy. Nasłuch uruchomi się razem z Kopaczem.", "Green");
+                UpdateEmergencyReconnectStatus(
+                    ChkEmergencyDamageSoundTestMode.IsChecked == false
+                        ? "Gotowe. Pełna ochrona uruchomi się po alarmie podczas pracy Kopacza."
+                        : "Tryb testowy jest włączony — alarm nie wyjdzie z serwera.",
+                    ChkEmergencyDamageSoundTestMode.IsChecked == false ? "Green" : "Orange");
+            }
+            RefreshEmergencyReconnectProfileSummary();
+            UpdateEnabledStates();
+            MarkDirty();
+        }
+
+        private void ChkEmergencyDamageSoundSetting_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_isLoadingUi)
+                return;
+
+            if (ChkEmergencyDamageSoundTestMode.IsChecked == false)
+            {
+                MessageBoxResult confirmation = MessageBox.Show(
+                    "Wyłączenie trybu testowego uzbraja prawdziwą reakcję. Po wykryciu wzorca podczas pracy Kopacza program natychmiast zatrzyma automatyzację, otworzy menu ESC i kliknie Disconnect.\n\nKontynuować?",
+                    "Uzbrojenie awaryjnego wyjścia",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning,
+                    MessageBoxResult.No);
+                if (confirmation != MessageBoxResult.Yes)
+                {
+                    _isLoadingUi = true;
+                    ChkEmergencyDamageSoundTestMode.IsChecked = true;
+                    _isLoadingUi = false;
+                }
+            }
+
+            _settings.EmergencyDamageSoundTestMode = ChkEmergencyDamageSoundTestMode.IsChecked != false;
+            UpdateEmergencyDamageSoundStatus(
+                _settings.EmergencyDamageSoundTestMode
+                    ? "Tryb testowy: alarm nie zatrzyma kopania ani nie wyjdzie z serwera."
+                    : "TRYB REALNY UZBROJONY: wykrycie uruchomi ESC → Disconnect.",
+                _settings.EmergencyDamageSoundTestMode ? "Green" : "Orange");
+            UpdateEmergencyReconnectStatus(
+                _settings.EmergencyDamageSoundTestMode
+                    ? "Tryb testowy jest włączony — alarm nie wyjdzie z serwera."
+                    : "Gotowe. Pełna ochrona uruchomi się po alarmie podczas pracy Kopacza.",
+                _settings.EmergencyDamageSoundTestMode ? "Orange" : "Green");
+            MarkDirty();
+        }
+
+        private void SlEmergencyDamageSoundSimilarity_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            int value = Math.Clamp((int)Math.Round(e.NewValue), 70, 99);
+            if (TxtEmergencyDamageSoundSimilarityValue != null)
+                TxtEmergencyDamageSoundSimilarityValue.Text = $"{value}%";
+            if (_isLoadingUi)
+                return;
+
+            _settings.EmergencyDamageSoundSimilarityPercent = value;
+            if (_damageSoundDetector.IsRunning)
+            {
+                _damageSoundDetector.Stop();
+                _emergencyDamageSoundMonitoringForMiner = false;
+                _emergencyDamageSoundManualTestActive = false;
+            }
+            MarkDirty();
+        }
+
+        private void CbEmergencyDamageSoundDevice_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_isLoadingUi)
+                return;
+
+            _settings.EmergencyDamageSoundDeviceId = GetSelectedEmergencyDamageSoundDeviceId();
+            StopEmergencyDamageSoundListening(updateStatus: false);
+            UpdateEmergencyDamageSoundSourcePreview();
+            UpdateEmergencyDamageSoundStatus("Zmieniono urządzenie awaryjne. Minecraft nadal jest wybierany automatycznie.", "Green");
+            MarkDirty();
+        }
+
+        private void BtnEmergencyDamageSoundRefreshDevices_Click(object sender, RoutedEventArgs e)
+        {
+            StopEmergencyDamageSoundListening(updateStatus: false);
+            RefreshEmergencyDamageSoundDevices();
+            _settings.EmergencyDamageSoundDeviceId = GetSelectedEmergencyDamageSoundDeviceId();
+            UpdateEmergencyDamageSoundSourcePreview();
+            UpdateEmergencyDamageSoundStatus("Sprawdzono sesję audio Minecrafta i odświeżono urządzenia.", "Green");
+            MarkDirty();
+        }
+
+        private void BtnEmergencyDamageSoundReloadReferences_Click(object sender, RoutedEventArgs e)
+        {
+            StopEmergencyDamageSoundListening(updateStatus: false);
+            LoadBundledDamageSoundReferences(showStatus: true);
+            UpdateEnabledStates();
+        }
+
+        private bool LoadBundledDamageSoundReferences(bool showStatus)
+        {
+            string soundDirectory = Path.Combine(AppContext.BaseDirectory, "Assets", "Sounds", "Damage");
+            string[] soundFiles = Enumerable.Range(1, 4)
+                .Select(index => Path.Combine(soundDirectory, $"hit{index}.ogg"))
+                .ToArray();
+            try
+            {
+                DamageSoundReferenceSet referenceSet = DamageSoundDetector.LoadReferenceFiles(soundFiles);
+                _settings.EmergencyDamageSoundTemplates = referenceSet.Templates
+                    .Select(template => template.ToList())
+                    .ToList();
+                _settings.EmergencyDamageSoundMinimumDb = referenceSet.SuggestedMinimumDb;
+                UpdateEmergencyDamageSoundReferenceInfo();
+                if (showStatus)
+                {
+                    UpdateEmergencyDamageSoundStatus(
+                        $"Wczytano {referenceSet.SourceFileCount} stałe dźwięki obrażeń i {_settings.EmergencyDamageSoundTemplates.Count} profili widma.",
+                        "Green");
+                    MarkDirty();
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _settings.EmergencyDamageSoundTemplates.Clear();
+                UpdateEmergencyDamageSoundReferenceInfo();
+                if (showStatus || TxtEmergencyDamageSoundStatus != null)
+                    UpdateEmergencyDamageSoundStatus("Błąd stałych wzorców dźwięku: " + ex.Message, "Red");
+                return false;
+            }
+        }
+
+        private void BtnEmergencyDamageSoundTest_Click(object sender, RoutedEventArgs e)
+        {
+            if (_settings.EmergencyDamageSoundTemplates.Count == 0)
+            {
+                UpdateEmergencyDamageSoundStatus("Nie wczytano stałych wzorców hit1–hit4.", "Red");
+                return;
+            }
+
+            _emergencyDamageSoundManualTestActive = true;
+            _emergencyDamageSoundManualTestUntilUtc = DateTime.UtcNow.AddSeconds(15);
+            StartEmergencyDamageSoundMonitoring(manualTest: true);
+        }
+
+        private void BtnEmergencyDamageSoundStop_Click(object sender, RoutedEventArgs e)
+        {
+            StopEmergencyDamageSoundListening(updateStatus: false);
+            UpdateEmergencyDamageSoundStatus("Test/nasłuch zatrzymany. Automatycznie wróci przy następnym uruchomieniu Kopacza.", "Orange");
+            UpdateEnabledStates();
+        }
+
+        private void UpdateEmergencyDamageSoundMonitoring()
+        {
+            if (_isLoadingUi || _emergencyDamageSoundHandlingAlarm)
+                return;
+
+            DateTime now = DateTime.UtcNow;
+            if (_emergencyDamageSoundManualTestActive && now >= _emergencyDamageSoundManualTestUntilUtc)
+            {
+                StopEmergencyDamageSoundListening(updateStatus: false);
+                UpdateEmergencyDamageSoundStatus("Test zakończony. Nie wykryto wzorca w czasie 15 sekund.", "Green");
+                UpdateEnabledStates();
+            }
+
+            bool minerActive = _kopacz533RuntimeEnabled || _kopacz633RuntimeEnabled;
+            bool emergencyGuardActive = _emergencyReconnectSoundGuardActive;
+            bool enabled = ChkEmergencyDamageSoundEnabled?.IsChecked == true;
+            bool hasTemplates = _settings.EmergencyDamageSoundTemplates.Count > 0;
+            bool shouldMonitorForMiner = ShouldMonitorEmergencyDamageSound(
+                enabled,
+                hasTemplates,
+                minerActive || emergencyGuardActive,
+                manualTest: false);
+            bool shouldMonitor = ShouldMonitorEmergencyDamageSound(
+                enabled,
+                hasTemplates,
+                minerActive || emergencyGuardActive,
+                _emergencyDamageSoundManualTestActive);
+
+            if (!shouldMonitor)
+            {
+                if (_damageSoundDetector.IsRunning)
+                    StopEmergencyDamageSoundListening(updateStatus: false);
+                _emergencyDamageSoundMonitoringForMiner = false;
+                return;
+            }
+
+            if (_damageSoundDetector.IsRunning)
+            {
+                _emergencyDamageSoundMonitoringForMiner = shouldMonitorForMiner && !_emergencyDamageSoundManualTestActive;
+                return;
+            }
+
+            StartEmergencyDamageSoundMonitoring(_emergencyDamageSoundManualTestActive);
+        }
+
+        private static bool ShouldMonitorEmergencyDamageSound(
+            bool enabled,
+            bool hasTemplates,
+            bool minerActive,
+            bool manualTest)
+        {
+            return manualTest || (enabled && hasTemplates && minerActive);
+        }
+
+        private void StartEmergencyDamageSoundMonitoring(bool manualTest)
+        {
+            try
+            {
+                string deviceId = ResolveEmergencyDamageSoundDeviceId(
+                    out string sourceDescription,
+                    out bool matchedMinecraft);
+                _damageSoundDetector.StartMonitoring(
+                    deviceId,
+                    _settings.EmergencyDamageSoundTemplates,
+                    _settings.EmergencyDamageSoundSimilarityPercent,
+                    _settings.EmergencyDamageSoundMinimumDb);
+                _emergencyDamageSoundMonitoringForMiner = !manualTest;
+                UpdateEmergencyDamageSoundSourcePreview();
+                string sourceNote = matchedMinecraft
+                    ? $" Audio: {sourceDescription}."
+                    : $" Użyto źródła awaryjnego: {sourceDescription}.";
+                UpdateEmergencyDamageSoundStatus(
+                    manualTest
+                        ? "Bezpieczny test trwa 15 s — odtwórz dźwięk obrażeń. Minecraft pozostanie na serwerze." + sourceNote
+                        : _settings.EmergencyDamageSoundTestMode
+                            ? "Nasłuch aktywny z Kopaczem • TRYB TESTOWY." + sourceNote
+                            : "Nasłuch aktywny z Kopaczem • TRYB REALNY UZBROJONY." + sourceNote,
+                    manualTest || _settings.EmergencyDamageSoundTestMode ? "Green" : "Orange");
+                UpdateEnabledStates();
+            }
+            catch (Exception ex)
+            {
+                _emergencyDamageSoundManualTestActive = false;
+                _emergencyDamageSoundMonitoringForMiner = false;
+                UpdateEmergencyDamageSoundStatus("Nie udało się uruchomić nasłuchu: " + ex.Message, "Red");
+            }
+        }
+
+        private void StopEmergencyDamageSoundListening(bool updateStatus)
+        {
+            _emergencyDamageSoundManualTestActive = false;
+            _emergencyDamageSoundManualTestUntilUtc = DateTime.MinValue;
+            _emergencyDamageSoundMonitoringForMiner = false;
+            _damageSoundDetector.Stop();
+            if (updateStatus)
+                UpdateEmergencyDamageSoundStatus("Nieaktywny. Nasłuch jest wyłączony.");
+        }
+
+        private void DamageSoundDetector_ProgressChanged(object? sender, DamageSoundProgressEventArgs e)
+        {
+            _ = Dispatcher.BeginInvoke(() =>
+            {
+                if (DateTime.UtcNow - _emergencyDamageSoundLastAlarmAtUtc < TimeSpan.FromSeconds(2))
+                    return;
+                if (_damageSoundDetector.IsRunning)
+                {
+                    string mode = _emergencyDamageSoundManualTestActive
+                        ? "Test"
+                        : _settings.EmergencyDamageSoundTestMode ? "Nasłuch testowy" : "Nasłuch uzbrojony";
+                    UpdateEmergencyDamageSoundStatus(
+                        $"{mode} • podobieństwo {e.Similarity * 100:0}% • poziom {e.LevelDb:0} dB.",
+                        _settings.EmergencyDamageSoundTestMode || _emergencyDamageSoundManualTestActive ? "Green" : "Orange");
+                }
+            });
+        }
+
+        private void DamageSoundDetector_CaptureFailed(object? sender, string message)
+        {
+            _ = Dispatcher.BeginInvoke(() =>
+            {
+                _emergencyDamageSoundManualTestActive = false;
+                _emergencyDamageSoundMonitoringForMiner = false;
+                UpdateEmergencyDamageSoundStatus(message, "Red");
+                UpdateEnabledStates();
+            });
+        }
+
+        private void DamageSoundDetector_DamageDetected(object? sender, DamageSoundDetectedEventArgs e)
+        {
+            _ = Dispatcher.BeginInvoke(new Action(async () => await HandleEmergencyDamageSoundDetectedAsync(e)));
+        }
+
+        private async Task HandleEmergencyDamageSoundDetectedAsync(DamageSoundDetectedEventArgs e)
+        {
+            if (_emergencyDamageSoundHandlingAlarm)
+                return;
+
+            bool minerActive = _kopacz533RuntimeEnabled || _kopacz633RuntimeEnabled;
+            bool emergencyGuardActive = _emergencyReconnectSoundGuardActive;
+            bool safeTest = _emergencyDamageSoundManualTestActive || _settings.EmergencyDamageSoundTestMode;
+            string measurement = $"podobieństwo {e.Similarity * 100:0}%, poziom {e.LevelDb:0} dB";
+            _emergencyDamageSoundLastAlarmAtUtc = DateTime.UtcNow;
+            if (safeTest)
+            {
+                bool wasManualTest = _emergencyDamageSoundManualTestActive;
+                if (minerActive)
+                    RecordEmergencyDamageSoundEvent(measurement, testMode: true);
+                if (wasManualTest)
+                {
+                    StopEmergencyDamageSoundListening(updateStatus: false);
+                    UpdateEnabledStates();
+                }
+                UpdateEmergencyDamageSoundStatus(
+                    $"WYKRYTO DŹWIĘK OBRAŻEŃ ({measurement}). Tryb testowy — bez reakcji.",
+                    "Red");
+                UpdateStatusBar("Wykryto testowy alarm dźwięku obrażeń — bez wychodzenia z serwera.", "Orange");
+                return;
+            }
+
+            if ((!minerActive && !emergencyGuardActive)
+                || ChkEmergencyDamageSoundEnabled?.IsChecked != true)
+                return;
+
+            _emergencyDamageSoundHandlingAlarm = true;
+            IntPtr minecraftWindow = _targetGameWindowHandle;
+            bool minecraftGuiAlreadyOpen = IsMinecraftGuiLikelyOpenForEmergency();
+            bool useEmergencyReconnect = ChkEmergencyDamageSoundEnabled?.IsChecked == true
+                && _settings.EmergencyReconnectEnabled;
+            try
+            {
+                if (useEmergencyReconnect)
+                {
+                    if (!_emergencyReconnectActive)
+                    {
+                        _emergencyReconnectResumeKopacz533 = _kopacz533RuntimeEnabled;
+                        _emergencyReconnectResumeKopacz633 = _kopacz633RuntimeEnabled;
+                        _autoReconnectLogMiningRunId = _kopacz533RuntimeEnabled
+                            ? _kopacz533MiningRunId
+                            : _kopacz633RuntimeEnabled
+                                ? _kopacz633MiningRunId
+                                : string.Empty;
+                    }
+
+                    if (_autoReconnectStage != AutoReconnectStage.None)
+                        ResetAutoReconnectStageForEmergencyRedetection();
+
+                    _emergencyReconnectActive = true;
+                    _emergencyReconnectSoundGuardActive = true;
+                }
+
+                RecordEmergencyDamageSoundEvent(measurement, testMode: false);
+                if (_kopacz533RuntimeEnabled)
+                    StopMiningForEmergency(InventoryCleanupOwner.Kopacz533);
+                if (_kopacz633RuntimeEnabled)
+                    StopMiningForEmergency(InventoryCleanupOwner.Kopacz633);
+                if (!useEmergencyReconnect)
+                    StopEmergencyDamageSoundListening(updateStatus: false);
+
+                (bool disconnected, string result) = await TryDisconnectMinecraftAfterEmergencyAsync(
+                    minecraftWindow,
+                    minecraftGuiAlreadyOpen);
+                if (disconnected && useEmergencyReconnect)
+                    BeginEmergencyReconnectAfterDisconnect(DateTime.UtcNow);
+                else if (!disconnected && useEmergencyReconnect)
+                {
+                    RecordAutomationLogEvent(
+                        MiningLogEventTypes.EmergencyProtectionFinished,
+                        MiningLogStatuses.Aborted,
+                        $"Nie udało się wyjść z serwera po alarmie: {result}. Reconnect nie został uruchomiony.");
+                    ClearEmergencyReconnectRuntimeState(stopSoundMonitoring: true);
+                }
+                UpdateEmergencyDamageSoundStatus(
+                    disconnected
+                        ? useEmergencyReconnect
+                            ? $"ALARM ({measurement}) — kliknięto Disconnect; uruchomiono awaryjny reconnect."
+                            : $"ALARM ({measurement}) — Kopacz zatrzymany, kliknięto Disconnect."
+                        : $"ALARM ({measurement}) — Kopacz zatrzymany, ale wyjście z serwera nie powiodło się: {result}",
+                    "Red");
+                UpdateStatusBar(
+                    disconnected
+                        ? useEmergencyReconnect
+                            ? "Awaryjne wyjście wykonane — trwa odliczanie do reconnectu."
+                            : "Awaryjne wyjście: wykryto obrażenia i kliknięto ESC → Disconnect."
+                        : "Awaryjne wyjście: zatrzymano Kopacza, lecz nie udało się kliknąć Disconnect.",
+                    "Red");
+            }
+            finally
+            {
+                _emergencyDamageSoundHandlingAlarm = false;
+                RefreshTopTiles();
+                UpdateEnabledStates();
+            }
+        }
+
+        private bool IsMinecraftGuiLikelyOpenForEmergency()
+        {
+            bool inventoryOpen = _inventoryCleanupScanInProgress
+                || _inventoryCleanupStage is InventoryCleanupStage.WaitForInventory
+                    or InventoryCleanupStage.MoveToSlot
+                    or InventoryCleanupStage.PressDropModifier
+                    or InventoryCleanupStage.PressDropKey
+                    or InventoryCleanupStage.ReleaseDropKeys
+                    or InventoryCleanupStage.CloseInventory;
+            bool cleanupChatOpen = _inventoryCleanupStage is InventoryCleanupStage.TypeCobbleXCommand
+                or InventoryCleanupStage.SubmitCobbleXCommand;
+            bool minerChatOpen = _kopacz533CommandStage is Kopacz533CommandStage.TypeCommand
+                    or Kopacz533CommandStage.SubmitCommand
+                || _kopacz633CommandStage is Kopacz633CommandStage.TypeCommand
+                    or Kopacz633CommandStage.SubmitCommand;
+            bool reconnectInventoryOpen = _autoReconnectStage is AutoReconnectStage.HealthVerifyInventory
+                or AutoReconnectStage.VerifyAfterTeleport
+                or AutoReconnectStage.EmergencyVerifyInventory;
+            return inventoryOpen || cleanupChatOpen || minerChatOpen || reconnectInventoryOpen;
+        }
+
+        private async Task<(bool Success, string Result)> TryDisconnectMinecraftAfterEmergencyAsync(
+            IntPtr minecraftWindow,
+            bool closeExistingGuiFirst)
+        {
+            if (minecraftWindow == IntPtr.Zero)
+                return (false, "brak uchwytu okna Minecrafta");
+            if (GetForegroundWindow() != minecraftWindow)
+                return (false, "Minecraft nie był aktywnym oknem");
+
+            if (closeExistingGuiFirst)
+            {
+                SendKeyTap(VK_ESCAPE);
+                await Task.Delay(120);
+                if (GetForegroundWindow() != minecraftWindow)
+                    return (false, "Minecraft utracił fokus po zamknięciu poprzedniego GUI");
+            }
+
+            SendKeyTap(VK_ESCAPE);
+            await Task.Delay(180);
+            if (GetForegroundWindow() != minecraftWindow)
+                return (false, "Minecraft utracił fokus przed kliknięciem Disconnect");
+            if (!TryClickMinecraftDisconnectButton(minecraftWindow))
+                return (false, "nie udało się wyznaczyć położenia przycisku Disconnect");
+
+            return (true, "kliknięto Disconnect");
+        }
+
+        private bool TryClickMinecraftDisconnectButton(IntPtr minecraftWindow)
+        {
+            if (!TryGetWindowClientRectOnScreen(minecraftWindow, out RECT rect))
+                return false;
+
+            int clientWidth = rect.Right - rect.Left;
+            int clientHeight = rect.Bottom - rect.Top;
+            if (clientWidth <= 0 || clientHeight <= 0)
+                return false;
+
+            int x = rect.Left + clientWidth / 2;
+            int y = rect.Top + CalculateMinecraftDisconnectButtonClientY(clientWidth, clientHeight);
+            if (y < rect.Top || y >= rect.Bottom)
+                return false;
+
+            if (!NativeInput.SetCursorPosition(x, y))
+                return false;
+            SendMouseClick(leftButton: true, holdPulseMode: false);
+            return true;
+        }
+
+        private static int CalculateMinecraftDisconnectButtonClientY(int clientWidth, int clientHeight)
+        {
+            if (clientWidth <= 0 || clientHeight <= 0)
+                return 0;
+
+            const int configuredGuiScale = 3; // wymagane GUI Scale: Large
+            int actualScale = 1;
+            while (actualScale < configuredGuiScale
+                && clientWidth / (actualScale + 1) >= 320
+                && clientHeight / (actualScale + 1) >= 240)
+            {
+                actualScale++;
+            }
+
+            int scaledHeight = (int)Math.Ceiling(clientHeight / (double)actualScale);
+            // Minecraft 1.8.8: y = scaledHeight / 4 + 120 - 16,
+            // button height = 20, so its centre is scaledHeight / 4 + 114.
+            int buttonCenterGuiY = scaledHeight / 4 + 114;
+            int clientY = (int)Math.Round(buttonCenterGuiY * clientHeight / (double)scaledHeight);
+            return Math.Clamp(clientY, 0, clientHeight - 1);
+        }
+
+        private void RecordEmergencyDamageSoundEvent(string measurement, bool testMode)
+        {
+            InventoryCleanupOwner owner = _kopacz533RuntimeEnabled || _emergencyReconnectResumeKopacz533
+                ? InventoryCleanupOwner.Kopacz533
+                : InventoryCleanupOwner.Kopacz633;
+            string ownerLabel = GetInventoryCleanupOwnerLabel(owner);
+            string miningRunId = _emergencyReconnectActive && !string.IsNullOrWhiteSpace(_autoReconnectLogMiningRunId)
+                ? _autoReconnectLogMiningRunId
+                : GetMiningRunId(owner);
+            _ = _miningLogService.RecordAutomationEvent(
+                miningRunId,
+                ownerLabel,
+                MiningLogEventTypes.EmergencyDamageSoundDetected,
+                MiningLogStatuses.Completed,
+                testMode
+                    ? $"Test: rozpoznano dźwięk obrażeń ({measurement}); nie wykonano reakcji."
+                    : $"Rozpoznano dźwięk obrażeń ({measurement}); zatrzymano automat i uruchomiono ESC → Disconnect.",
+                out _);
+            RefreshMiningLogsSummary();
+        }
+
+        private void StopMiningForEmergency(InventoryCleanupOwner owner)
+        {
+            string label = GetInventoryCleanupOwnerLabel(owner);
+            ReleaseMiningInputs(owner);
+            if (IsReconnectForMiner(owner))
+                StopAutoReconnect($"{label}: awaryjne zatrzymanie po dźwięku obrażeń.", resumeMining: false, warning: true);
+            if (_inventoryCleanupOwner == owner && _inventoryCleanupStage != InventoryCleanupStage.None)
+            {
+                RecordAbortedInventoryCleanup("Auto EQ przerwane przez alarm dźwięku obrażeń.");
+                _inventoryCleanupLastResult = "Przerwano przez alarm dźwięku obrażeń";
+                _inventoryCleanupLastResultWarning = true;
+            }
+            StopMiningRuntime(owner);
+            EndMiningLogRun(owner, "Kopanie przerwane przez awaryjny alarm dźwięku obrażeń.", MiningLogStatuses.Interrupted);
+        }
+
         private void ChkTestFastUpExitEnabled_Changed(object sender, RoutedEventArgs e)
         {
             if (_isLoadingUi)
@@ -11890,6 +13405,9 @@ namespace MinecraftHelper
                 }
 
                 TxtCurrentWindowTitle.Text = BuildTargetProcessDisplayText();
+                _targetGameWindowHandle = IntPtr.Zero;
+                _ = TryResolveTargetWindow(allowPendingSelection: false, out _targetGameWindowHandle);
+                UpdateEmergencyDamageSoundSourcePreview();
                 _settingsService.Save(_settings);
 
                 _pendingChanges = false;
@@ -12006,6 +13524,7 @@ namespace MinecraftHelper
             _bindyHudClearTimer.Stop();
             _autoClickScheduler.Dispose();
             _macroDiagnosticsService.Dispose();
+            _damageSoundDetector.Dispose();
 
             // Release every injected state before removing the physical-mouse hook.
             // This also covers closing the app while HOLD PPM is active.
@@ -12027,6 +13546,10 @@ namespace MinecraftHelper
             ResetTestFastUpExitRuntimeState();
             _testAutoFishingRuntimeEnabled = false;
             ResetTestAutoFishingRuntimeState();
+            ResetAutoArmorRuntimeState();
+            _autoWaterCalibrationPending = false;
+            _autoWaterRecognitionTestPending = false;
+            ResetAutoWaterRuntimeState();
             ResetBindyRuntimeState();
             StopMouseHook();
 

@@ -10,11 +10,14 @@ const sourceRoot = process.argv[2]
     : path.join(workspace, "Old_Default_1.8.8");
 const outputRoot = path.join(workspace, "MinecraftHelper_AutoEQ_CobbleX_1.8.8");
 const packIconSource = path.join(workspace, "MinecraftHelper", "Assets", "pack.png");
+const damageSoundSourceRoot = path.join(workspace, "MinecraftHelper", "Assets", "Sounds", "Damage");
 
 const textureRoot = path.join(outputRoot, "assets", "minecraft", "textures");
 const itemRoot = path.join(textureRoot, "items");
 const blockRoot = path.join(textureRoot, "blocks");
 const langRoot = path.join(outputRoot, "assets", "minecraft", "lang");
+const damageSoundRoot = path.join(outputRoot, "assets", "minecraft", "sounds", "damage");
+const damageSoundFiles = ["hit1.ogg", "hit2.ogg", "hit3.ogg", "hit4.ogg"];
 
 const COLORS = {
     magenta: [255, 0, 255, 255],
@@ -123,6 +126,7 @@ function main() {
         throw new Error(`Brak paczki zrodlowej: ${sourceRoot}`);
 
     fs.cpSync(sourceRoot, outputRoot, { recursive: true, force: true });
+    writeDamageSounds();
 
     for (const item of directItemTextures) {
         const filePath = path.join(itemRoot, item.file);
@@ -185,6 +189,16 @@ function writePackIcon() {
     if (!fs.existsSync(packIconSource))
         throw new Error(`Brak ikony paczki: ${packIconSource}`);
     fs.copyFileSync(packIconSource, path.join(outputRoot, "pack.png"));
+}
+
+function writeDamageSounds() {
+    fs.mkdirSync(damageSoundRoot, { recursive: true });
+    for (const fileName of damageSoundFiles) {
+        const sourcePath = path.join(damageSoundSourceRoot, fileName);
+        if (!fs.existsSync(sourcePath))
+            throw new Error(`Brak wzorca dzwieku obrazen: ${sourcePath}`);
+        fs.copyFileSync(sourcePath, path.join(damageSoundRoot, fileName));
+    }
 }
 
 function writeAutomationLanguageOverrides() {

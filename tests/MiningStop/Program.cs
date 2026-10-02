@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using MinecraftHelper;
@@ -19,10 +20,18 @@ internal static class Program
         try
         {
             VerifyStopEdges();
+            VerifyEmergencyDamageSoundArming();
+            VerifyEmergencyDisconnectSequence();
+            VerifyDamageSoundFingerprint();
+            VerifyBundledDamageSoundReferences();
             VerifyCommandCountdownPause();
             VerifyMiningLogMessages();
+            VerifyEmergencyMiningLogMessages();
             foreach (string miner in new[] { "533", "633" })
                 VerifyMiner(miner);
+            VerifyReconnectScreenClassification();
+            VerifyReconnectTeleportTiming();
+            VerifyReconnectOverlayStages();
             VerifyReconnectGuards();
             VerifyPriority();
             Console.WriteLine($"PASS: {_passed} checks; no user settings, logs or desktop input changed.");
@@ -54,6 +63,89 @@ internal static class Program
         bool result = (bool)typeof(MainWindow).GetMethod("ConsumeMiningStopPress", Static)!.Invoke(null, args)!;
         wasDown = (bool)args[2];
         return result;
+    }
+
+    private static void VerifyEmergencyDamageSoundArming()
+    {
+        MethodInfo method = typeof(MainWindow).GetMethod("ShouldMonitorEmergencyDamageSound", Static)!;
+        bool Should(bool enabled, bool calibrated, bool minerActive, bool manualTest) =>
+            (bool)method.Invoke(null, new object[] { enabled, calibrated, minerActive, manualTest })!;
+
+        Check(!Should(false, true, true, false), "damage listener stays off when option is disabled");
+        Check(!Should(true, false, true, false), "damage listener stays off without calibration");
+        Check(!Should(true, true, false, false), "damage listener stays off without active miner");
+        Check(Should(true, true, true, false), "damage listener arms only with enabled calibrated active miner");
+        Check(Should(false, false, false, true), "manual safe test can listen without miner");
+    }
+
+    private static void VerifyEmergencyDisconnectSequence()
+    {
+        MethodInfo calculateY = typeof(MainWindow).GetMethod("CalculateMinecraftDisconnectButtonClientY", Static)!;
+        int Y(int width, int height) => (int)calculateY.Invoke(null, new object[] { width, height })!;
+        Check(Y(1920, 1080) == 612, "disconnect button centre is correct at 1920x1080 GUI x3");
+        Check(Y(1280, 720) == 522, "disconnect button centre is correct at 1280x720 GUI x3");
+        Check(Y(854, 480) == 348, "disconnect button centre respects Minecraft minimum GUI dimensions");
+        Check(Y(0, 0) == 0, "disconnect coordinate rejects an empty client area");
+
+        MainWindow window = NewWindow();
+        Check(!(bool)Call(window, "IsMinecraftGuiLikelyOpenForEmergency")!, "normal mining needs one ESC");
+        Set(window, "_inventoryCleanupStage", EnumValue("InventoryCleanupStage", "WaitForInventory"));
+        Check((bool)Call(window, "IsMinecraftGuiLikelyOpenForEmergency")!, "open Auto EQ receives a closing ESC first");
+        Set(window, "_inventoryCleanupStage", EnumValue("InventoryCleanupStage", "None"));
+        Set(window, "_kopacz533CommandStage", EnumValue("Kopacz533CommandStage", "TypeCommand"));
+        Check((bool)Call(window, "IsMinecraftGuiLikelyOpenForEmergency")!, "open miner chat receives a closing ESC first");
+        Set(window, "_kopacz533CommandStage", EnumValue("Kopacz533CommandStage", "None"));
+        Set(window, "_autoReconnectStage", EnumValue("AutoReconnectStage", "EmergencyVerifyInventory"));
+        Check((bool)Call(window, "IsMinecraftGuiLikelyOpenForEmergency")!, "emergency pickaxe verification closes EQ before Disconnect");
+    }
+
+    private static void VerifyDamageSoundFingerprint()
+    {
+        Type detector = typeof(MainWindow).Assembly.GetType("MinecraftHelper.Services.DamageSoundDetector")!;
+        MethodInfo create = detector.GetMethod("CreateFingerprint", BindingFlags.Static | BindingFlags.NonPublic)!;
+        MethodInfo similarity = detector.GetMethod("GetBestSimilarity", BindingFlags.Static | BindingFlags.NonPublic)!;
+        MethodInfo level = detector.GetMethod("CalculateLevelDb", BindingFlags.Static | BindingFlags.NonPublic)!;
+        const int sampleRate = 48000;
+        var samples = new float[4096];
+        for (int i = 0; i < samples.Length; i++)
+        {
+            double time = i / (double)sampleRate;
+            samples[i] = (float)(0.35 * Math.Sin(2 * Math.PI * 620 * time)
+                + 0.18 * Math.Sin(2 * Math.PI * 1420 * time));
+        }
+
+        var fingerprint = (double[])create.Invoke(null, new object[] { samples, sampleRate })!;
+        Check(fingerprint.Length == 32, "damage fingerprint has stable persisted size");
+        Check(Array.TrueForAll(fingerprint, double.IsFinite), "damage fingerprint contains only finite values");
+
+        Type listType = typeof(System.Collections.Generic.List<>).MakeGenericType(typeof(double[]));
+        IList templates = (IList)Activator.CreateInstance(listType)!;
+        templates.Add((double[])fingerprint.Clone());
+        double match = (double)similarity.Invoke(null, new object[] { fingerprint, templates })!;
+        Check(match > 0.999, "identical damage fingerprint is recognized");
+
+        double levelDb = (double)level.Invoke(null, new object[] { samples })!;
+        Check(levelDb > -20 && levelDb < -3, "audible calibration sample has a plausible dB level");
+        double silenceDb = (double)level.Invoke(null, new object[] { new float[4096] })!;
+        Check(silenceDb <= -90, "silence stays below the detector floor");
+    }
+
+    private static void VerifyBundledDamageSoundReferences()
+    {
+        DirectoryInfo directory = FindRepositoryDirectory();
+        string soundDirectory = Path.Combine(directory.FullName, "MinecraftHelper", "Assets", "Sounds", "Damage");
+        string[] files = new[] { "hit1.ogg", "hit2.ogg", "hit3.ogg", "hit4.ogg" }
+            .Select(name => Path.Combine(soundDirectory, name))
+            .ToArray();
+        Type detector = typeof(MainWindow).Assembly.GetType("MinecraftHelper.Services.DamageSoundDetector")!;
+        MethodInfo load = detector.GetMethod("LoadReferenceFiles", BindingFlags.Static | BindingFlags.Public)!;
+        object result = load.Invoke(null, new object[] { files })!;
+        Type resultType = result.GetType();
+        int sourceFileCount = (int)resultType.GetProperty("SourceFileCount")!.GetValue(result)!;
+        IEnumerable templates = (IEnumerable)resultType.GetProperty("Templates")!.GetValue(result)!;
+        int templateCount = templates.Cast<object>().Count();
+        Check(sourceFileCount == 4, "all four fixed Minecraft damage sounds are loaded");
+        Check(templateCount >= 8, "fixed damage sounds produce multiple alignment-tolerant fingerprints");
     }
 
     private static void VerifyCommandCountdownPause()
@@ -128,6 +220,34 @@ internal static class Program
         return (string)method.Invoke(null, new[] { entry })!;
     }
 
+    private static void VerifyEmergencyMiningLogMessages()
+    {
+        (string EventType, string Expected)[] events =
+        {
+            ("emergency-protection-started", "Ochrona awaryjna • start"),
+            ("emergency-reconnect-joined", "Ochrona awaryjna • dołączono"),
+            ("emergency-pickaxe-detected", "Kontrola kilofa • wykryto"),
+            ("emergency-pickaxe-missing", "Kontrola kilofa • brak"),
+            ("emergency-home-command-sent", "Ochrona awaryjna • home"),
+            ("emergency-mining-resumed", "Ochrona awaryjna • wznowiono kopanie"),
+            ("emergency-shutdown", "Ochrona awaryjna • zamknięcie programu"),
+            ("emergency-protection-finished", "Ochrona awaryjna • wynik")
+        };
+
+        Assembly assembly = typeof(MainWindow).Assembly;
+        Type entryType = assembly.GetType("MinecraftHelper.Services.MiningLogEntry")!;
+        Type windowType = assembly.GetType("MinecraftHelper.MiningLogsWindow")!;
+        MethodInfo method = windowType.GetMethod("GetEventLabel", BindingFlags.Static | BindingFlags.NonPublic)!;
+        foreach ((string eventType, string expected) in events)
+        {
+            object entry = Activator.CreateInstance(entryType)!;
+            entryType.GetProperty("Kind")!.SetValue(entry, "automation-event");
+            entryType.GetProperty("EventType")!.SetValue(entry, eventType);
+            Check((string)method.Invoke(null, new[] { entry })! == expected,
+                "emergency log label " + eventType);
+        }
+    }
+
     private static void VerifyMiner(string miner)
     {
         object owner = EnumValue("InventoryCleanupOwner", "Kopacz" + miner);
@@ -200,18 +320,81 @@ internal static class Program
         Check(!(bool)Call(window, "HasMiningWork", owner)!, "completed reconnect is not active work");
     }
 
+    private static void VerifyReconnectScreenClassification()
+    {
+        MethodInfo classify = typeof(MainWindow).GetMethod("ClassifyAutoReconnectScreen", Static)!;
+        object Classify(string text) => classify.Invoke(null, new object?[] { text })!;
+
+        Check(Classify("Play Multiplayer Offline 34 xLajtHC.pl thinking").ToString() == "ServerList",
+            "BlazingPack Play Multiplayer screen is recognized as server list");
+        Check(Classify("Play Multiplayer [MH] DIRECT CONNECT").ToString() == "ServerList",
+            "tagged Direct Connect button is recognized on the server list");
+        Check(Classify("Play --- Multi_player").ToString() == "ServerList",
+            "server-list title tolerates OCR separators");
+        Check(Classify("Direct Connect Server Address").ToString() == "DirectConnect",
+            "Direct Connect screen keeps priority over server-list text");
+        Check(Classify("Connection Lost Disconnected").ToString() == "Disconnected",
+            "disconnect screen remains recognized");
+    }
+
+    private static void VerifyReconnectOverlayStages()
+    {
+        MethodInfo label = typeof(MainWindow).GetMethod("GetAutoReconnectOverlayStageLabel", Static)!;
+        MethodInfo nextAction = typeof(MainWindow).GetMethod("GetAutoReconnectOverlayNextAction", Static)!;
+        foreach (object stage in Enum.GetValues(Nested("AutoReconnectStage")))
+        {
+            if (stage.ToString() == "None")
+                continue;
+
+            string value = (string)label.Invoke(null, new[] { stage })!;
+            Check(!string.IsNullOrWhiteSpace(value) && value != "AUTO RECONNECT",
+                "HUD has a dedicated reconnect label for " + stage);
+            string next = (string)nextAction.Invoke(null, new[] { stage, (object)false })!;
+            Check(!string.IsNullOrWhiteSpace(next) && next != "Oczekiwanie na kolejny krok",
+                "HUD describes the next reconnect action for " + stage);
+        }
+
+        object waitForTeleport = EnumValue("AutoReconnectStage", "WaitForTeleport");
+        Check((string)nextAction.Invoke(null, new[] { waitForTeleport, (object)false })! == "Slot 1 i wznowienie Kopacza",
+            "HUD announces mining resume after a successful home teleport");
+        Check((string)nextAction.Invoke(null, new[] { waitForTeleport, (object)true })! == "Bezpieczne zamknięcie Minecraft Helper",
+            "HUD announces shutdown after the missing-pickaxe home teleport");
+    }
+
+    private static void VerifyReconnectTeleportTiming()
+    {
+        MethodInfo calculate = typeof(MainWindow).GetMethod("CalculateAutoReconnectTeleportWaitSeconds", Static)!;
+        int Wait(int configuredSeconds) => (int)calculate.Invoke(null, new object[] { configuredSeconds })!;
+
+        Check(Wait(10) == 12, "teleport wait adds the two-second safety buffer");
+        Check(Wait(1) == 3, "minimum teleport wait keeps the safety buffer");
+        Check(Wait(120) == 122, "maximum configured teleport wait keeps the safety buffer");
+        Check(Wait(0) == 3, "invalid zero teleport wait is clamped before adding the buffer");
+    }
+
     private static void VerifyPriority()
     {
-        DirectoryInfo? directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory != null && !File.Exists(Path.Combine(directory.FullName, "MinecraftHelper", "MainWindow.xaml.cs")))
-            directory = directory.Parent;
-        if (directory == null) throw new InvalidOperationException("Run the test from the repository.");
+        DirectoryInfo directory = FindRepositoryDirectory();
         string source = File.ReadAllText(Path.Combine(directory.FullName, "MinecraftHelper", "MainWindow.xaml.cs"));
         int core = source.IndexOf("private void RunMacroTickCore()", StringComparison.Ordinal);
         int stop = source.IndexOf("if (TryStopMiningFromBinds())", core, StringComparison.Ordinal);
         int reconnect = source.IndexOf("if (_autoReconnectStage != AutoReconnectStage.None)", core, StringComparison.Ordinal);
         int commands = source.IndexOf("bool internalCommandTyping", core, StringComparison.Ordinal);
         Check(stop > core && stop < reconnect && stop < commands, "STOP precedes reconnect and command guards");
+
+        int reconnectTick = source.IndexOf("private async void RunAutoReconnectTick", StringComparison.Ordinal);
+        int reconnectHudRefresh = source.IndexOf("RefreshOverlayHud(now);", reconnectTick, StringComparison.Ordinal);
+        int reconnectFocusGuard = source.IndexOf("if (_targetGameWindowHandle == IntPtr.Zero", reconnectTick, StringComparison.Ordinal);
+        Check(reconnectHudRefresh > reconnectTick && reconnectHudRefresh < reconnectFocusGuard,
+            "reconnect HUD refreshes before timer wait and focus guards");
+    }
+
+    private static DirectoryInfo FindRepositoryDirectory()
+    {
+        DirectoryInfo? directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory != null && !File.Exists(Path.Combine(directory.FullName, "MinecraftHelper", "MainWindow.xaml.cs")))
+            directory = directory.Parent;
+        return directory ?? throw new InvalidOperationException("Run the test from the repository.");
     }
 
     private static MainWindow NewWindow()

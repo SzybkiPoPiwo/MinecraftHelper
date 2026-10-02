@@ -49,6 +49,13 @@ namespace MinecraftHelper.Models
         public int MissingPickaxeHomeGuiSlot { get; set; }
     }
 
+    public class RelativeScreenPointSetting
+    {
+        public bool Configured { get; set; }
+        public int OffsetX { get; set; }
+        public int OffsetY { get; set; }
+    }
+
     public class AppSettings
     {
         public string LastAcknowledgedVersion { get; set; } = "";
@@ -139,6 +146,30 @@ namespace MinecraftHelper.Models
         public int TestAutoFishingCaptureHeight { get; set; }
         public string TestAutoFishingRepairCommand { get; set; } = "";
         public int TestAutoFishingRepairEverySeconds { get; set; }
+        public bool AutoWaterEnabled { get; set; }
+        public string AutoWaterBind { get; set; } = "";
+        public int AutoWaterWaterSlot { get; set; } = 9;
+        public int AutoWaterReturnSlot { get; set; } = 1;
+        public int AutoWaterPlaceIntervalMs { get; set; } = 65;
+        public int AutoWaterPickupDelayMs { get; set; } = 340;
+        public int AutoWaterSimilarityPercent { get; set; } = 84;
+        public int AutoWaterSampleOffsetX { get; set; }
+        public int AutoWaterSampleOffsetFromBottom { get; set; }
+        public int AutoWaterSamplePatchSize { get; set; } = 9;
+        public string AutoWaterEmptyBucketTemplateBase64 { get; set; } = "";
+        public bool AutoArmorEnabled { get; set; }
+        public string AutoArmorBind { get; set; } = "";
+        public int AutoArmorClickDelayMs { get; set; } = 45;
+        public List<RelativeScreenPointSetting> AutoArmorEquippedSlots { get; set; } = new List<RelativeScreenPointSetting>();
+        public List<RelativeScreenPointSetting> AutoArmorInventorySlots { get; set; } = new List<RelativeScreenPointSetting>();
+        public bool EmergencyDamageSoundEnabled { get; set; }
+        public bool EmergencyDamageSoundTestMode { get; set; } = true;
+        public string EmergencyDamageSoundDeviceId { get; set; } = "";
+        public int EmergencyDamageSoundSimilarityPercent { get; set; } = 90;
+        public double EmergencyDamageSoundMinimumDb { get; set; } = -45;
+        public List<List<double>> EmergencyDamageSoundTemplates { get; set; } = new List<List<double>>();
+        public bool EmergencyReconnectEnabled { get; set; }
+        public int EmergencyReconnectDelaySeconds { get; set; } = 30;
         public bool AutoReconnectEnabled { get; set; }
         public string AutoReconnectProfile { get; set; } = "Arivi";
         public string AutoReconnectServerAddress { get; set; } = "";

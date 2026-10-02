@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:MinecraftHelper"
         mc:Ignorable="d"
-        Title="Minecraft Helper 1.1.4"
+        Title="Minecraft Helper"
         Width="1280"
         Height="820"
         MinWidth="1050"
@@ -898,7 +898,7 @@
                                             <Button.ToolTip>
                                                 <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
                                                          MaxWidth="520"
-                                                         Content="JAK USTAWIĆ AUTO PPM:&#10;1. Zaznacz tę sekcję, aby włączyć moduł. Samo zaznaczenie nie uruchamia klikania.&#10;2. Kliknij pole Klawisz, naciśnij wybrany bind, a następnie kliknij Zapisz.&#10;3. Ustaw minimalny i maksymalny CPS, np. 8–12. Program losuje tempo kliknięć w tym zakresie.&#10;&#10;TRYB KLASYCZNY:&#10;Naciśnij zapisany bind raz, aby rozpocząć AUTO PPM. Naciśnij go ponownie, aby zatrzymać.&#10;&#10;TRYB KOMBINACJI:&#10;Włącz opcję Tryb kombinacji. Naciśnij zapisany bind razem z fizycznym PPM i trzymaj PPM. Puszczenie PPM zatrzymuje clicker.&#10;&#10;TRZYMANIE BINDU:&#10;Włącz opcję Trzymanie bindu. AUTO PPM działa tylko podczas fizycznego trzymania zapisanego bindu i zatrzymuje się natychmiast po jego puszczeniu.&#10;&#10;BEZPIECZEŃSTWO:&#10;AUTO PPM nie uruchomi się, gdy Minecraft pokazuje kursor ekwipunku, chatu lub innego GUI.&#10;&#10;Clicker działa tylko wtedy, gdy wybrane okno Minecrafta ma fokus."/>
+                                                         Content="JAK USTAWIĆ AUTO PPM:&#10;1. Zaznacz tę sekcję, aby włączyć moduł. Samo zaznaczenie nie uruchamia klikania.&#10;2. Kliknij pole Klawisz, naciśnij wybrany bind, a następnie kliknij Zapisz.&#10;3. Ustaw minimalny i maksymalny CPS, np. 8–12. Program losuje tempo kliknięć w tym zakresie.&#10;&#10;TRYB KLASYCZNY:&#10;Naciśnij zapisany bind raz, aby rozpocząć AUTO PPM. Naciśnij go ponownie, aby zatrzymać.&#10;&#10;TRYB KOMBINACJI:&#10;Włącz opcję Tryb kombinacji. Naciśnij zapisany bind razem z fizycznym PPM i trzymaj PPM. Puszczenie PPM zatrzymuje clicker. W tym trybie bind może być wspólny z AUTO LPM pracującym w trybie kombinacji lub trzymania.&#10;&#10;TRZYMANIE BINDU:&#10;Włącz opcję Trzymanie bindu. AUTO PPM działa tylko podczas fizycznego trzymania zapisanego bindu i zatrzymuje się natychmiast po jego puszczeniu. Ten tryb wymaga osobnego klawisza i nie współdzieli bindu z AUTO LPM.&#10;&#10;BEZPIECZEŃSTWO:&#10;AUTO PPM nie uruchomi się, gdy Minecraft pokazuje kursor ekwipunku, chatu lub innego GUI.&#10;&#10;Clicker działa tylko wtedy, gdy wybrane okno Minecrafta ma fokus."/>
                                             </Button.ToolTip>
                                         </Button>
                                     </StackPanel>
@@ -1031,7 +1031,8 @@
                                                 ToolTipService.ShowDuration="120000">
                                             <Button.ToolTip>
                                                 <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
-                                                         Content="Opcja pauzuje makro, gdy system wykryje kursor (np. otwarcie EQ, wpisywanie komendy, menu itd.)."/>
+                                                         MaxWidth="500"
+                                                         Content="Opcja dotyczy wyłącznie clickerów LPM i PPM. Gdy Minecraft pokazuje kursor czatu, ekwipunku, menu lub innego GUI, aktywne klikanie zostaje wstrzymane. Kopacz, Auto EQ, BINDY i moduły Experimental mają własne zabezpieczenia i nie są sterowane tym przełącznikiem."/>
                                             </Button.ToolTip>
                                         </Button>
                                     </StackPanel>
@@ -1096,7 +1097,8 @@
                                                 ToolTipService.ShowDuration="120000">
                                             <Button.ToolTip>
                                                 <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
-                                                         Content="Aktywacja za pomocą bindu. Kopie w kierunku, w który patrzysz. Automatycznie włącza Shift. Ustaw komendę do naprawy kilofa (lub dowolną inną).&#10;&#10;UWAGA! Jeśli ustawiasz więcej niż jedną komendę, musisz podać poprawne czasy w sekundach. Przykład:&#10;/repair - 15 s&#10;/bloki - 20 s&#10;Sekundy są liczone od momentu włączenia makra. Nie resetują się po wykonaniu jednej komendy, więc przy kolejnej komendzie ustaw większą wartość sekund, aby uniknąć błędów. Po wykonaniu wszystkich komend makro uruchamia się ponownie."/>
+                                                         MaxWidth="560"
+                                                         Content="Naciśnij zapisany bind, aby uruchomić albo natychmiast zatrzymać Kopacza 5/3/3. Podczas pracy program przytrzymuje LPM i Shift, kopiąc w kierunku ustawionej kamery.&#10;&#10;Każda komenda ma własne pole „Co ile sekund”. Czas jest liczony od poprzedniej komendy: np. /repair 15 s, a potem /bloki 20 s oznacza /repair po 15 sekundach i /bloki 20 sekund później. Po ostatniej pozycji lista zaczyna się od początku.&#10;&#10;Odliczanie komend zatrzymuje się podczas pełnej sekwencji Auto EQ, CobbleX i jedzenia, a po jej zakończeniu wraca z zachowanym czasem. Ten sam bind zatrzymuje Kopacza również w trakcie tych operacji, wpisywania komendy i reconnectu."/>
                                             </Button.ToolTip>
                                         </Button>
                                     </StackPanel>
@@ -1155,7 +1157,8 @@
                                                 ToolTipService.ShowDuration="120000">
                                             <Button.ToolTip>
                                                 <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
-                                                         Content="Aktywacja za pomocą bindu. Ustaw stronę kopania oraz liczbę bloków. Jeżeli bloki są ustawione do góry, patrz informacje po prawej stronie.&#10;&#10;Jeżeli nie widzisz Facing pod F3, włącz większą ilość danych w F3 (różne clienty mają opcję zmniejszenia ilości danych w F3).&#10;&#10;UWAGA! Jeśli ustawiasz więcej niż jedną komendę, musisz podać poprawne czasy w sekundach. Przykład:&#10;/repair - 15 s&#10;/bloki - 20 s&#10;Sekundy są liczone od momentu włączenia makra. Nie resetują się po wykonaniu jednej komendy, więc przy kolejnej komendzie ustaw większą wartość sekund, aby uniknąć błędów. Po wykonaniu wszystkich komend makro uruchamia się ponownie."/>
+                                                         MaxWidth="580"
+                                                         Content="Naciśnij zapisany bind, aby uruchomić albo natychmiast zatrzymać Kopacza 6/3/3. Wybierz kopanie na wprost albo do góry i podaj szerokość oraz długość. Dla kopania do góry ustaw kamerę według informacji Facing widocznych po prawej stronie; jeśli F3 nie pokazuje Facing, wyłącz ograniczony widok danych debugowania w używanym kliencie.&#10;&#10;Każda komenda ma własny odstęp „Co ile sekund”, liczony od poprzednio wykonanej komendy. Po ostatniej pozycji lista zaczyna się od początku. Odliczanie zatrzymuje się podczas Auto EQ, CobbleX i jedzenia, po czym wraca z zachowanym czasem.&#10;&#10;Przed czyszczeniem EQ Kopacz wraca do miejsca startu: pełne A przy kopaniu na wprost albo A + S przy kopaniu do góry. Ten sam bind zatrzymuje całą pracę również podczas Auto EQ, komendy i reconnectu."/>
                                             </Button.ToolTip>
                                         </Button>
                                     </StackPanel>
@@ -1561,7 +1564,8 @@
                                                 ToolTipService.ShowDuration="120000">
                                             <Button.ToolTip>
                                                 <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
-                                                         Content="Aktywacja poprzez kliknięcie bindu. Makro wykonuje się raz."/>
+                                                         MaxWidth="520"
+                                                         Content="Każdy wiersz ma własną nazwę, bind i jedną komendę. Naciśnięcie bindu jednokrotnie otwiera chat ustawionym klawiszem, wpisuje komendę i wysyła ją Enterem. BINDY działają tylko w aktywnym oknie Minecrafta i nie uruchamiają się podczas pisania ani przy widocznym kursorze czatu, ekwipunku lub innego GUI."/>
                                             </Button.ToolTip>
                                         </Button>
                                     </StackPanel>
@@ -1944,15 +1948,282 @@
                                 </StackPanel>
                             </Border>
 
-                            <Border Name="BorderAutoReconnectSection"
+                            <Border Name="BorderEmergencyDamageSoundSection"
                                     Style="{StaticResource SectionBorderStyle}">
                                 <StackPanel>
                                     <StackPanel Orientation="Horizontal">
-                                        <CheckBox Name="ChkAutoReconnectEnabled"
+                                        <CheckBox Name="ChkEmergencyDamageSoundEnabled"
                                                   VerticalAlignment="Center"
-                                                  Checked="ChkAutoReconnectEnabled_Changed"
-                                                  Unchecked="ChkAutoReconnectEnabled_Changed"/>
-                                        <TextBlock Text="Auto reconnect + kontrola kopania"
+                                                  Checked="ChkEmergencyDamageSoundEnabled_Changed"
+                                                  Unchecked="ChkEmergencyDamageSoundEnabled_Changed"/>
+                                        <TextBlock Text="Awaryjna ochrona Kopacza"
+                                                   Style="{StaticResource MainSectionHeaderTextStyle}"/>
+                                        <Button Content="?"
+                                                Style="{StaticResource MacroInfoButtonStyle}"
+                                                Margin="8,0,0,0"
+                                                ToolTipService.InitialShowDelay="100"
+                                                ToolTipService.ShowDuration="120000">
+                                            <Button.ToolTip>
+                                                <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
+                                                         MaxWidth="620"
+                                                         Content="Jeden przełącznik przygotowuje pełną ochronę Kopacza: nasłuch obrażeń, awaryjne wyjście, odczekanie, Direct Connect, kontrolę kilofa i powrót na właściwy home. Realny nasłuch oraz wpis w HUD uruchamiają się dopiero podczas pracy Kopacza 5/3/3 albo 6/3/3; samo zaznaczenie tej opcji nie pokazuje stale alarmu.&#10;&#10;Po wykryciu kilofa program wykonuje podstawowy home, czeka ustawiony czas teleportacji z buforem bezpieczeństwa, wybiera slot 1 i wznawia wcześniejszego Kopacza. Przy potwierdzonym braku kilofa używa awaryjnego home i zamyka Minecraft Helper. Profile i testy znajdują się niżej w tej samej sekcji."/>
+                                            </Button.ToolTip>
+                                        </Button>
+                                    </StackPanel>
+
+                                    <StackPanel Name="PanelEmergencyDamageSoundContent"
+                                                Margin="0,12,0,0"
+                                                Visibility="Collapsed">
+                                        <TextBlock Text="1. Wykrywanie obrażeń"
+                                                   Margin="0,0,0,7"
+                                                   FontSize="12"
+                                                   FontWeight="Bold"
+                                                   Foreground="#7FC8FF"/>
+                                        <TextBlock Text="FUNKCJA TESTOWA: używa stałych dźwięków obrażeń hit1–hit4 z dołączonej paczki TXT. Najpierw sprawdź wykrywanie w trybie testowym. Automatyczny nasłuch działa wyłącznie podczas aktywnego Kopacza."
+                                                   Margin="0,0,0,10"
+                                                   FontSize="11"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="#F5C860"
+                                                   TextWrapping="Wrap"/>
+
+                                        <Border Background="#161F2B"
+                                                BorderBrush="#4B6283"
+                                                BorderThickness="1"
+                                                CornerRadius="4"
+                                                Padding="10">
+                                            <StackPanel>
+                                                <Grid Margin="0,0,0,5">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="175"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="95"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Grid.Column="0"
+                                                               Text="Źródło audio:"
+                                                               VerticalAlignment="Center"/>
+                                                    <Border Grid.Column="1"
+                                                            Background="#101722"
+                                                            BorderBrush="#354A66"
+                                                            BorderThickness="1"
+                                                            CornerRadius="3"
+                                                            Padding="8,5">
+                                                        <TextBlock Name="TxtEmergencyDamageSoundSource"
+                                                                   Text="Automatycznie z zapisanego procesu Minecrafta"
+                                                                   Foreground="#38D6B4"
+                                                                   TextWrapping="Wrap"/>
+                                                    </Border>
+                                                    <Button Name="BtnEmergencyDamageSoundRefreshDevices"
+                                                            Grid.Column="2"
+                                                            Content="Sprawdź"
+                                                            Margin="8,0,0,0"
+                                                            Click="BtnEmergencyDamageSoundRefreshDevices_Click"/>
+                                                </Grid>
+
+                                                <Grid Margin="0,0,0,9">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="175"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Grid.Column="0"
+                                                               Text="Urządzenie awaryjne:"
+                                                               VerticalAlignment="Center"
+                                                               Foreground="#92A6C1"/>
+                                                    <ComboBox Name="CbEmergencyDamageSoundDevice"
+                                                              Grid.Column="1"
+                                                              MinWidth="300"
+                                                              Style="{StaticResource DarkComboBox}"
+                                                              SelectionChanged="CbEmergencyDamageSoundDevice_SelectionChanged"/>
+                                                </Grid>
+
+                                                <TextBlock Text="Lista awaryjna jest używana tylko wtedy, gdy Windows nie udostępnia jeszcze sesji audio zapisanego procesu Minecrafta. Zwykle nie trzeba jej zmieniać."
+                                                           Margin="175,-5,0,9"
+                                                           FontSize="10.5"
+                                                           Foreground="#92A6C1"
+                                                           TextWrapping="Wrap"/>
+
+                                                <CheckBox Name="ChkEmergencyDamageSoundTestMode"
+                                                          Content="Tryb testowy — tylko alarm i log, bez zatrzymywania ani wychodzenia z serwera"
+                                                          Margin="0,0,0,9"
+                                                          IsChecked="True"
+                                                          Checked="ChkEmergencyDamageSoundSetting_Changed"
+                                                          Unchecked="ChkEmergencyDamageSoundSetting_Changed"/>
+
+                                                <Grid Margin="0,0,0,9">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="175"/>
+                                                        <ColumnDefinition Width="260"/>
+                                                        <ColumnDefinition Width="80"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Grid.Column="0"
+                                                               Text="Próg podobieństwa:"
+                                                               VerticalAlignment="Center"/>
+                                                    <Slider Name="SlEmergencyDamageSoundSimilarity"
+                                                            Grid.Column="1"
+                                                            Minimum="70"
+                                                            Maximum="99"
+                                                            TickFrequency="1"
+                                                            IsSnapToTickEnabled="True"
+                                                            Value="90"
+                                                            ValueChanged="SlEmergencyDamageSoundSimilarity_ValueChanged"/>
+                                                    <TextBlock Name="TxtEmergencyDamageSoundSimilarityValue"
+                                                               Grid.Column="2"
+                                                               Text="90%"
+                                                               Margin="10,0,0,0"
+                                                               VerticalAlignment="Center"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="#7FC8FF"/>
+                                                    <TextBlock Grid.Column="3"
+                                                               Text="Wyżej = mniej fałszywych alarmów"
+                                                               Margin="8,0,0,0"
+                                                               VerticalAlignment="Center"
+                                                               FontSize="10.5"
+                                                               Foreground="#92A6C1"/>
+                                                </Grid>
+
+                                                <WrapPanel Margin="0,0,0,9">
+                                                    <Button Name="BtnEmergencyDamageSoundReloadReferences"
+                                                            Content="Przeładuj wzorce z paczki"
+                                                            Width="180"
+                                                            Margin="0,0,8,0"
+                                                            Click="BtnEmergencyDamageSoundReloadReferences_Click"/>
+                                                    <Button Name="BtnEmergencyDamageSoundTest"
+                                                            Content="Testuj nasłuch (15 s)"
+                                                            Width="150"
+                                                            Margin="0,0,8,0"
+                                                            Click="BtnEmergencyDamageSoundTest_Click"/>
+                                                    <Button Name="BtnEmergencyDamageSoundStop"
+                                                            Content="Zatrzymaj test"
+                                                            Width="120"
+                                                            Margin="0,0,8,0"
+                                                            Click="BtnEmergencyDamageSoundStop_Click"/>
+                                                </WrapPanel>
+
+                                                <TextBlock Name="TxtEmergencyDamageSoundReferenceInfo"
+                                                           Text="Ładowanie stałych wzorców hit1–hit4..."
+                                                           Margin="0,0,0,7"
+                                                           FontSize="10.5"
+                                                           Foreground="#92A6C1"
+                                                           TextWrapping="Wrap"/>
+                                                <Border Background="#101722"
+                                                        BorderBrush="#354A66"
+                                                        BorderThickness="1"
+                                                        CornerRadius="3"
+                                                        Padding="8">
+                                                    <TextBlock Name="TxtEmergencyDamageSoundStatus"
+                                                               Text="Nieaktywny."
+                                                               FontSize="10.5"
+                                                               Foreground="#92A6C1"
+                                                               TextWrapping="Wrap"/>
+                                                </Border>
+                                            </StackPanel>
+                                        </Border>
+                                        <Border Name="BorderEmergencyReconnectSection"
+                                                Background="#111A26"
+                                                BorderBrush="#354A66"
+                                                BorderThickness="1"
+                                                CornerRadius="4"
+                                                Padding="10"
+                                                Margin="0,12,0,0">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="2. Reconnect, kontrola kilofa i powrót"
+                                                   Style="{StaticResource MainSectionHeaderTextStyle}"/>
+                                        <Button Content="?"
+                                                Style="{StaticResource MacroInfoButtonStyle}"
+                                                Margin="8,0,0,0"
+                                                ToolTipService.InitialShowDelay="100"
+                                                ToolTipService.ShowDuration="120000">
+                                            <Button.ToolTip>
+                                                <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
+                                                         MaxWidth="620"
+                                                         Content="Łączy alarm dźwięku z istniejącym profilem Auto reconnect. Po obrażeniach wychodzi przez ESC → Disconnect, czeka ustawiony czas i wraca przez Direct Connect. Po wejściu sprawdza EQ. Gdy znajdzie diamentowy kilof, używa podstawowego home z profilu i wznawia ten sam tryb Kopacza. Gdy kilofa nie ma, używa home „brak kilofa”, czeka na teleport i zamyka Minecraft Helper. Ponowny dźwięk przed kontrolą kilofa ponownie uruchamia awaryjne wyjście."/>
+                                            </Button.ToolTip>
+                                        </Button>
+                                    </StackPanel>
+
+                                    <StackPanel Name="PanelEmergencyReconnectContent"
+                                                Margin="0,12,0,0">
+                                        <TextBlock Text="W trybie realnym alarm automatycznie uruchamia całą procedurę. Wymagana jest aktualna paczka TXT oraz poprawnie ustawione oba home w wybranym profilu."
+                                                   Margin="0,0,0,10"
+                                                   FontSize="11"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="#F5C860"
+                                                   TextWrapping="Wrap"/>
+
+                                        <Border Background="#161F2B"
+                                                BorderBrush="#4B6283"
+                                                BorderThickness="1"
+                                                CornerRadius="4"
+                                                Padding="10">
+                                            <StackPanel>
+                                                <Grid Margin="0,0,0,9">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="220"/>
+                                                        <ColumnDefinition Width="85"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="Reconnect po alarmie za:"
+                                                               VerticalAlignment="Center"/>
+                                                    <TextBox Name="TxtEmergencyReconnectDelaySeconds"
+                                                             Grid.Column="1"
+                                                             Text="30"
+                                                             TextChanged="EmergencyReconnectSetting_Changed"/>
+                                                    <TextBlock Grid.Column="2"
+                                                               Text="sekund"
+                                                               Margin="7,0,0,0"
+                                                               VerticalAlignment="Center"
+                                                               Foreground="#92A6C1"/>
+                                                </Grid>
+
+                                                <Border Background="#101722"
+                                                        BorderBrush="#354A66"
+                                                        BorderThickness="1"
+                                                        CornerRadius="3"
+                                                        Padding="8"
+                                                        Margin="0,0,0,9">
+                                                    <TextBlock Name="TxtEmergencyReconnectProfileSummary"
+                                                               Text="Profil: oczekiwanie na dane Auto reconnect..."
+                                                               FontSize="10.5"
+                                                               Foreground="#92A6C1"
+                                                               TextWrapping="Wrap"/>
+                                                </Border>
+
+                                                <WrapPanel Margin="0,0,0,9">
+                                                    <Button Name="BtnEmergencyReconnectStop"
+                                                            Content="Zatrzymaj procedurę"
+                                                            Width="155"
+                                                            Background="#6B2636"
+                                                            Click="BtnEmergencyReconnectStop_Click"/>
+                                                </WrapPanel>
+
+                                                <Border Background="#101722"
+                                                        BorderBrush="#354A66"
+                                                        BorderThickness="1"
+                                                        CornerRadius="3"
+                                                        Padding="8">
+                                                    <TextBlock Name="TxtEmergencyReconnectStatus"
+                                                               Text="Gotowe. Procedura uruchomi się po realnym alarmie dźwięku podczas pracy Kopacza."
+                                                               FontSize="10.5"
+                                                               Foreground="#92A6C1"
+                                                               TextWrapping="Wrap"/>
+                                                </Border>
+                                            </StackPanel>
+                                        </Border>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Name="BorderAutoReconnectSection"
+                                    Background="#111A26"
+                                    BorderBrush="#354A66"
+                                    BorderThickness="1"
+                                    CornerRadius="4"
+                                    Padding="10"
+                                    Margin="0,12,0,0">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="3. Profile serwera, home i testy reconnectu"
                                                    Style="{StaticResource MainSectionHeaderTextStyle}"/>
                                         <Button Content="?"
                                                 Style="{StaticResource MacroInfoButtonStyle}"
@@ -1962,15 +2233,21 @@
                                             <Button.ToolTip>
                                                 <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
                                                          MaxWidth="560"
-                                                         Content="Funkcja testowa współpracująca z Auto EQ. Jeżeli zaplanowane czyszczenie trzykrotnie nie zdoła otworzyć ekwipunku, uruchamiany jest pełny flow reconnectu przez Direct Connect. Jeżeli otwarte EQ nie zawiera znacznika diamentowego kilofa, program wykonuje profil /home i kończy właściwego Kopacza. Kontrola nie otwiera dodatkowo EQ pomiędzy cyklami Auto EQ. Nieznany ekran oraz komunikat o banie zatrzymują automat."/>
+                                                         Content="Funkcja testowa współpracująca z Auto EQ. Jeżeli zaplanowane czyszczenie trzykrotnie nie zdoła otworzyć ekwipunku, uruchamiany jest pełny reconnect przez Direct Connect. Jeżeli poprawnie rozpoznane EQ nie zawiera znacznika diamentowego kilofa, program używa osobnego home „brak kilofa” z wybranego profilu i kończy właściwego Kopacza. Brak znaczników aktualnej paczki nie jest uznawany za brak kilofa. Kontrola nie otwiera dodatkowo EQ pomiędzy cyklami Auto EQ. Nieznany ekran oraz komunikat o banie zatrzymują automat bez dalszego klikania."/>
                                             </Button.ToolTip>
                                         </Button>
                                     </StackPanel>
 
+                                    <CheckBox Name="ChkAutoReconnectEnabled"
+                                              Content="Dodatkowa okresowa kontrola połączenia podczas kopania (opcjonalna)"
+                                              Margin="0,10,0,0"
+                                              VerticalAlignment="Center"
+                                              Checked="ChkAutoReconnectEnabled_Changed"
+                                              Unchecked="ChkAutoReconnectEnabled_Changed"/>
+
                                     <StackPanel Name="PanelAutoReconnectContent"
-                                                Margin="0,12,0,0"
-                                                Visibility="Collapsed">
-                                        <TextBlock Text="Wymaga włączonego Auto EQ, aktualnej paczki Minecraft Helper ze znacznikiem diamentowego kilofa, etykietami [MH] oraz GUI Scale: Large. Testuj przy widocznym i aktywnym oknie gry."
+                                                Margin="0,12,0,0">
+                                        <TextBlock Text="Wybrany profil jest używany przez ochronę awaryjną niezależnie od opcjonalnej kontroli okresowej. Wymagana jest aktualna paczka Minecraft Helper, etykiety [MH] oraz GUI Scale: Large. Testuj przy widocznym i aktywnym oknie gry."
                                                    Margin="0,0,0,10"
                                                    FontSize="11"
                                                    Foreground="#F5C860"
@@ -2121,6 +2398,320 @@
                                     </StackPanel>
                                 </StackPanel>
                             </Border>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Name="BorderAutoArmorSection"
+                                    Style="{StaticResource SectionBorderStyle}">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <CheckBox Name="ChkAutoArmorEnabled"
+                                                  VerticalAlignment="Center"
+                                                  Checked="ChkAutoArmorEnabled_Changed"
+                                                  Unchecked="ChkAutoArmorEnabled_Changed"/>
+                                        <TextBlock Text="Auto zbroja — podmiana zestawu"
+                                                   Style="{StaticResource MainSectionHeaderTextStyle}"/>
+                                        <Button Content="?"
+                                                Style="{StaticResource MacroInfoButtonStyle}"
+                                                Margin="8,0,0,0"
+                                                ToolTipService.InitialShowDelay="100"
+                                                ToolTipService.ShowDuration="120000">
+                                            <Button.ToolTip>
+                                                <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
+                                                         MaxWidth="620"
+                                                         Content="JAK DZIAŁA:&#10;Po naciśnięciu binda program otwiera ekwipunek i zamienia aktualnie założony set z drugim setem znajdującym się w wybranych miejscach EQ. Stara zbroja trafia dokładnie w miejsca drugiego zestawu.&#10;&#10;KALIBRACJA:&#10;Każde pole ustawiasz osobno. Kliknij przycisk elementu, przejdź do Minecrafta z otwartym EQ, najedź kursorem na właściwy slot i naciśnij lewy Ctrl. Najpierw wskaż cztery sloty założonej zbroi, potem cztery miejsca drugiego setu.&#10;&#10;BEZPIECZEŃSTWO:&#10;Kalibracja jest zapisana względem okna gry. Po zmianie rozdzielczości, trybu pełnoekranowego albo GUI Scale wykonaj ją ponownie. Ponowny bind przerywa sekwencję dopiero po bezpiecznym zakończeniu bieżącej podmiany elementu."/>
+                                            </Button.ToolTip>
+                                        </Button>
+                                    </StackPanel>
+
+                                    <StackPanel Name="PanelAutoArmorExpandableContent"
+                                                Margin="0,12,0,0"
+                                                Visibility="Collapsed">
+                                        <TextBlock Text="FUNKCJA TESTOWA: skalibruj osiem pól przy tej samej rozdzielczości i GUI Scale, których używasz podczas gry. Najpierw sprawdź podmianę w bezpiecznym miejscu."
+                                                   FontSize="11"
+                                                   FontWeight="Bold"
+                                                   Foreground="#FFD34D"
+                                                   Margin="0,0,0,10"
+                                                   TextWrapping="Wrap"/>
+
+                                        <Border Background="#161F2B"
+                                                BorderBrush="#4B6283"
+                                                BorderThickness="1"
+                                                CornerRadius="4"
+                                                Padding="10">
+                                            <StackPanel Name="PanelAutoArmorContent">
+                                                <WrapPanel Margin="0,0,0,10">
+                                                    <TextBlock Text="Bind:" Width="125" VerticalAlignment="Center"/>
+                                                    <TextBox Name="TxtAutoArmorBind"
+                                                             Width="100"
+                                                             Margin="0,0,10,0"
+                                                             IsReadOnly="True"
+                                                             FontWeight="Bold"
+                                                             Foreground="#38D6B4"
+                                                             Tag="AutoArmor"
+                                                             PreviewMouseLeftButtonDown="BindKeyBox_PreviewMouseLeftButtonDown"/>
+                                                    <Button Name="BtnAutoArmorBind"
+                                                            Content="Zapisz"
+                                                            Width="80"
+                                                            Margin="0,0,10,0"
+                                                            Click="BtnAutoArmorBind_Click"/>
+                                                    <Button Name="BtnAutoArmorBindClear"
+                                                            Content="Usuń bind"
+                                                            Width="90"
+                                                            Tag="AutoArmor"
+                                                            Click="BtnClearBind_Click"/>
+                                                </WrapPanel>
+
+                                                <Grid Margin="0,0,0,10">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="12"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <Border Grid.Column="0"
+                                                            Background="#101722"
+                                                            BorderBrush="#4B6283"
+                                                            BorderThickness="1"
+                                                            CornerRadius="4"
+                                                            Padding="10">
+                                                        <StackPanel>
+                                                            <TextBlock Text="ZAŁOŻONY SET"
+                                                                       Foreground="#7FC8FF"
+                                                                       FontWeight="Bold"
+                                                                       HorizontalAlignment="Center"
+                                                                       Margin="0,0,0,8"/>
+                                                            <Button Name="BtnAutoArmorEquippedHelmet" Content="Hełm — ustaw Ctrl" Tag="Equipped:0" Margin="0,2" Click="BtnAutoArmorCalibrationSlot_Click"/>
+                                                            <Button Name="BtnAutoArmorEquippedChestplate" Content="Napierśnik — ustaw Ctrl" Tag="Equipped:1" Margin="0,2" Click="BtnAutoArmorCalibrationSlot_Click"/>
+                                                            <Button Name="BtnAutoArmorEquippedLeggings" Content="Spodnie — ustaw Ctrl" Tag="Equipped:2" Margin="0,2" Click="BtnAutoArmorCalibrationSlot_Click"/>
+                                                            <Button Name="BtnAutoArmorEquippedBoots" Content="Buty — ustaw Ctrl" Tag="Equipped:3" Margin="0,2" Click="BtnAutoArmorCalibrationSlot_Click"/>
+                                                        </StackPanel>
+                                                    </Border>
+
+                                                    <Border Grid.Column="2"
+                                                            Background="#101722"
+                                                            BorderBrush="#4B6283"
+                                                            BorderThickness="1"
+                                                            CornerRadius="4"
+                                                            Padding="10">
+                                                        <StackPanel>
+                                                            <TextBlock Text="DRUGI SET W EQ"
+                                                                       Foreground="#38D6B4"
+                                                                       FontWeight="Bold"
+                                                                       HorizontalAlignment="Center"
+                                                                       Margin="0,0,0,8"/>
+                                                            <Button Name="BtnAutoArmorInventoryHelmet" Content="Hełm — ustaw Ctrl" Tag="Inventory:0" Margin="0,2" Click="BtnAutoArmorCalibrationSlot_Click"/>
+                                                            <Button Name="BtnAutoArmorInventoryChestplate" Content="Napierśnik — ustaw Ctrl" Tag="Inventory:1" Margin="0,2" Click="BtnAutoArmorCalibrationSlot_Click"/>
+                                                            <Button Name="BtnAutoArmorInventoryLeggings" Content="Spodnie — ustaw Ctrl" Tag="Inventory:2" Margin="0,2" Click="BtnAutoArmorCalibrationSlot_Click"/>
+                                                            <Button Name="BtnAutoArmorInventoryBoots" Content="Buty — ustaw Ctrl" Tag="Inventory:3" Margin="0,2" Click="BtnAutoArmorCalibrationSlot_Click"/>
+                                                        </StackPanel>
+                                                    </Border>
+                                                </Grid>
+
+                                                <TextBlock Text="Kliknij wybrane pole → otwórz EQ w Minecrafcie → najedź na slot → naciśnij lewy Ctrl. Powtórz dla wszystkich ośmiu pól."
+                                                           Foreground="#92A6C1"
+                                                           FontSize="11"
+                                                           Margin="0,0,0,8"
+                                                           TextWrapping="Wrap"/>
+
+                                                <WrapPanel Margin="0,0,0,10">
+                                                    <Button Content="Resetuj kalibrację"
+                                                            Width="145"
+                                                            Margin="0,0,10,0"
+                                                            Click="BtnAutoArmorResetCalibration_Click"/>
+                                                    <Button Content="Anuluj wybór"
+                                                            Width="120"
+                                                            Click="BtnAutoArmorCancelCalibration_Click"/>
+                                                </WrapPanel>
+
+                                                <WrapPanel Margin="0,0,0,10">
+                                                    <TextBlock Text="Odstęp kliknięć:" Width="125" VerticalAlignment="Center"/>
+                                                    <TextBox Name="TxtAutoArmorClickDelayMs"
+                                                             Width="70"
+                                                             Margin="0,0,6,0"
+                                                             TextChanged="AutoArmorConfig_TextChanged"/>
+                                                    <TextBlock Text="ms (25–200)" VerticalAlignment="Center" Foreground="#92A6C1"/>
+                                                </WrapPanel>
+
+                                                <Border Background="#111925"
+                                                        BorderBrush="#38516E"
+                                                        BorderThickness="1"
+                                                        CornerRadius="3"
+                                                        Padding="8">
+                                                    <TextBlock Name="TxtAutoArmorStatus"
+                                                               Text="Brak kalibracji. Ustaw osiem pól za pomocą lewego Ctrl."
+                                                               Foreground="#38D6B4"
+                                                               FontSize="11"
+                                                               TextWrapping="Wrap"/>
+                                                </Border>
+                                            </StackPanel>
+                                        </Border>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Name="BorderAutoWaterSection"
+                                    Style="{StaticResource SectionBorderStyle}">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <CheckBox Name="ChkAutoWaterEnabled"
+                                                  VerticalAlignment="Center"
+                                                  Checked="ChkAutoWaterEnabled_Changed"
+                                                  Unchecked="ChkAutoWaterEnabled_Changed"/>
+                                        <TextBlock Text="AutoWater — automatyczne ratowanie wodą"
+                                                   Style="{StaticResource MainSectionHeaderTextStyle}"/>
+                                        <Button Content="?"
+                                                Style="{StaticResource MacroInfoButtonStyle}"
+                                                Margin="8,0,0,0"
+                                                ToolTipService.InitialShowDelay="100"
+                                                ToolTipService.ShowDuration="120000">
+                                            <Button.ToolTip>
+                                                <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
+                                                         MaxWidth="620"
+                                                         Content="JAK USTAWIĆ:&#10;1. Wybierz slot z wiadrem wody i slot, na który program ma wrócić.&#10;2. Umieść puste wiadro w wybranym slocie, otwórz chat, najedź kursorem na charakterystyczny jasnoniebieski lub szary fragment ikony i podczas uzbrojonej kalibracji naciśnij lewy Ctrl.&#10;3. Użyj przycisku Testuj rozpoznawanie.&#10;4. Ustaw bind oraz czasy i sprawdź działanie na bezpiecznym teście.&#10;&#10;JAK DZIAŁA:&#10;Patrząc pionowo w dół naciśnij bind podczas spadania. Program wybiera wodę, wykonuje próby PPM, rozpoznaje puste wiadro, po ustawionym czasie zbiera wodę i wraca na wybrany slot. Ponowne naciśnięcie bindu natychmiast anuluje sekwencję.&#10;&#10;CZAS PPM:&#10;Wartość trzeba dobrać ręcznie do serwera. Z około 150 kratek może dobrze działać 40 ms, a z mniejszych wysokości około 50–65 ms. Wynik zależy od opóźnień i klienta. AutoWater wymaga widocznego, aktywnego okna gry; otwarte GUI lub utrata fokusu przerywają działanie."/>
+                                            </Button.ToolTip>
+                                        </Button>
+                                    </StackPanel>
+
+                                    <StackPanel Name="PanelAutoWaterExpandableContent"
+                                                Margin="0,12,0,0"
+                                                Visibility="Collapsed">
+                                        <TextBlock Text="FUNKCJA TESTOWA: przed użyciem sprawdź rozpoznawanie. Działa tylko przy aktywnym oknie Minecrafta i nie uruchamia stałego nasłuchu myszy."
+                                                   FontSize="11"
+                                                   FontWeight="Bold"
+                                                   Foreground="#FFD34D"
+                                                   Margin="0,0,0,10"
+                                                   TextWrapping="Wrap"/>
+
+                                        <Border Background="#161F2B"
+                                                BorderBrush="#4B6283"
+                                                BorderThickness="1"
+                                                CornerRadius="4"
+                                                Padding="10">
+                                            <StackPanel Name="PanelAutoWaterContent">
+                                                <WrapPanel Margin="0,0,0,8">
+                                                    <TextBlock Text="Bind:" Width="105" VerticalAlignment="Center"/>
+                                                    <TextBox Name="TxtAutoWaterBind"
+                                                             Width="100"
+                                                             Margin="0,0,10,0"
+                                                             IsReadOnly="True"
+                                                             FontWeight="Bold"
+                                                             Foreground="#38D6B4"
+                                                             Tag="AutoWater"
+                                                             PreviewMouseLeftButtonDown="BindKeyBox_PreviewMouseLeftButtonDown"/>
+                                                    <Button Name="BtnAutoWaterBind"
+                                                            Content="Zapisz"
+                                                            Width="80"
+                                                            Margin="0,0,10,0"
+                                                            Click="BtnAutoWaterBind_Click"/>
+                                                    <Button Name="BtnAutoWaterBindClear"
+                                                            Content="Usuń bind"
+                                                            Width="90"
+                                                            Tag="AutoWater"
+                                                            Click="BtnClearBind_Click"/>
+                                                </WrapPanel>
+
+                                                <WrapPanel Margin="0,0,0,8">
+                                                    <TextBlock Text="Slot z wodą:" Width="105" VerticalAlignment="Center"/>
+                                                    <ComboBox Name="CbAutoWaterWaterSlot"
+                                                              Width="70"
+                                                              Margin="0,0,22,0"
+                                                              Style="{StaticResource DarkComboBox}"
+                                                              SelectionChanged="AutoWaterConfig_SelectionChanged">
+                                                        <ComboBoxItem Content="1"/><ComboBoxItem Content="2"/><ComboBoxItem Content="3"/>
+                                                        <ComboBoxItem Content="4"/><ComboBoxItem Content="5"/><ComboBoxItem Content="6"/>
+                                                        <ComboBoxItem Content="7"/><ComboBoxItem Content="8"/><ComboBoxItem Content="9"/>
+                                                    </ComboBox>
+                                                    <TextBlock Text="Slot po akcji:" Width="105" VerticalAlignment="Center"/>
+                                                    <ComboBox Name="CbAutoWaterReturnSlot"
+                                                              Width="70"
+                                                              Style="{StaticResource DarkComboBox}"
+                                                              SelectionChanged="AutoWaterConfig_SelectionChanged">
+                                                        <ComboBoxItem Content="1"/><ComboBoxItem Content="2"/><ComboBoxItem Content="3"/>
+                                                        <ComboBoxItem Content="4"/><ComboBoxItem Content="5"/><ComboBoxItem Content="6"/>
+                                                        <ComboBoxItem Content="7"/><ComboBoxItem Content="8"/><ComboBoxItem Content="9"/>
+                                                    </ComboBox>
+                                                </WrapPanel>
+
+                                                <WrapPanel Margin="0,0,0,8">
+                                                    <TextBlock Text="Próba PPM co:" Width="105" VerticalAlignment="Center"/>
+                                                    <TextBox Name="TxtAutoWaterPlaceIntervalMs"
+                                                             Width="70"
+                                                             Margin="0,0,6,0"
+                                                             TextChanged="AutoWaterConfig_TextChanged"/>
+                                                    <TextBlock Text="ms" Width="35" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="Zebranie po:" Width="95" VerticalAlignment="Center"/>
+                                                    <TextBox Name="TxtAutoWaterPickupDelayMs"
+                                                             Width="70"
+                                                             Margin="0,0,6,0"
+                                                             TextChanged="AutoWaterConfig_TextChanged"/>
+                                                    <TextBlock Text="ms" VerticalAlignment="Center"/>
+                                                </WrapPanel>
+
+                                                <TextBlock Margin="0,0,0,10"
+                                                           Foreground="#FFD34D"
+                                                           FontSize="11"
+                                                           FontWeight="Bold"
+                                                           TextWrapping="Wrap"
+                                                           Text="Czas prób PPM ustaw ręcznie i sprawdź na swoim serwerze. Przykładowo przy spadaniu z około 150 kratek dobrze może działać 40 ms, a z mniejszych wysokości około 50–65 ms. Właściwa wartość zależy od serwera, opóźnień i klienta gry."/>
+
+                                                <WrapPanel Margin="0,0,0,8">
+                                                    <TextBlock Text="Podobieństwo:" Width="105" VerticalAlignment="Center"/>
+                                                    <Slider Name="SlAutoWaterSimilarity"
+                                                            Width="230"
+                                                            Minimum="70"
+                                                            Maximum="99"
+                                                            TickFrequency="1"
+                                                            IsSnapToTickEnabled="True"
+                                                            ValueChanged="SlAutoWaterSimilarity_ValueChanged"/>
+                                                    <TextBlock Name="TxtAutoWaterSimilarityValue"
+                                                               Text="84%"
+                                                               Width="50"
+                                                               Margin="10,0,0,0"
+                                                               Foreground="#7FC8FF"
+                                                               FontWeight="Bold"
+                                                               VerticalAlignment="Center"/>
+                                                    <TextBlock Text="Wyżej = mniej fałszywych rozpoznań"
+                                                               Foreground="#92A6C1"
+                                                               VerticalAlignment="Center"/>
+                                                </WrapPanel>
+
+                                                <TextBlock Text="Kalibracja: połóż puste wiadro w wybranym slocie, otwórz chat, najedź kursorem na charakterystyczny jasnoniebieski/szary fragment ikony wiadra i naciśnij lewy Ctrl."
+                                                           FontSize="11"
+                                                           Foreground="#92A6C1"
+                                                           TextWrapping="Wrap"
+                                                           Margin="0,0,0,8"/>
+                                                <WrapPanel Margin="0,0,0,8">
+                                                    <Button Content="Rozpocznij kalibrację"
+                                                            Width="170"
+                                                            Margin="0,0,10,0"
+                                                            Click="BtnAutoWaterCalibrate_Click"/>
+                                                    <Button Content="Testuj rozpoznawanie"
+                                                            Width="170"
+                                                            Margin="0,0,10,0"
+                                                            Click="BtnAutoWaterTestRecognition_Click"/>
+                                                    <Button Content="Resetuj wzorzec"
+                                                            Width="130"
+                                                            Click="BtnAutoWaterResetCalibration_Click"/>
+                                                </WrapPanel>
+
+                                                <Border Background="#111925"
+                                                        BorderBrush="#38516E"
+                                                        BorderThickness="1"
+                                                        CornerRadius="3"
+                                                        Padding="8">
+                                                    <TextBlock Name="TxtAutoWaterStatus"
+                                                               Text="Brak kalibracji pustego wiadra."
+                                                               Foreground="#FFD34D"
+                                                               FontSize="11"
+                                                               TextWrapping="Wrap"/>
+                                                </Border>
+                                            </StackPanel>
+                                        </Border>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
 
                             <Border Name="BorderTestAutoFishingSection"
                                     Style="{StaticResource SectionBorderStyle}">
@@ -2139,7 +2730,8 @@
                                                 ToolTipService.ShowDuration="120000">
                                             <Button.ToolTip>
                                                 <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
-                                                         Content="Zaznacz mały obszar wokół czerwonej części spławika, ustaw bind uruchamiania oraz opcjonalny bind ponownego zaznaczenia. Po zarzuceniu makro czeka 2 sekundy, zapisuje pozycję spławika i zwija dopiero po potwierdzonym braniu. Jeśli w ciągu 5 sekund od rzutu nie zobaczy spławika, automatycznie ponowi rzut."/>
+                                                         MaxWidth="560"
+                                                         Content="Spławik musi mieć wyraźnie czerwoną część. Zaznacz mały obszar bezpośrednio wokół niej, ustaw bind uruchamiania oraz opcjonalny bind ponownego zaznaczenia. Po zarzuceniu makro czeka 2 sekundy, zapisuje pozycję spławika i zwija dopiero po potwierdzonym ruchu w dół albo zaniku spławika. Jeśli przez 5 sekund od rzutu go nie zobaczy, automatycznie ponawia rzut. Opcjonalna komenda naprawy zatrzymuje łowienie na czas wpisania, a następnie ponownie zarzuca wędkę."/>
                                             </Button.ToolTip>
                                         </Button>
                                     </StackPanel>
@@ -2326,7 +2918,7 @@
                                     <Button.ToolTip>
                                         <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
                                                  MaxWidth="520"
-                                                 Content="JAK SKONFIGUROWAĆ PROGRAM:&#10;1. Uruchom Minecrafta i wejdź do gry.&#10;2. Kliknij Odśwież przy polu Program gry.&#10;3. Wybierz proces właściwego okna Minecrafta lub BlazingPacka — nie wybieraj launchera.&#10;4. Kliknij Zapisz program. Górny wskaźnik Minecraft Focus zmieni się na zielony, gdy aktywne jest właściwe okno gry.&#10;&#10;HUD (OVERLAY):&#10;Wyświetla na ekranie stan clickerów, kopacza, Auto EQ i CobbleX. Możesz wybrać monitor, narożnik oraz wyłączyć animacje HUD.&#10;&#10;IMPORT / EXPORT:&#10;Exportuj zapisuje pełną konfigurację do pliku JSON. Importuj wczytuje taki plik i ustawia go jako aktywną konfigurację. Program zapisuje bieżące ustawienia automatycznie w %APPDATA%\Minecraft Helper\settings.json."/>
+                                                 Content="JAK SKONFIGUROWAĆ PROGRAM:&#10;1. Uruchom Minecrafta i wejdź do gry.&#10;2. Kliknij Odśwież przy polu Program gry.&#10;3. Wybierz proces właściwego okna Minecrafta lub BlazingPacka — nie wybieraj launchera.&#10;4. Kliknij Zapisz program. Górny wskaźnik Minecraft Focus zmieni się na zielony, gdy aktywne jest właściwe okno gry.&#10;&#10;HUD (OVERLAY):&#10;Wyświetla stan aktywnych clickerów, Kopacza, Auto EQ, CobbleX, Auto zbroi, AutoWater oraz trwających etapów ochrony awaryjnej i reconnectu. Ochrona awaryjna nie zajmuje miejsca w HUD tylko dlatego, że została zaznaczona — pojawia się przy uruchomionym Kopaczu, teście albo aktywnej procedurze. Możesz wybrać monitor, narożnik i wyłączyć animacje HUD.&#10;&#10;IMPORT / EXPORT:&#10;Exportuj zapisuje pełną konfigurację do pliku JSON. Importuj wczytuje taki plik i ustawia go jako aktywną konfigurację. Program zapisuje bieżące ustawienia automatycznie w %APPDATA%\Minecraft Helper\settings.json."/>
                                     </Button.ToolTip>
                                 </Button>
                             </StackPanel>
@@ -2469,7 +3061,8 @@
                                                 ToolTipService.ShowDuration="120000">
                                             <Button.ToolTip>
                                                 <ToolTip Style="{StaticResource MacroInfoToolTipStyle}"
-                                                         Content="HUD to mały panel informacyjny wyświetlany nad grą. Pokazuje aktywne makra, bindy, CPS oraz stan Auto EQ i CobbleX. Po włączeniu wybierz monitor i narożnik ekranu. Opcja Animacje HUD odpowiada tylko za animowane pojawianie się panelu — jej wyłączenie nie wyłącza samego HUD."/>
+                                                         MaxWidth="560"
+                                                         Content="HUD to mały panel informacyjny wyświetlany nad grą. Pokazuje tylko aktywne działania: clickery, wykonany BIND, Kopacza, Auto EQ, CobbleX, Auto zbroję, AutoWater oraz trwające etapy ochrony awaryjnej i reconnectu. Wpis ochrony pojawia się przy pracującym Kopaczu, ręcznym teście albo rozpoczętej procedurze — samo zaznaczenie ochrony nie wyświetla stałego alarmu. Po włączeniu wybierz monitor i narożnik ekranu. Opcja Animacje HUD steruje wyłącznie animowanym pojawianiem się panelu, nie samym HUD."/>
                                             </Button.ToolTip>
                                         </Button>
                                     </StackPanel>

@@ -368,6 +368,11 @@
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,9">
                             <TextBlock Text="Teleport (s):" Width="130" VerticalAlignment="Center"/>
                             <TextBox Name="TxtTeleportDelay" Width="65"/>
+                            <TextBlock Text="+ 2 s buforu bezpieczeństwa"
+                                       Margin="8,0,0,0"
+                                       VerticalAlignment="Center"
+                                       FontSize="10.5"
+                                       Foreground="#92A6C1"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,9">
                             <TextBlock Text="Maks. prób:" Width="130" VerticalAlignment="Center"/>

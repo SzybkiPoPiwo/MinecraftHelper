@@ -23,6 +23,15 @@ namespace MinecraftHelper.Services
         public const string HealthCheckFinished = "health-check-finished";
         public const string MissingPickaxeRecovery = "missing-pickaxe-recovery";
         public const string MissingPickaxeRecoveryFinished = "missing-pickaxe-recovery-finished";
+        public const string EmergencyDamageSoundDetected = "emergency-damage-sound-detected";
+        public const string EmergencyProtectionStarted = "emergency-protection-started";
+        public const string EmergencyReconnectJoined = "emergency-reconnect-joined";
+        public const string EmergencyPickaxeDetected = "emergency-pickaxe-detected";
+        public const string EmergencyPickaxeMissing = "emergency-pickaxe-missing";
+        public const string EmergencyHomeCommandSent = "emergency-home-command-sent";
+        public const string EmergencyMiningResumed = "emergency-mining-resumed";
+        public const string EmergencyShutdown = "emergency-shutdown";
+        public const string EmergencyProtectionFinished = "emergency-protection-finished";
     }
 
     internal static class MiningLogStatuses
