@@ -1,0 +1,457 @@
+<Window x:Class="MinecraftHelper.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Minecraft Helper Auto Clicker"
+        Width="520"
+        Height="760"
+        MinWidth="460"
+        MinHeight="560"
+        Icon="Assets/autoclicker.ico"
+        WindowStartupLocation="CenterScreen">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Background="#16283B" BorderBrush="#39516E" BorderThickness="0,0,0,1" Padding="12,10">
+            <StackPanel>
+                <DockPanel LastChildFill="True">
+                    <TextBlock DockPanel.Dock="Left" Text="MINECRAFT HELPER" Foreground="#61CBFF" FontSize="15" FontWeight="Bold"/>
+                    <TextBlock DockPanel.Dock="Right" Text="AUTO CLICKER" Foreground="#38D6B4" FontSize="15" FontWeight="Bold" HorizontalAlignment="Right"/>
+                </DockPanel>
+                <TextBlock Text="Lekki profil: LPM, PPM, akcje PVP, bindy, Auto zbroja i AutoWater" Style="{StaticResource MutedStyle}" Margin="0,3,0,0"/>
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="1" Background="#0D1826" BorderBrush="#39516E" BorderThickness="0,0,0,1" Padding="10">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                    <TextBlock Text="OKNO MINECRAFTA" Foreground="#93B7D8" FontSize="10" FontWeight="Bold" VerticalAlignment="Center"/>
+                    <Button Content="?" Style="{StaticResource InfoButtonStyle}"
+                            ToolTipService.InitialShowDelay="100" ToolTipService.ShowDuration="120000">
+                        <Button.ToolTip>
+                            <ToolTip Style="{StaticResource InfoToolTipStyle}"
+                                     Content="Kliknij Odśwież, wybierz właściwe okno uruchomionego Minecrafta lub BlazingPacka i kliknij Zapisz. Nie wybieraj launchera. Clicker wysyła wejście tylko wtedy, gdy zapisane okno gry jest aktywne. Zapisany wybór jest używany również przez BINDY, szybkie akcje, Auto zbroję i AutoWater."/>
+                        </Button.ToolTip>
+                    </Button>
+                </StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <ComboBox Name="CbTargetProcess" MinWidth="250" DisplayMemberPath="DisplayName"/>
+                    <Button Grid.Column="1" Content="Odśwież" Margin="7,0,0,0" Click="BtnRefreshProcesses_Click"/>
+                    <Button Grid.Column="2" Content="Zapisz" Margin="7,0,0,0" Click="BtnSaveTarget_Click"/>
+                </Grid>
+                <TextBlock Name="TxtWindowStatus" Text="Nie wybrano okna Minecrafta" Style="{StaticResource MutedStyle}" Margin="0,6,0,0"/>
+            </StackPanel>
+        </Border>
+
+        <TabControl Grid.Row="2" Background="{StaticResource WindowBrush}" BorderThickness="0" Padding="6">
+            <TabItem Header="PVP">
+                <ScrollViewer Background="{StaticResource WindowBrush}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="5,10,5,4">
+                        <Border Style="{StaticResource CardStyle}">
+                            <StackPanel>
+                                <DockPanel>
+                                    <CheckBox Name="ChkAutoLeftEnabled" DockPanel.Dock="Left" Checked="ChkAutoLeftEnabled_Changed" Unchecked="ChkAutoLeftEnabled_Changed"/>
+                                    <TextBlock Text="AUTO LPM" DockPanel.Dock="Left" Style="{StaticResource HeaderStyle}" Margin="9,0,0,0"/>
+                                    <Button Content="?" DockPanel.Dock="Left" Style="{StaticResource InfoButtonStyle}"
+                                            ToolTipService.InitialShowDelay="100" ToolTipService.ShowDuration="120000">
+                                        <Button.ToolTip>
+                                            <ToolTip Style="{StaticResource InfoToolTipStyle}"
+                                                     Content="AUTO LPM automatycznie klika lewym przyciskiem myszy w ustawionym zakresie CPS.&#10;&#10;PRZEŁĄCZANIE BINDEM: jedno naciśnięcie włącza, następne wyłącza.&#10;TRZYMANIE BINDU: klika wyłącznie podczas fizycznego trzymania przypisanego klawisza.&#10;BIND + FIZYCZNY LPM: bind uzbraja tryb, a clicker działa podczas trzymania LPM i zatrzymuje się natychmiast po jego puszczeniu.&#10;&#10;CPS „od–do” ustawia losowany zakres; wpisanie tej samej wartości daje stały CPS. Tryb DAB dodatkowo przytrzymuje klawisz O podczas pracy AUTO LPM. Moduł działa tylko w zapisanym, aktywnym oknie Minecrafta."/>
+                                        </Button.ToolTip>
+                                    </Button>
+                                    <TextBlock Name="TxtAutoLeftState" Text="OFF" Foreground="#FF6B6B" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                </DockPanel>
+                                <StackPanel Name="PanelAutoLeftContent" Margin="0,12,0,0">
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="70"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="Bind:" VerticalAlignment="Center"/>
+                                        <TextBox Name="TxtAutoLeftKey" Grid.Column="1" IsReadOnly="True" PreviewMouseLeftButtonDown="BindBox_PreviewMouseLeftButtonDown" Tag="AutoLeft"/>
+                                        <Button Grid.Column="2" Content="Zapisz" Margin="7,0,0,0" Click="BtnSaveBind_Click" Tag="AutoLeft"/>
+                                        <Button Grid.Column="3" Content="Usuń" Margin="7,0,0,0" Click="BtnClearBind_Click" Tag="AutoLeft"/>
+                                    </Grid>
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="70"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                        <TextBlock Text="Tryb:" VerticalAlignment="Center"/>
+                                        <ComboBox Name="CbAutoLeftMode" Grid.Column="1" SelectionChanged="RuntimeSetting_Changed"
+                                                  ToolTip="Przełączanie: bind włącza/wyłącza. Trzymanie: działa podczas trzymania bindu i może współdzielić go z PPM w trybie kombinacji. Kombinacja: uruchom bindem + fizycznym LPM i zatrzymaj puszczeniem LPM.">
+                                            <ComboBoxItem Content="Przełączanie bindem" Tag="Toggle"/>
+                                            <ComboBoxItem Content="Działa podczas trzymania bindu" Tag="Hold"/>
+                                            <ComboBoxItem Content="Bind + fizyczny LPM" Tag="Combo"/>
+                                        </ComboBox>
+                                    </Grid>
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="70"/><ColumnDefinition Width="75"/><ColumnDefinition Width="55"/><ColumnDefinition Width="75"/></Grid.ColumnDefinitions>
+                                        <TextBlock Text="CPS:" VerticalAlignment="Center"/>
+                                        <TextBox Name="TxtAutoLeftMinCps" Grid.Column="1" Text="10" TextChanged="RuntimeText_Changed"/>
+                                        <TextBlock Grid.Column="2" Text="do" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        <TextBox Name="TxtAutoLeftMaxCps" Grid.Column="3" Text="12" TextChanged="RuntimeText_Changed"/>
+                                    </Grid>
+                                    <CheckBox Name="ChkAutoLeftDabMode" Content="Tryb DAB — podczas LPM trzymaj klawisz O" Checked="RuntimeCheck_Changed" Unchecked="RuntimeCheck_Changed"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource CardStyle}">
+                            <StackPanel>
+                                <DockPanel>
+                                    <CheckBox Name="ChkAutoRightEnabled" DockPanel.Dock="Left" Checked="ChkAutoRightEnabled_Changed" Unchecked="ChkAutoRightEnabled_Changed"/>
+                                    <TextBlock Text="AUTO PPM" DockPanel.Dock="Left" Style="{StaticResource HeaderStyle}" Margin="9,0,0,0"/>
+                                    <Button Content="?" DockPanel.Dock="Left" Style="{StaticResource InfoButtonStyle}"
+                                            ToolTipService.InitialShowDelay="100" ToolTipService.ShowDuration="120000">
+                                        <Button.ToolTip>
+                                            <ToolTip Style="{StaticResource InfoToolTipStyle}"
+                                                     Content="AUTO PPM automatycznie klika prawym przyciskiem myszy w ustawionym zakresie CPS.&#10;&#10;PRZEŁĄCZANIE BINDEM: jedno naciśnięcie włącza, następne wyłącza.&#10;TRZYMANIE BINDU: działa tylko podczas trzymania osobnego binda.&#10;BIND + FIZYCZNY PPM: bind uzbraja tryb, a clicker działa podczas trzymania PPM i zatrzymuje się po jego puszczeniu.&#10;&#10;Wspólny bind jest możliwy, gdy LPM ma tryb Trzymanie lub Kombinacja, a PPM tryb Kombinacja. CPS „od–do” oznacza losowany zakres; równe wartości dają stały CPS."/>
+                                        </Button.ToolTip>
+                                    </Button>
+                                    <TextBlock Name="TxtAutoRightState" Text="OFF" Foreground="#FF6B6B" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                </DockPanel>
+                                <StackPanel Name="PanelAutoRightContent" Margin="0,12,0,0">
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="70"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="Bind:" VerticalAlignment="Center"/>
+                                        <TextBox Name="TxtAutoRightKey" Grid.Column="1" IsReadOnly="True" PreviewMouseLeftButtonDown="BindBox_PreviewMouseLeftButtonDown" Tag="AutoRight"/>
+                                        <Button Grid.Column="2" Content="Zapisz" Margin="7,0,0,0" Click="BtnSaveBind_Click" Tag="AutoRight"/>
+                                        <Button Grid.Column="3" Content="Usuń" Margin="7,0,0,0" Click="BtnClearBind_Click" Tag="AutoRight"/>
+                                    </Grid>
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="70"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                        <TextBlock Text="Tryb:" VerticalAlignment="Center"/>
+                                        <ComboBox Name="CbAutoRightMode" Grid.Column="1" SelectionChanged="RuntimeSetting_Changed"
+                                                  ToolTip="Przełączanie: bind włącza/wyłącza. Trzymanie: działa tylko podczas trzymania osobnego bindu. Kombinacja: uruchom bindem + fizycznym PPM, zatrzymaj puszczeniem PPM; bind może być wspólny z LPM w trybie trzymania lub kombinacji.">
+                                            <ComboBoxItem Content="Przełączanie bindem" Tag="Toggle"/>
+                                            <ComboBoxItem Content="Działa podczas trzymania osobnego bindu" Tag="Hold"/>
+                                            <ComboBoxItem Content="Bind + fizyczny PPM" Tag="Combo"/>
+                                        </ComboBox>
+                                    </Grid>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="70"/><ColumnDefinition Width="75"/><ColumnDefinition Width="55"/><ColumnDefinition Width="75"/></Grid.ColumnDefinitions>
+                                        <TextBlock Text="CPS:" VerticalAlignment="Center"/>
+                                        <TextBox Name="TxtAutoRightMinCps" Grid.Column="1" Text="10" TextChanged="RuntimeText_Changed"/>
+                                        <TextBlock Grid.Column="2" Text="do" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        <TextBox Name="TxtAutoRightMaxCps" Grid.Column="3" Text="12" TextChanged="RuntimeText_Changed"/>
+                                    </Grid>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource CardStyle}">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,9">
+                                    <TextBlock Text="BEZPIECZEŃSTWO I HUD" Style="{StaticResource HeaderStyle}"/>
+                                    <Button Content="?" Style="{StaticResource InfoButtonStyle}"
+                                            ToolTipService.InitialShowDelay="100" ToolTipService.ShowDuration="120000">
+                                        <Button.ToolTip>
+                                            <ToolTip Style="{StaticResource InfoToolTipStyle}"
+                                                     Content="BLOKADA KURSORA zatrzymuje clickery i nie uruchamia bindów, gdy Minecraft pokazuje zwykły kursor — np. w ekwipunku, chacie lub menu. Chroni to przed przypadkowym kliknięciem albo wyrzuceniem przedmiotu.&#10;&#10;MAŁY OVERLAY pokazuje nad grą aktualny stan AUTO LPM, AUTO PPM, szybkich akcji, BINDÓW, Auto zbroi i AutoWater.&#10;&#10;Po zminimalizowaniu lub zamknięciu przyciskiem X program chowa się do zasobnika i nadal obsługuje aktywne funkcje. Pełne zamknięcie znajduje się pod prawym przyciskiem na ikonie zasobnika."/>
+                                        </Button.ToolTip>
+                                    </Button>
+                                </StackPanel>
+                                <CheckBox Name="ChkPauseWhenCursorVisible" Content="Blokuj clickery i bindy przy widocznym kursorze Minecrafta" Checked="RuntimeCheck_Changed" Unchecked="RuntimeCheck_Changed"/>
+                                <CheckBox Name="ChkOverlayEnabled" Content="Pokazuj mały overlay aktywnych funkcji" Margin="0,8,0,0" Checked="RuntimeCheck_Changed" Unchecked="RuntimeCheck_Changed"/>
+                                <TextBlock Text="Clickery działają wyłącznie w zapisanym i aktywnym oknie Minecrafta." Style="{StaticResource MutedStyle}" Margin="0,8,0,0"/>
+                                <TextBlock Text="Wspólny bind: LPM ustaw na Trzymanie lub Kombinację, a PPM na Kombinację. Trzymanie PPM wymaga osobnego klawisza." Style="{StaticResource MutedStyle}" Foreground="#FFD34D" Margin="0,5,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="Akcje PVP">
+                <ScrollViewer Background="{StaticResource WindowBrush}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="5,10,5,4">
+                        <Border Style="{StaticResource CardStyle}">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="SZYBKIE AKCJE" Style="{StaticResource HeaderStyle}"/>
+                                    <Button Content="?" Style="{StaticResource InfoButtonStyle}"
+                                            ToolTipService.InitialShowDelay="100" ToolTipService.ShowDuration="120000">
+                                        <Button.ToolTip>
+                                            <ToolTip Style="{StaticResource InfoToolTipStyle}"
+                                                     Content="Najpierw ustaw slot miecza oraz slot każdego używanego przedmiotu. Następnie przypisz osobny bind wybranym akcjom.&#10;&#10;AUTO BLOK, ŚNIEŻKA I PERŁA: jedno naciśnięcie binda przełącza na ustawiony slot, wykonuje jedno PPM i wraca na slot miecza.&#10;WĘDKA: przełącza na slot wędki, przytrzymuje PPM przez ustawioną liczbę milisekund i wraca na miecz.&#10;&#10;Akcje działają tylko przy uruchomionym AUTO LPM. AUTO LPM nie wyłącza się podczas akcji, natomiast AUTO PPM jest na moment wstrzymywane, aby nie kolidować z użyciem przedmiotu. Otwarty chat lub GUI blokuje wykonanie akcji."/>
+                                        </Button.ToolTip>
+                                    </Button>
+                                </StackPanel>
+                                <TextBlock Text="Działają tylko podczas aktywnego AUTO LPM. Samo AUTO PPM nie uruchamia tych akcji. Jedno naciśnięcie binda wykonuje jedną akcję, po czym program wraca na slot miecza."
+                                           Style="{StaticResource MutedStyle}"
+                                           Margin="0,8,0,0"/>
+                                <TextBlock Text="AUTO LPM działa bez przerwy podczas akcji. AUTO PPM jest chwilowo pauzowane, aby nie kolidowało z użyciem przedmiotu. Akcje są blokowane przy otwartym GUI Minecrafta."
+                                           Style="{StaticResource MutedStyle}"
+                                           Foreground="#FFD34D"
+                                           Margin="0,5,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource CardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="SLOTY HOTBARA" Style="{StaticResource HeaderStyle}" Margin="0,0,0,10"/>
+                                <Grid Margin="0,0,0,7">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="125"/><ColumnDefinition Width="90"/></Grid.ColumnDefinitions>
+                                    <TextBlock Text="Miecz:" VerticalAlignment="Center"/>
+                                    <ComboBox Name="CbPvpSwordSlot" Grid.Column="1" SelectionChanged="PvpQuickActionSetting_Changed"/>
+                                </Grid>
+                                <Grid Margin="0,0,0,7">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="125"/><ColumnDefinition Width="90"/></Grid.ColumnDefinitions>
+                                    <TextBlock Text="Blok:" VerticalAlignment="Center"/>
+                                    <ComboBox Name="CbPvpBlockSlot" Grid.Column="1" SelectionChanged="PvpQuickActionSetting_Changed"/>
+                                </Grid>
+                                <Grid Margin="0,0,0,7">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="125"/><ColumnDefinition Width="90"/></Grid.ColumnDefinitions>
+                                    <TextBlock Text="Śnieżka:" VerticalAlignment="Center"/>
+                                    <ComboBox Name="CbPvpSnowballSlot" Grid.Column="1" SelectionChanged="PvpQuickActionSetting_Changed"/>
+                                </Grid>
+                                <Grid Margin="0,0,0,7">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="125"/><ColumnDefinition Width="90"/></Grid.ColumnDefinitions>
+                                    <TextBlock Text="Perła:" VerticalAlignment="Center"/>
+                                    <ComboBox Name="CbPvpPearlSlot" Grid.Column="1" SelectionChanged="PvpQuickActionSetting_Changed"/>
+                                </Grid>
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="125"/><ColumnDefinition Width="90"/></Grid.ColumnDefinitions>
+                                    <TextBlock Text="Wędka:" VerticalAlignment="Center"/>
+                                    <ComboBox Name="CbPvpRodSlot" Grid.Column="1" SelectionChanged="PvpQuickActionSetting_Changed"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource CardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="BINDY AKCJI" Style="{StaticResource HeaderStyle}" Margin="0,0,0,10"/>
+
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="75"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <TextBlock Text="Auto blok:" VerticalAlignment="Center"/>
+                                    <TextBox Name="TxtPvpAutoBlockBind" Grid.Column="1" IsReadOnly="True" PreviewMouseLeftButtonDown="BindBox_PreviewMouseLeftButtonDown" Tag="PvpAutoBlock"/>
+                                    <Button Grid.Column="2" Content="Zapisz" Margin="7,0,0,0" Click="BtnSaveBind_Click" Tag="PvpAutoBlock"/>
+                                    <Button Grid.Column="3" Content="Usuń" Margin="7,0,0,0" Click="BtnClearBind_Click" Tag="PvpAutoBlock"/>
+                                </Grid>
+
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="75"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <TextBlock Text="Śnieżka:" VerticalAlignment="Center"/>
+                                    <TextBox Name="TxtPvpSnowballBind" Grid.Column="1" IsReadOnly="True" PreviewMouseLeftButtonDown="BindBox_PreviewMouseLeftButtonDown" Tag="PvpSnowball"/>
+                                    <Button Grid.Column="2" Content="Zapisz" Margin="7,0,0,0" Click="BtnSaveBind_Click" Tag="PvpSnowball"/>
+                                    <Button Grid.Column="3" Content="Usuń" Margin="7,0,0,0" Click="BtnClearBind_Click" Tag="PvpSnowball"/>
+                                </Grid>
+
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="75"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <TextBlock Text="Perła:" VerticalAlignment="Center"/>
+                                    <TextBox Name="TxtPvpPearlBind" Grid.Column="1" IsReadOnly="True" PreviewMouseLeftButtonDown="BindBox_PreviewMouseLeftButtonDown" Tag="PvpPearl"/>
+                                    <Button Grid.Column="2" Content="Zapisz" Margin="7,0,0,0" Click="BtnSaveBind_Click" Tag="PvpPearl"/>
+                                    <Button Grid.Column="3" Content="Usuń" Margin="7,0,0,0" Click="BtnClearBind_Click" Tag="PvpPearl"/>
+                                </Grid>
+
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="75"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <TextBlock Text="Wędka:" VerticalAlignment="Center"/>
+                                    <TextBox Name="TxtPvpRodBind" Grid.Column="1" IsReadOnly="True" PreviewMouseLeftButtonDown="BindBox_PreviewMouseLeftButtonDown" Tag="PvpRod"/>
+                                    <Button Grid.Column="2" Content="Zapisz" Margin="7,0,0,0" Click="BtnSaveBind_Click" Tag="PvpRod"/>
+                                    <Button Grid.Column="3" Content="Usuń" Margin="7,0,0,0" Click="BtnClearBind_Click" Tag="PvpRod"/>
+                                </Grid>
+
+                                <Grid Margin="0,2,0,8">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="155"/><ColumnDefinition Width="75"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                    <TextBlock Text="Trzymanie PPM wędki:" VerticalAlignment="Center"/>
+                                    <TextBox Name="TxtPvpRodHoldMs" Grid.Column="1" Text="80" TextChanged="RuntimeText_Changed"/>
+                                    <TextBlock Grid.Column="2" Text=" ms (20–1000)" Foreground="#92A6C1" VerticalAlignment="Center"/>
+                                </Grid>
+
+                                <Border Background="#0C1623" BorderBrush="#39516E" BorderThickness="1" CornerRadius="4" Padding="8">
+                                    <TextBlock Name="TxtPvpQuickActionStatus"
+                                               Text="Gotowe. Ustaw sloty i przypisz wybrane bindy."
+                                               Style="{StaticResource MutedStyle}"
+                                               Foreground="#38D6B4"/>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="BINDY">
+                <ScrollViewer Background="{StaticResource WindowBrush}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="5,10,5,4">
+                        <Border Style="{StaticResource CardStyle}">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal">
+                                    <CheckBox Name="ChkBindyEnabled" Content="Włącz BINDY" FontWeight="Bold" Checked="RuntimeCheck_Changed" Unchecked="RuntimeCheck_Changed"/>
+                                    <Button Content="?" Style="{StaticResource InfoButtonStyle}"
+                                            ToolTipService.InitialShowDelay="100" ToolTipService.ShowDuration="120000">
+                                        <Button.ToolTip>
+                                            <ToolTip Style="{StaticResource InfoToolTipStyle}"
+                                                     Content="BINDY wysyłają pod bindem jedną zapisaną komendę na chat Minecrafta. Ustaw Klawisz chatu identycznie jak w sterowaniu gry, np. T albo Enter.&#10;&#10;Przycisk „Dodaj bind i komendę” tworzy nowy wpis z własną nazwą, klawiszem i komendą. Jedno naciśnięcie wykonuje komendę jeden raz. Funkcja nie uruchomi binda podczas pisania na chacie ani przy otwartym ekwipunku lub innym GUI."/>
+                                        </Button.ToolTip>
+                                    </Button>
+                                </StackPanel>
+                                <Grid Margin="0,10,0,0">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="90"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <TextBlock Text="Klawisz chatu:" VerticalAlignment="Center"/>
+                                    <TextBox Name="TxtChatOpenKey" Grid.Column="1" IsReadOnly="True" PreviewMouseLeftButtonDown="BindBox_PreviewMouseLeftButtonDown" Tag="ChatOpen"/>
+                                    <Button Grid.Column="2" Content="Zapisz" Margin="7,0,0,0" Click="BtnSaveBind_Click" Tag="ChatOpen"/>
+                                </Grid>
+                                <TextBlock Text="Bind nie uruchomi się podczas pisania na chacie ani w otwartym GUI." Style="{StaticResource MutedStyle}" Margin="0,8,0,0"/>
+                            </StackPanel>
+                        </Border>
+                        <Button Content="+ Dodaj bind i komendę" Margin="0,0,0,10" Click="BtnAddBindy_Click"/>
+                        <StackPanel Name="PanelBindyCommands"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="Auto zbroja">
+                <ScrollViewer Background="{StaticResource WindowBrush}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="5,10,5,4">
+                        <Border Style="{StaticResource CardStyle}">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal">
+                                    <CheckBox Name="ChkAutoArmorEnabled" Checked="ChkAutoArmorEnabled_Changed" Unchecked="ChkAutoArmorEnabled_Changed"/>
+                                    <TextBlock Text="AUTO ZBROJA" Style="{StaticResource HeaderStyle}" Margin="9,0,0,0"/>
+                                    <Button Content="?" Style="{StaticResource InfoButtonStyle}"
+                                            ToolTipService.InitialShowDelay="100" ToolTipService.ShowDuration="120000">
+                                        <Button.ToolTip>
+                                            <ToolTip Style="{StaticResource InfoToolTipStyle}"
+                                                     Content="AUTO ZBROJA zamienia aktualnie założony komplet z drugim setem przygotowanym w ekwipunku.&#10;&#10;Dla każdej części kliknij najpierw odpowiedni przycisk, otwórz EQ, najedź na właściwy slot i naciśnij lewy Ctrl. Osobno ustaw 4 pola założonego setu oraz 4 pola drugiego setu — razem 8/8. Następnie zamknij EQ i użyj przypisanego binda.&#10;&#10;Odstęp kliknięć określa szybkość zamiany. Po zmianie rozdzielczości, GUI Scale lub trybu okna wykonaj kalibrację ponownie. Ponowne użycie binda bezpiecznie anuluje operację po dokończeniu bieżącego elementu."/>
+                                        </Button.ToolTip>
+                                    </Button>
+                                </StackPanel>
+                                <StackPanel Name="PanelAutoArmorExpandableContent" Margin="0,12,0,0">
+                                    <Border Background="#0C1623" BorderBrush="#39516E" BorderThickness="1" CornerRadius="4" Padding="10">
+                                        <StackPanel Name="PanelAutoArmorContent">
+                                            <Grid Margin="0,0,0,9">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="60"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                <TextBlock Text="Bind:" VerticalAlignment="Center"/>
+                                                <TextBox Name="TxtAutoArmorBind" Grid.Column="1" IsReadOnly="True" PreviewMouseLeftButtonDown="BindBox_PreviewMouseLeftButtonDown" Tag="AutoArmor"/>
+                                                <Button Grid.Column="2" Content="Zapisz" Margin="7,0,0,0" Click="BtnAutoArmorBind_Click"/>
+                                                <Button Grid.Column="3" Content="Usuń" Margin="7,0,0,0" Click="BtnClearBind_Click" Tag="AutoArmor"/>
+                                            </Grid>
+                                            <TextBlock Text="Najpierw ustaw 4 sloty założonego setu i 4 miejsca drugiego setu w EQ." Style="{StaticResource MutedStyle}" Margin="0,0,0,8"/>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                                <StackPanel>
+                                                    <TextBlock Text="ZAŁOŻONY SET" Foreground="#92A6C1" FontWeight="Bold" FontSize="10" Margin="0,0,0,5"/>
+                                                    <Button Name="BtnAutoArmorEquippedHelmet" Tag="Equipped:0" Margin="0,0,0,4" Click="BtnAutoArmorCalibrationSlot_Click"/>
+                                                    <Button Name="BtnAutoArmorEquippedChestplate" Tag="Equipped:1" Margin="0,0,0,4" Click="BtnAutoArmorCalibrationSlot_Click"/>
+                                                    <Button Name="BtnAutoArmorEquippedLeggings" Tag="Equipped:2" Margin="0,0,0,4" Click="BtnAutoArmorCalibrationSlot_Click"/>
+                                                    <Button Name="BtnAutoArmorEquippedBoots" Tag="Equipped:3" Click="BtnAutoArmorCalibrationSlot_Click"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="2">
+                                                    <TextBlock Text="DRUGI SET W EQ" Foreground="#92A6C1" FontWeight="Bold" FontSize="10" Margin="0,0,0,5"/>
+                                                    <Button Name="BtnAutoArmorInventoryHelmet" Tag="Inventory:0" Margin="0,0,0,4" Click="BtnAutoArmorCalibrationSlot_Click"/>
+                                                    <Button Name="BtnAutoArmorInventoryChestplate" Tag="Inventory:1" Margin="0,0,0,4" Click="BtnAutoArmorCalibrationSlot_Click"/>
+                                                    <Button Name="BtnAutoArmorInventoryLeggings" Tag="Inventory:2" Margin="0,0,0,4" Click="BtnAutoArmorCalibrationSlot_Click"/>
+                                                    <Button Name="BtnAutoArmorInventoryBoots" Tag="Inventory:3" Click="BtnAutoArmorCalibrationSlot_Click"/>
+                                                </StackPanel>
+                                            </Grid>
+                                            <WrapPanel Margin="0,9,0,8">
+                                                <Button Content="Anuluj kalibrację" Margin="0,0,7,0" Click="BtnAutoArmorCancelCalibration_Click"/>
+                                                <Button Content="Resetuj pola" Click="BtnAutoArmorResetCalibration_Click"/>
+                                            </WrapPanel>
+                                            <WrapPanel Margin="0,0,0,8">
+                                                <TextBlock Text="Odstęp kliknięć:" Width="110" VerticalAlignment="Center"/>
+                                                <TextBox Name="TxtAutoArmorClickDelayMs" Width="70" Text="45" TextChanged="AutoArmorConfig_TextChanged"/>
+                                                <TextBlock Text=" ms" VerticalAlignment="Center" Foreground="#92A6C1"/>
+                                            </WrapPanel>
+                                            <TextBlock Name="TxtAutoArmorStatus" Style="{StaticResource MutedStyle}" Foreground="#38D6B4"/>
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="AutoWater">
+                <ScrollViewer Background="{StaticResource WindowBrush}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="5,10,5,4">
+                        <Border Style="{StaticResource CardStyle}">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal">
+                                    <CheckBox Name="ChkAutoWaterEnabled" Checked="ChkAutoWaterEnabled_Changed" Unchecked="ChkAutoWaterEnabled_Changed"/>
+                                    <TextBlock Text="AUTOWATER" Style="{StaticResource HeaderStyle}" Margin="9,0,0,0"/>
+                                    <Button Content="?" Style="{StaticResource InfoButtonStyle}"
+                                            ToolTipService.InitialShowDelay="100" ToolTipService.ShowDuration="120000">
+                                        <Button.ToolTip>
+                                            <ToolTip Style="{StaticResource InfoToolTipStyle}"
+                                                     Content="AUTOWATER pomaga wykonać water clutch: wybiera slot z wodą, ponawia PPM, wykrywa puste wiadro, próbuje zebrać wodę i wraca na ustawiony slot. Ten sam bind natychmiast anuluje sekwencję.&#10;&#10;SLOT Z WODĄ wskazuje wiadro, a SLOT POWROTU przedmiot wybierany po zakończeniu. „Próba PPM co” określa częstotliwość stawiania wody, a „Zebranie po” opóźnienie przed próbą jej zebrania. Czasy trzeba dobrać do serwera i wysokości.&#10;&#10;Przed użyciem kliknij Kalibruj, otwórz GUI z pustym wiadrem, najedź na charakterystyczny fragment jego ikony i naciśnij lewy Ctrl. Przycisk Testuj sprawdza rozpoznawanie; próg podobieństwa reguluje jego czułość."/>
+                                        </Button.ToolTip>
+                                    </Button>
+                                </StackPanel>
+                                <StackPanel Name="PanelAutoWaterExpandableContent" Margin="0,12,0,0">
+                                    <Border Background="#0C1623" BorderBrush="#39516E" BorderThickness="1" CornerRadius="4" Padding="10">
+                                        <StackPanel Name="PanelAutoWaterContent">
+                                            <Grid Margin="0,0,0,9">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="60"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                <TextBlock Text="Bind:" VerticalAlignment="Center"/>
+                                                <TextBox Name="TxtAutoWaterBind" Grid.Column="1" IsReadOnly="True" PreviewMouseLeftButtonDown="BindBox_PreviewMouseLeftButtonDown" Tag="AutoWater"/>
+                                                <Button Grid.Column="2" Content="Zapisz" Margin="7,0,0,0" Click="BtnAutoWaterBind_Click"/>
+                                                <Button Grid.Column="3" Content="Usuń" Margin="7,0,0,0" Click="BtnClearBind_Click" Tag="AutoWater"/>
+                                            </Grid>
+                                            <Grid Margin="0,0,0,9">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="100"/><ColumnDefinition Width="90"/><ColumnDefinition Width="100"/><ColumnDefinition Width="90"/></Grid.ColumnDefinitions>
+                                                <TextBlock Text="Slot z wodą:" VerticalAlignment="Center"/>
+                                                <ComboBox Name="CbAutoWaterWaterSlot" Grid.Column="1" SelectionChanged="AutoWaterConfig_SelectionChanged"/>
+                                                <TextBlock Grid.Column="2" Text="Slot powrotu:" VerticalAlignment="Center"/>
+                                                <ComboBox Name="CbAutoWaterReturnSlot" Grid.Column="3" SelectionChanged="AutoWaterConfig_SelectionChanged"/>
+                                            </Grid>
+                                            <Grid Margin="0,0,0,9">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="100"/><ColumnDefinition Width="70"/><ColumnDefinition Width="35"/><ColumnDefinition Width="100"/><ColumnDefinition Width="70"/><ColumnDefinition Width="35"/></Grid.ColumnDefinitions>
+                                                <TextBlock Text="Próba PPM co:" VerticalAlignment="Center"/>
+                                                <TextBox Name="TxtAutoWaterPlaceIntervalMs" Grid.Column="1" Text="65" TextChanged="AutoWaterConfig_TextChanged"/>
+                                                <TextBlock Grid.Column="2" Text=" ms" VerticalAlignment="Center"/>
+                                                <TextBlock Grid.Column="3" Text="Zebranie po:" VerticalAlignment="Center"/>
+                                                <TextBox Name="TxtAutoWaterPickupDelayMs" Grid.Column="4" Text="340" TextChanged="AutoWaterConfig_TextChanged"/>
+                                                <TextBlock Grid.Column="5" Text=" ms" VerticalAlignment="Center"/>
+                                            </Grid>
+                                            <TextBlock Text="Czas prób PPM dobierz ręcznie do serwera: zwykle 40 ms z dużej wysokości albo 50–65 ms z mniejszej." Style="{StaticResource MutedStyle}" Foreground="#FFD34D" Margin="0,0,0,9"/>
+                                            <Grid Margin="0,0,0,9">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="100"/><ColumnDefinition Width="*"/><ColumnDefinition Width="48"/></Grid.ColumnDefinitions>
+                                                <TextBlock Text="Podobieństwo:" VerticalAlignment="Center"/>
+                                                <Slider Name="SlAutoWaterSimilarity" Grid.Column="1" Minimum="70" Maximum="99" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="SlAutoWaterSimilarity_ValueChanged"/>
+                                                <TextBlock Name="TxtAutoWaterSimilarityValue" Grid.Column="2" Text="84%" Foreground="#62C8FF" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                            </Grid>
+                                            <TextBlock Text="Kalibracja: otwórz EQ, najedź na charakterystyczny fragment pustego wiadra i naciśnij lewy Ctrl." Style="{StaticResource MutedStyle}" Margin="0,0,0,8"/>
+                                            <WrapPanel Margin="0,0,0,8">
+                                                <Button Content="Kalibruj" Margin="0,0,7,0" Click="BtnAutoWaterCalibrate_Click"/>
+                                                <Button Content="Testuj" Margin="0,0,7,0" Click="BtnAutoWaterTestRecognition_Click"/>
+                                                <Button Content="Resetuj" Click="BtnAutoWaterResetCalibration_Click"/>
+                                            </WrapPanel>
+                                            <TextBlock Name="TxtAutoWaterStatus" Style="{StaticResource MutedStyle}" Foreground="#38D6B4"/>
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+
+        <Border Grid.Row="3" Background="#101C2A" BorderBrush="#39516E" BorderThickness="0,1,0,0" Padding="10,7">
+            <DockPanel>
+                <Ellipse Name="StatusDot" Width="8" Height="8" Fill="#38D6B4" Margin="0,0,7,0"/>
+                <TextBlock Name="TxtStatus" Text="Gotowy" Foreground="#38D6B4" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Name="TxtFocus" DockPanel.Dock="Right" Text="Minecraft: brak" Foreground="#FF6B6B" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+            </DockPanel>
+        </Border>
+    </Grid>
+</Window>
+

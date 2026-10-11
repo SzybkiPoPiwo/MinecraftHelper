@@ -34,6 +34,7 @@ internal static class Program
             var thread = (Thread)Get(window, "_mouseHookThread")!;
             Check(thread.IsAlive, "message thread is ready");
             Check(Handle(window) == IntPtr.Zero, "startup has no global hook");
+            Check(!(bool)Call(window, "IsFastMacroCadenceRequired")!, "idle runtime uses reduced dispatcher cadence");
             for (int i = 0; i < 20; i++) Call(window, "SuspendMouseHookWhenIdle");
             Check(Handle(window) == IntPtr.Zero, "idle ticks do not install a hook");
 
@@ -57,6 +58,7 @@ internal static class Program
             })
             {
                 Set(window, field, true);
+                Check((bool)Call(window, "IsFastMacroCadenceRequired")!, $"fast dispatcher cadence while {field}");
                 Call(window, "SuspendMouseHookWhenIdle");
                 Check(Handle(window) == firstHandle, $"keeps physical state while {field}");
                 Set(window, field, false);
@@ -68,6 +70,7 @@ internal static class Program
                 {
                     if (Convert.ToInt32(value) == 0) continue;
                     Set(window, field, value);
+                    Check((bool)Call(window, "IsFastMacroCadenceRequired")!, $"fast dispatcher cadence during {field}={value}");
                     Call(window, "SuspendMouseHookWhenIdle");
                     Check(Handle(window) == firstHandle, $"keeps hook during {field}={value}");
                 }

@@ -49,7 +49,7 @@ namespace MinecraftHelper
         {
             try
             {
-                string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "app.ico");
+                string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "miner.ico");
                 if (!File.Exists(iconPath))
                     return;
 

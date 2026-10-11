@@ -4,7 +4,8 @@ Ten poradnik pozwala zbudować aplikację bez uruchamiania gotowego instalatora.
 
 ## Co znajduje się w repozytorium
 
-- `MinecraftHelper/` — kod aplikacji WPF w C#,
+- `MinecraftHelper/` — kod aplikacji `Minecraft Helper Kopacz`,
+- `MinecraftHelper.Pvp/` — kod lekkiej aplikacji `Minecraft Helper Auto Clicker`,
 - `MinecraftHelper/Assets/` — ikona i zasoby programu,
 - `Installer/` — definicja instalatora Inno Setup,
 - `scripts/` — skrypt publikowania i budowania instalatora,
@@ -42,9 +43,11 @@ Możesz również pobrać ZIP z GitHuba, rozpakować go i otworzyć PowerShell w
 
 ```powershell
 dotnet --version
-dotnet restore .\MinecraftHelper\MinecraftHelper.csproj
+dotnet restore .\MinecraftHelper.slnx
 dotnet list .\MinecraftHelper\MinecraftHelper.csproj package
+dotnet list .\MinecraftHelper.Pvp\MinecraftHelper.Pvp.csproj package
 dotnet list .\MinecraftHelper\MinecraftHelper.csproj package --vulnerable --include-transitive
+dotnet list .\MinecraftHelper.Pvp\MinecraftHelper.Pvp.csproj package --vulnerable --include-transitive
 ```
 
 Ostatnie polecenie sprawdza znane podatności pakietów NuGet i wymaga połączenia z internetem.
@@ -52,32 +55,44 @@ Ostatnie polecenie sprawdza znane podatności pakietów NuGet i wymaga połącze
 ## 3. Kompilacja bez instalatora
 
 ```powershell
-dotnet build .\MinecraftHelper\MinecraftHelper.csproj -c Release
+dotnet build .\MinecraftHelper.slnx -c Release
 ```
 
-Gotowa aplikacja znajdzie się w:
+Gotowe aplikacje znajdą się w:
 
 ```text
-MinecraftHelper\bin\Release\net8.0-windows\MinecraftHelper.exe
+MinecraftHelper.Pvp\bin\Release\net8.0-windows\MinecraftHelper.AutoClicker.exe
+MinecraftHelper\bin\Release\net8.0-windows\MinecraftHelper.Miner.exe
 ```
 
-Możesz ją uruchomić bez instalowania:
+Możesz je uruchomić bez instalowania:
 
 ```powershell
-.\MinecraftHelper\bin\Release\net8.0-windows\MinecraftHelper.exe
+.\MinecraftHelper.Pvp\bin\Release\net8.0-windows\MinecraftHelper.AutoClicker.exe
+.\MinecraftHelper\bin\Release\net8.0-windows\MinecraftHelper.Miner.exe
 ```
 
 Możliwe jest też uruchomienie bezpośrednio przez SDK:
 
 ```powershell
-dotnet run --project .\MinecraftHelper\MinecraftHelper.csproj
+dotnet run --project .\MinecraftHelper.Pvp\MinecraftHelper.Pvp.csproj -c Release
+dotnet run --project .\MinecraftHelper\MinecraftHelper.csproj -c Release
 ```
 
 ## 4. Samodzielna publikacja wersji przenośnej
 
-Poniższe polecenie tworzy aplikację `win-x64` razem z wymaganym środowiskiem .NET 8:
+Poniższe polecenia tworzą obie aplikacje `win-x64` razem z wymaganym środowiskiem .NET 8:
 
 ```powershell
+dotnet publish .\MinecraftHelper.Pvp\MinecraftHelper.Pvp.csproj `
+  -c Release `
+  -r win-x64 `
+  --self-contained true `
+  -p:PublishSingleFile=false `
+  -p:DebugType=None `
+  -p:DebugSymbols=false `
+  -o .\artifacts\publish\autoclicker\win-x64
+
 dotnet publish .\MinecraftHelper\MinecraftHelper.csproj `
   -c Release `
   -r win-x64 `
@@ -85,13 +100,14 @@ dotnet publish .\MinecraftHelper\MinecraftHelper.csproj `
   -p:PublishSingleFile=false `
   -p:DebugType=None `
   -p:DebugSymbols=false `
-  -o .\artifacts\publish\win-x64
+  -o .\artifacts\publish\miner\win-x64
 ```
 
-Uruchamiany plik będzie dostępny tutaj:
+Uruchamiane pliki będą dostępne tutaj:
 
 ```text
-artifacts\publish\win-x64\MinecraftHelper.exe
+artifacts\publish\autoclicker\win-x64\MinecraftHelper.AutoClicker.exe
+artifacts\publish\miner\win-x64\MinecraftHelper.Miner.exe
 ```
 
 ## 5. Zbudowanie własnego instalatora
@@ -99,7 +115,7 @@ artifacts\publish\win-x64\MinecraftHelper.exe
 Zainstaluj Inno Setup 6, zamknij działające kopie Minecraft Helper i uruchom:
 
 ```powershell
-.\scripts\build-installer.ps1 -Version 1.1.8 -Rid win-x64 -SelfContained $true -Clean
+.\scripts\build-installer.ps1 -Version 2.0 -Rid win-x64 -SelfContained $true -Clean
 ```
 
 Jeżeli PowerShell blokuje lokalny skrypt, możesz zezwolić na jego wykonanie tylko w bieżącym oknie terminala:
@@ -111,17 +127,19 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 Następnie ponownie uruchom skrypt budowania. Wynik znajdzie się w:
 
 ```text
-artifacts\installer\MinecraftHelper-Setup-1.1.8.exe
+artifacts\installer\MinecraftHelper-Setup-2.0.exe
 ```
 
-Parametr `-Clean` usuwa wyłącznie wcześniejsze wyniki z `artifacts/publish/<RID>` i `artifacts/installer`, po czym buduje je od początku.
+Jeden instalator zawiera dwa niezależne składniki. Użytkownik może wybrać Auto Clicker, Kopacza albo oba programy.
+
+Parametr `-Clean` usuwa wyłącznie wcześniejsze wyniki z `artifacts/publish` i `artifacts/installer`, po czym buduje je od początku.
 
 ## 6. Sprawdzenie wyniku
 
 Oblicz sumę SHA-256 własnego pliku:
 
 ```powershell
-Get-FileHash .\artifacts\installer\MinecraftHelper-Setup-1.1.8.exe -Algorithm SHA256
+Get-FileHash .\artifacts\installer\MinecraftHelper-Setup-2.0.exe -Algorithm SHA256
 ```
 
 Przed udostępnieniem programu warto również:
@@ -129,10 +147,11 @@ Przed udostępnieniem programu warto również:
 ```powershell
 git status --short
 git diff --check
-dotnet build .\MinecraftHelper\MinecraftHelper.csproj -c Release
+dotnet build .\MinecraftHelper.slnx -c Release
+dotnet run --project .\tests\EditionSplit\EditionSplit.csproj -c Release
 ```
 
-Sprawdź ręcznie uruchamianie aplikacji, zapis ustawień, bindy oraz zamykanie programu. Sam fakt, że kod się kompiluje, nie potwierdza jeszcze poprawności wszystkich funkcji.
+Sprawdź ręcznie uruchamianie obu aplikacji, wybór procesu Minecrafta, zapis ustawień, bindy, overlay oraz zamykanie programów. W instalatorze wykonaj po jednej próbie instalacji każdego składnika osobno i obu razem. Sam fakt, że kod się kompiluje, nie potwierdza jeszcze poprawności wszystkich funkcji.
 
 ## Korzystanie z asystenta AI
 

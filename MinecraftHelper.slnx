@@ -1,3 +1,4 @@
 <Solution>
   <Project Path="MinecraftHelper/MinecraftHelper.csproj" />
+  <Project Path="MinecraftHelper.Pvp/MinecraftHelper.Pvp.csproj" />
 </Solution>

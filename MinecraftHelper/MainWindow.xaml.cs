@@ -50,12 +50,28 @@ namespace MinecraftHelper
         private readonly DispatcherTimer _autoReconnectTimer;
         private readonly DispatcherTimer _transientStatusTimer;
         private readonly DispatcherTimer _bindyHudClearTimer;
+
+        // Bind detection does not need a 5 ms dispatcher wake-up while every
+        // runtime is idle. Precision-sensitive work switches back to 5 ms;
+        // actual AUTO LPM/PPM cadence is handled by AutoClickScheduler on its
+        // own timer and is therefore unaffected by the idle interval.
+        private static readonly TimeSpan MacroTimerActiveInterval = TimeSpan.FromMilliseconds(5);
+#if MINER_EDITION
+        // Kopacz nie musi odpytywać usuniętych modułów PvP co 20 ms. Po użyciu
+        // binda aktywny przebieg nadal automatycznie przechodzi na interwał 5 ms.
+        private static readonly TimeSpan MacroTimerIdleInterval = TimeSpan.FromMilliseconds(50);
+#else
+        private static readonly TimeSpan MacroTimerIdleInterval = TimeSpan.FromMilliseconds(20);
+#endif
+        private static readonly TimeSpan TargetWindowResolveRetryInterval = TimeSpan.FromSeconds(2);
+        private static readonly TimeSpan OverlayLayoutRefreshInterval = TimeSpan.FromSeconds(2);
         private readonly MacroDiagnosticsService _macroDiagnosticsService;
         private readonly AutoClickScheduler _autoClickScheduler;
         private readonly DamageSoundDetector _damageSoundDetector;
 
         private bool _isMinecraftFocused;
         private IntPtr _targetGameWindowHandle = IntPtr.Zero;
+        private DateTime _nextTargetWindowResolveAtUtc = DateTime.MinValue;
         private bool _isLoadingUi = true;
         private readonly Dictionary<FrameworkElement, bool> _expandableSectionStates = new();
         private bool _isPausedByCursorVisibility;
@@ -249,6 +265,7 @@ namespace MinecraftHelper
         private BindyEntry? _bindyCaptureEntry;
         private TextBox? _bindyCaptureTextBox;
         private DateTime _nextRuntimeTileRefreshAtUtc = DateTime.UtcNow;
+        private DateTime _nextOverlayLayoutRefreshAtUtc = DateTime.MinValue;
         private OverlayHudWindow? _overlayHud;
         private Forms.NotifyIcon? _trayIcon;
         private bool _isExitRequested;
@@ -510,6 +527,10 @@ namespace MinecraftHelper
         private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
 
         [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool IsWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
         private static extern short GetAsyncKeyState(int vKey);
 
         [DllImport("user32.dll", SetLastError = true)]
@@ -756,13 +777,21 @@ namespace MinecraftHelper
             _settings = _settingsService.Load();
             EnsureSettingsConsistency();
             _currentAppVersion = ReleaseNotesCatalog.CurrentVersion;
+#if MINER_EDITION
+            Title = $"Minecraft Helper Kopacz {_currentAppVersion}";
+#else
             Title = $"Minecraft Helper {_currentAppVersion}";
+#endif
             _showStartupNotice = _isFirstRun
                 || !string.Equals(
                     _settings.LastAcknowledgedVersion,
                     _currentAppVersion,
                     StringComparison.OrdinalIgnoreCase);
+#if MINER_EDITION
+            _macroDiagnosticsService = new MacroDiagnosticsService(samplingEnabled: false);
+#else
             _macroDiagnosticsService = new MacroDiagnosticsService();
+#endif
             _autoClickScheduler = new AutoClickScheduler(_macroDiagnosticsService);
             _damageSoundDetector = new DamageSoundDetector();
             _damageSoundDetector.ProgressChanged += DamageSoundDetector_ProgressChanged;
@@ -792,7 +821,7 @@ namespace MinecraftHelper
 
             _macroTimer = new DispatcherTimer
             {
-                Interval = TimeSpan.FromMilliseconds(5)
+                Interval = MacroTimerIdleInterval
             };
             _macroTimer.Tick += RunMacroTick;
 
@@ -839,6 +868,7 @@ namespace MinecraftHelper
             UpdateEnabledStates();
             RefreshTopTiles();
             RefreshMiningLogsSummary();
+            ConfigureEditionUi();
 
             _focusTimer.Start();
             _macroTimer.Start();
@@ -846,10 +876,36 @@ namespace MinecraftHelper
             _isMinecraftFocused = CheckGameFocus();
         }
 
+        private void ConfigureEditionUi()
+        {
+#if MINER_EDITION
+            TabPvp.Visibility = Visibility.Collapsed;
+            TabBindy.Visibility = Visibility.Collapsed;
+            BorderAutoArmorSection.Visibility = Visibility.Collapsed;
+            BorderAutoWaterSection.Visibility = Visibility.Collapsed;
+            BorderAutoLeftStatus.Visibility = Visibility.Collapsed;
+            BorderAutoRightStatus.Visibility = Visibility.Collapsed;
+
+            if (StatusTilesGrid.ColumnDefinitions.Count >= 3)
+            {
+                StatusTilesGrid.ColumnDefinitions[1].Width = new GridLength(0);
+                StatusTilesGrid.ColumnDefinitions[2].Width = new GridLength(0);
+            }
+
+            MainTabControl.SelectedItem = TabKopacz;
+            _autoLeftRuntimeEnabled = false;
+            _autoRightRuntimeEnabled = false;
+            _bindyCommandStage = BindyCommandStage.None;
+            _autoClickScheduler.Stop();
+#endif
+        }
+
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
             ApplyDarkTitleBar();
+#if !MINER_EDITION
             InitializeMouseHookThread();
+#endif
 
             // If Windows launches the app minimized (e.g. shortcut setting),
             // do not auto-hide it to tray on startup.
@@ -1163,7 +1219,7 @@ namespace MinecraftHelper
         {
             try
             {
-                string iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "app.ico");
+                string iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "miner.ico");
                 if (File.Exists(iconPath))
                     return new System.Drawing.Icon(iconPath);
             }
@@ -1415,6 +1471,20 @@ namespace MinecraftHelper
             _settings.TestFastUpExitBind ??= string.Empty;
             NormalizeAutoArmorSettings();
             NormalizeAutoWaterSettings();
+#if MINER_EDITION
+            // To wydanie zawiera wyłącznie Kopacza i automatyzację związaną z kopaniem.
+            // Zachowujemy stare wartości w pliku ustawień, ale nigdy nie pozwalamy
+            // uruchomić ukrytych modułów PvP po imporcie konfiguracji.
+            _settings.MacroLeftButton.Enabled = false;
+            _settings.MacroRightButton.Enabled = false;
+            _settings.HoldLeftButton.Enabled = false;
+            _settings.HoldRightButton.Enabled = false;
+            _settings.AutoLeftButton.Enabled = false;
+            _settings.AutoRightButton.Enabled = false;
+            _settings.BindyEnabled = false;
+            _settings.AutoArmorEnabled = false;
+            _settings.AutoWaterEnabled = false;
+#endif
             _settings.TestAutoFishingBind ??= string.Empty;
             _settings.TestAutoFishingCaptureBind ??= string.Empty;
             _settings.TestAutoFishingRepairCommand ??= string.Empty;
@@ -1869,22 +1939,42 @@ namespace MinecraftHelper
                 }
             }
 
+            DateTime now = DateTime.UtcNow;
             if (focusedWindow != IntPtr.Zero)
             {
                 _targetGameWindowHandle = focusedWindow;
+                _nextTargetWindowResolveAtUtc = DateTime.MinValue;
             }
-            else if (!TryResolveTargetWindow(allowPendingSelection: false, out _targetGameWindowHandle))
+            else if (!hasTargetConfigured)
             {
                 _targetGameWindowHandle = IntPtr.Zero;
+                _nextTargetWindowResolveAtUtc = DateTime.MinValue;
+            }
+            else if (_targetGameWindowHandle == IntPtr.Zero || !IsWindow(_targetGameWindowHandle))
+            {
+                // Avoid enumerating all desktop processes four times per second
+                // while Minecraft is merely in the background. A valid HWND can
+                // be reused; a missing one is resolved again after a short delay.
+                _targetGameWindowHandle = IntPtr.Zero;
+                if (now >= _nextTargetWindowResolveAtUtc)
+                {
+                    _nextTargetWindowResolveAtUtc = now.Add(TargetWindowResolveRetryInterval);
+                    if (TryResolveTargetWindow(allowPendingSelection: false, out IntPtr resolvedWindow))
+                    {
+                        _targetGameWindowHandle = resolvedWindow;
+                        _nextTargetWindowResolveAtUtc = DateTime.MinValue;
+                    }
+                }
             }
 
-            TxtMinecraftFocus.Text = focused ? "✓ Tak" : "✗ Nie";
-            TxtMinecraftFocus.Foreground = focused
-                ? new SolidColorBrush(Color.FromRgb(56, 214, 180))
-                : new SolidColorBrush(Color.FromRgb(255, 107, 107));
-            EllMinecraftFocus.Fill = focused
-                ? new SolidColorBrush(Color.FromRgb(56, 214, 180))
-                : new SolidColorBrush(Color.FromRgb(255, 107, 107));
+            string focusText = focused ? "✓ Tak" : "✗ Nie";
+            if (!string.Equals(TxtMinecraftFocus.Text, focusText, StringComparison.Ordinal))
+            {
+                Brush focusBrush = focused ? TileBindBrush : TileOffBrush;
+                TxtMinecraftFocus.Text = focusText;
+                TxtMinecraftFocus.Foreground = focusBrush;
+                EllMinecraftFocus.Fill = focusBrush;
+            }
 
             return focused;
         }
@@ -4183,9 +4273,10 @@ namespace MinecraftHelper
         {
             if (ImgTestAutoFishingPreview == null || TxtTestAutoFishingPreviewInfo == null)
                 return;
-            // Do not capture and convert preview frames while the app is hidden.
-            // That work runs on the UI thread and used to stall dispatcher-based input.
-            if (!IsVisible || _isMinimizedToTray || MainTabControl?.SelectedIndex != 3)
+            // Do not capture and convert preview frames while the app is hidden
+            // or Minecraft owns the foreground. This UI-thread work is only
+            // useful while the user is looking at the Experimental tab.
+            if (!IsVisible || !IsActive || _isMinimizedToTray || MainTabControl?.SelectedIndex != 3)
                 return;
             if (!HasTestAutoFishingAreaConfigured())
             {
@@ -5004,19 +5095,20 @@ namespace MinecraftHelper
             bool hudEnabled = ChkOverlayHudEnabled?.IsChecked ?? _settings.OverlayHudEnabled;
             if (!hudEnabled)
             {
-                _overlayHud?.UpdateEntries(Array.Empty<OverlayHudEntry>());
-                UpdateOverlayLayout();
+                if (_overlayHud?.IsVisible == true)
+                    _overlayHud.UpdateEntries(Array.Empty<OverlayHudEntry>());
                 return;
             }
 
             List<OverlayHudEntry> entries = BuildOverlayHudEntries(now);
             if (entries.Count == 0)
             {
-                _overlayHud?.UpdateEntries(entries);
-                UpdateOverlayLayout();
+                if (_overlayHud?.IsVisible == true)
+                    _overlayHud.UpdateEntries(entries);
                 return;
             }
 
+            bool overlayCreated = false;
             if (_overlayHud == null)
             {
                 var overlay = new OverlayHudWindow();
@@ -5026,11 +5118,16 @@ namespace MinecraftHelper
                         _overlayHud = null;
                 };
                 _overlayHud = overlay;
+                overlayCreated = true;
             }
 
             _overlayHud.SetOwnerWindowHandle(_targetGameWindowHandle);
+            if (overlayCreated || now >= _nextOverlayLayoutRefreshAtUtc)
+            {
+                UpdateOverlayLayout();
+                _nextOverlayLayoutRefreshAtUtc = now.Add(OverlayLayoutRefreshInterval);
+            }
             _overlayHud.UpdateEntries(entries);
-            UpdateOverlayLayout();
         }
 
         private List<OverlayHudEntry> BuildOverlayHudEntries(DateTime now)
@@ -5799,7 +5896,9 @@ namespace MinecraftHelper
                 _kopacz633RuntimeEnabled ||
                 _kopacz633CommandStage != Kopacz633CommandStage.None ||
                 _inventoryCleanupStage != InventoryCleanupStage.None ||
-                _testAutoFishingRuntimeEnabled;
+                _testAutoFishingRuntimeEnabled ||
+                IsAutoArmorRunning ||
+                _autoWaterStage != AutoWaterStage.None;
             if (!runtimeDataLive)
                 return;
 
@@ -5807,7 +5906,10 @@ namespace MinecraftHelper
                 return;
 
             _nextRuntimeTileRefreshAtUtc = now.AddMilliseconds(200);
-            RefreshTopTiles();
+            if (IsVisible && IsActive && !_isMinimizedToTray)
+                RefreshTopTiles();
+            else
+                RefreshOverlayHud(now);
         }
 
         private static void SetSectionVisualState(Border? section, bool enabled)
@@ -8582,7 +8684,50 @@ namespace MinecraftHelper
                 // Also runs after early returns (focus loss, bind capture, etc.).
                 SuspendMouseHookWhenIdle();
                 UpdateEmergencyDamageSoundMonitoring();
+                UpdateMacroTimerCadence();
             }
+        }
+
+        private void UpdateMacroTimerCadence()
+        {
+            TimeSpan targetInterval = IsFastMacroCadenceRequired()
+                ? MacroTimerActiveInterval
+                : MacroTimerIdleInterval;
+            if (_macroTimer.Interval != targetInterval)
+                _macroTimer.Interval = targetInterval;
+        }
+
+        private bool IsFastMacroCadenceRequired()
+        {
+            return _holdMacroRuntimeEnabled
+                || _autoLeftRuntimeEnabled
+                || _autoRightRuntimeEnabled
+                || _jablkaRuntimeEnabled
+                || _kopacz533RuntimeEnabled
+                || _kopacz633RuntimeEnabled
+                || _testFastUpExitRuntimeEnabled
+                || _testAutoFishingRuntimeEnabled
+                || IsAutoArmorRunning
+                || _autoArmorCalibrationPending
+                || _autoWaterStage != AutoWaterStage.None
+                || _autoWaterCalibrationPending
+                || _autoWaterRecognitionTestPending
+                || _inventoryCleanupStage != InventoryCleanupStage.None
+                || _inventoryCleanupScanInProgress
+                || _autoReconnectStage != AutoReconnectStage.None
+                || _jablkaCommandStage != JablkaCommandStage.None
+                || _kopacz533CommandStage != Kopacz533CommandStage.None
+                || _kopacz633CommandStage != Kopacz633CommandStage.None
+                || _bindyCommandStage != BindyCommandStage.None
+                || _testAutoFishingRepairStage != TestAutoFishingRepairStage.None
+                || _holdRightInjectedButtonDown
+                || _inventoryCleanupEatingRightButtonDown
+                || _kopacz533Holding
+                || _kopacz633HoldingAttack
+                || _kopacz633StrafeDirection != Kopacz633StrafeDirection.None
+                || _testFastUpExitBreakHoldActive
+                || _testFastUpExitPlaceHoldActive
+                || _emergencyDamageSoundHandlingAlarm;
         }
 
         private void RunMacroTickCore()
@@ -8742,7 +8887,11 @@ namespace MinecraftHelper
                 _bindyCommandStage != BindyCommandStage.None ||
                 _testAutoFishingRepairStage != TestAutoFishingRepairStage.None ||
                 _inventoryCleanupStage != InventoryCleanupStage.None;
-            bool cursorVisibleForActivation = IsInventoryCursorVisible();
+            bool cursorVisibleForActivation = (holdModeSelected
+                    || autoLeftModeSelected
+                    || autoRightModeSelected
+                    || bindyModeSelected)
+                && IsInventoryCursorVisible();
 
             if (internalCommandTyping)
             {
@@ -8787,7 +8936,6 @@ namespace MinecraftHelper
                 ReleaseHoldRightInjectedButton();
                 RunAutoArmorTick(DateTime.UtcNow);
                 RefreshLiveTopTiles(DateTime.UtcNow);
-                RefreshOverlayHud(DateTime.UtcNow);
                 return;
             }
 
@@ -8813,7 +8961,6 @@ namespace MinecraftHelper
                 SetAutoLeftDabHold(false);
                 RunAutoWaterTick(DateTime.UtcNow);
                 RefreshLiveTopTiles(DateTime.UtcNow);
-                RefreshOverlayHud(DateTime.UtcNow);
                 return;
             }
 
@@ -12949,6 +13096,10 @@ namespace MinecraftHelper
         {
             _ = Dispatcher.BeginInvoke(() =>
             {
+                // Live similarity is a configuration aid. Do not keep changing
+                // hidden WPF text/layout while the user is playing Minecraft.
+                if (!IsVisible || !IsActive || _isMinimizedToTray || MainTabControl?.SelectedIndex != 3)
+                    return;
                 if (DateTime.UtcNow - _emergencyDamageSoundLastAlarmAtUtc < TimeSpan.FromSeconds(2))
                     return;
                 if (_damageSoundDetector.IsRunning)

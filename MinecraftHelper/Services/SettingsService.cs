@@ -7,7 +7,8 @@ namespace MinecraftHelper.Services
 {
     public class SettingsService
     {
-        private const string SettingsFolderName = "Minecraft Helper";
+        private const string RootSettingsFolderName = "Minecraft Helper";
+        private const string ProductSettingsFolderName = "Kopacz";
         private const string SettingsFileName = "settings.json";
         private static readonly JsonSerializerOptions SerializerOptions = new JsonSerializerOptions
         {
@@ -15,11 +16,20 @@ namespace MinecraftHelper.Services
         };
 
         public string SettingsDirectoryPath =>
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), SettingsFolderName);
+            Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                RootSettingsFolderName,
+                ProductSettingsFolderName);
 
         public string SettingsFilePath => Path.Combine(SettingsDirectoryPath, SettingsFileName);
 
-        public bool SettingsFileExists => File.Exists(SettingsFilePath);
+        private string LegacySettingsFilePath => Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            RootSettingsFolderName,
+            SettingsFileName);
+
+        public bool SettingsFileExists =>
+            File.Exists(SettingsFilePath) || File.Exists(LegacySettingsFilePath);
 
         private void EnsureSettingsDirectoryExists()
         {
@@ -37,10 +47,16 @@ namespace MinecraftHelper.Services
         {
             try
             {
-                if (File.Exists(SettingsFilePath))
+                string sourcePath = File.Exists(SettingsFilePath)
+                    ? SettingsFilePath
+                    : LegacySettingsFilePath;
+                if (File.Exists(sourcePath))
                 {
-                    string json = File.ReadAllText(SettingsFilePath);
-                    return JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+                    string json = File.ReadAllText(sourcePath);
+                    AppSettings settings = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+                    if (!string.Equals(sourcePath, SettingsFilePath, StringComparison.OrdinalIgnoreCase))
+                        TryMigrateLegacySettings(settings);
+                    return settings;
                 }
 
                 // First run: create a default settings file in AppData.
@@ -53,6 +69,19 @@ namespace MinecraftHelper.Services
                 Console.WriteLine($"Błąd odczytu: {ex.Message}");
             }
             return new AppSettings();
+        }
+
+        private void TryMigrateLegacySettings(AppSettings settings)
+        {
+            try
+            {
+                if (!File.Exists(SettingsFilePath))
+                    Save(settings);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Nie udało się przenieść ustawień Kopacza: {ex.Message}");
+            }
         }
 
         public void ExportToFile(AppSettings settings, string filePath)

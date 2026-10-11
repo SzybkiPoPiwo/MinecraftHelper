@@ -20,6 +20,7 @@ namespace MinecraftHelper.Services
         private readonly ClickChannel _right = new ClickChannel(leftButton: false);
         private bool _disposed;
         private bool _highResolutionTimerActive;
+        private bool _diagnosticsStateDirty;
 
         private const uint TimerResolutionMs = 1;
 
@@ -63,6 +64,7 @@ namespace MinecraftHelper.Services
             int effectiveRightMinCps;
             int effectiveRightMaxCps;
             bool effectiveRightHoldPulseMode;
+            bool stateChanged;
             lock (_sync)
             {
                 if (_disposed)
@@ -75,7 +77,8 @@ namespace MinecraftHelper.Services
                     leftMaxCps,
                     holdPulseMode: false,
                     leftRequiredHoldVirtualKey,
-                    targetWindow);
+                    targetWindow,
+                    out bool leftChanged);
                 startRightImmediately = UpdateChannel(
                     _right,
                     rightEnabled,
@@ -83,7 +86,10 @@ namespace MinecraftHelper.Services
                     rightMaxCps,
                     rightHoldPulseMode,
                     rightRequiredHoldVirtualKey,
-                    targetWindow);
+                    targetWindow,
+                    out bool rightChanged);
+                stateChanged = leftChanged || rightChanged || _diagnosticsStateDirty;
+                _diagnosticsStateDirty = false;
                 UpdateTimerResolutionState();
                 effectiveLeftEnabled = _left.Enabled;
                 effectiveLeftMinCps = _left.MinCps;
@@ -94,15 +100,20 @@ namespace MinecraftHelper.Services
                 effectiveRightHoldPulseMode = _right.HoldPulseMode;
             }
 
-            _diagnostics.UpdateMacroState(
-                effectiveLeftEnabled,
-                effectiveLeftMinCps,
-                effectiveLeftMaxCps,
-                effectiveRightEnabled,
-                effectiveRightMinCps,
-                effectiveRightMaxCps,
-                effectiveRightHoldPulseMode,
-                targetWindow);
+            // Update() is called from the high-frequency GUI loop. Avoid a
+            // lock and configuration-string allocation when nothing changed.
+            if (stateChanged)
+            {
+                _diagnostics.UpdateMacroState(
+                    effectiveLeftEnabled,
+                    effectiveLeftMinCps,
+                    effectiveLeftMaxCps,
+                    effectiveRightEnabled,
+                    effectiveRightMinCps,
+                    effectiveRightMaxCps,
+                    effectiveRightHoldPulseMode,
+                    targetWindow);
+            }
 
             // Fire the first click synchronously instead of waiting for the
             // ThreadPool timer to wake up. Following clicks keep the exact cadence.
@@ -162,7 +173,8 @@ namespace MinecraftHelper.Services
             int maxCps,
             bool holdPulseMode,
             int requiredHoldVirtualKey,
-            IntPtr targetWindow)
+            IntPtr targetWindow,
+            out bool changed)
         {
             enabled = enabled && targetWindow != IntPtr.Zero && minCps > 0 && maxCps > 0;
             minCps = Math.Clamp(minCps, 1, MaximumCps);
@@ -170,7 +182,7 @@ namespace MinecraftHelper.Services
             if (maxCps < minCps)
                 (minCps, maxCps) = (maxCps, minCps);
 
-            bool changed = channel.Enabled != enabled
+            changed = channel.Enabled != enabled
                 || channel.MinCps != minCps
                 || channel.MaxCps != maxCps
                 || channel.HoldPulseMode != holdPulseMode
@@ -212,6 +224,7 @@ namespace MinecraftHelper.Services
                     return;
 
                 DisableChannel(channel);
+                _diagnosticsStateDirty = true;
                 UpdateTimerResolutionState();
             }
         }
@@ -281,6 +294,7 @@ namespace MinecraftHelper.Services
                     if (!_disposed && channel.Generation == generation)
                     {
                         DisableChannel(channel);
+                        _diagnosticsStateDirty = true;
                         UpdateTimerResolutionState();
                     }
                 }

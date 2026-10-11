@@ -1,6 +1,6 @@
 param(
-    [string]$Version = "1.1.8",
-    [ValidateSet("win-x64", "win-x86")]
+    [string]$Version = "2.0",
+    [ValidateSet("win-x64")]
     [string]$Rid = "win-x64",
     [bool]$SelfContained = $true,
     [switch]$SingleFile,
@@ -19,7 +19,6 @@ function Resolve-IsccPath {
         "C:\Program Files\Inno Setup 6\ISCC.exe",
         [IO.Path]::Combine($env:LOCALAPPDATA, "Programs", "Inno Setup 6", "ISCC.exe")
     )
-
     foreach ($path in $candidates) {
         if ([IO.File]::Exists($path)) {
             return [IO.Path]::GetFullPath($path)
@@ -30,14 +29,13 @@ function Resolve-IsccPath {
         if ([string]::IsNullOrWhiteSpace($directory)) {
             continue
         }
-
         $path = [IO.Path]::Combine($directory.Trim(), "ISCC.exe")
         if ([IO.File]::Exists($path)) {
             return [IO.Path]::GetFullPath($path)
         }
     }
 
-    throw "Nie znaleziono Inno Setup Compiler (ISCC.exe). Zainstaluj Inno Setup 6 lub ustaw zmienna ISCC_PATH."
+    throw "Nie znaleziono Inno Setup Compiler (ISCC.exe). Zainstaluj Inno Setup 6 albo ustaw ISCC_PATH."
 }
 
 function Assert-ChildPath([string]$Parent, [string]$Child) {
@@ -48,66 +46,93 @@ function Assert-ChildPath([string]$Parent, [string]$Child) {
     }
 }
 
+function Publish-App(
+    [string]$ProjectPath,
+    [string]$OutputDirectory,
+    [string]$InformationalSuffix,
+    [string]$ExpectedExe
+) {
+    [void][IO.Directory]::CreateDirectory($OutputDirectory)
+    [Console]::WriteLine("Publikowanie $ExpectedExe...")
+
+    $selfContainedValue = if ($SelfContained) { "true" } else { "false" }
+    $singleFileValue = if ($SingleFile) { "true" } else { "false" }
+    dotnet publish $ProjectPath `
+        -c Release `
+        -r $Rid `
+        --self-contained $selfContainedValue `
+        -p:Version=$Version `
+        -p:AssemblyVersion="$Version.0" `
+        -p:FileVersion="$Version.0" `
+        -p:InformationalVersion="$Version-$InformationalSuffix" `
+        -p:PublishSingleFile=$singleFileValue `
+        -p:IncludeNativeLibrariesForSelfExtract=$singleFileValue `
+        -p:IncludeAllContentForSelfExtract=$singleFileValue `
+        -p:DebugType=None `
+        -p:DebugSymbols=false `
+        -o $OutputDirectory
+    if ($LASTEXITCODE -ne 0) {
+        throw "dotnet publish $ExpectedExe failed with exit code $LASTEXITCODE."
+    }
+
+    $exePath = [IO.Path]::Combine($OutputDirectory, $ExpectedExe)
+    if (-not [IO.File]::Exists($exePath)) {
+        throw "Publish did not create the expected file: $exePath"
+    }
+    [Console]::WriteLine("Manual test target: $exePath")
+}
+
 $repoRoot = [IO.Path]::GetFullPath([IO.Path]::Combine($PSScriptRoot, ".."))
-$projectPath = [IO.Path]::Combine($repoRoot, "MinecraftHelper", "MinecraftHelper.csproj")
+$autoClickerProject = [IO.Path]::Combine($repoRoot, "MinecraftHelper.Pvp", "MinecraftHelper.Pvp.csproj")
+$minerProject = [IO.Path]::Combine($repoRoot, "MinecraftHelper", "MinecraftHelper.csproj")
 $issPath = [IO.Path]::Combine($repoRoot, "Installer", "MinecraftHelper.iss")
-$publishDir = [IO.Path]::Combine($repoRoot, "artifacts", "publish", $Rid)
+$publishRoot = [IO.Path]::Combine($repoRoot, "artifacts", "publish")
+$autoClickerPublishDir = [IO.Path]::Combine($publishRoot, "autoclicker", $Rid)
+$minerPublishDir = [IO.Path]::Combine($publishRoot, "miner", $Rid)
 $installerOutputDir = [IO.Path]::Combine($repoRoot, "artifacts", "installer")
-Assert-ChildPath $repoRoot $publishDir
+
+Assert-ChildPath $repoRoot $publishRoot
 Assert-ChildPath $repoRoot $installerOutputDir
 
 if ($Clean) {
-    if ([IO.Directory]::Exists($publishDir)) { [IO.Directory]::Delete($publishDir, $true) }
+    if ([IO.Directory]::Exists($publishRoot)) { [IO.Directory]::Delete($publishRoot, $true) }
     if ([IO.Directory]::Exists($installerOutputDir)) { [IO.Directory]::Delete($installerOutputDir, $true) }
 }
 
-[void][IO.Directory]::CreateDirectory($publishDir)
 [void][IO.Directory]::CreateDirectory($installerOutputDir)
-
-$selfContainedValue = if ($SelfContained) { "true" } else { "false" }
-$publishSingleFileValue = if ($SingleFile) { "true" } else { "false" }
-$includeNativeSelfExtractValue = if ($SingleFile) { "true" } else { "false" }
-$includeAllContentSelfExtractValue = if ($SingleFile) { "true" } else { "false" }
-
-[Console]::WriteLine("Publikowanie aplikacji ($Rid, self-contained=$selfContainedValue, single-file=$publishSingleFileValue)...")
-dotnet publish $projectPath `
-    -c Release `
-    -r $Rid `
-    --self-contained $selfContainedValue `
-    -p:Version=$Version `
-    -p:AssemblyVersion="$Version.0" `
-    -p:FileVersion="$Version.0" `
-    -p:InformationalVersion=$Version `
-    -p:PublishSingleFile=$publishSingleFileValue `
-    -p:IncludeNativeLibrariesForSelfExtract=$includeNativeSelfExtractValue `
-    -p:IncludeAllContentForSelfExtract=$includeAllContentSelfExtractValue `
-    -p:DebugType=None `
-    -p:DebugSymbols=false `
-    -o $publishDir
-if ($LASTEXITCODE -ne 0) {
-    throw "dotnet publish zakonczyl sie kodem $LASTEXITCODE."
-}
-
-$publishedExe = [IO.Path]::Combine($publishDir, "MinecraftHelper.exe")
-if ([IO.File]::Exists($publishedExe)) {
-    [Console]::WriteLine("Sprawdz recznie przed instalatorem: $publishedExe")
-}
+Publish-App $autoClickerProject $autoClickerPublishDir "autoclicker" "MinecraftHelper.AutoClicker.exe"
+Publish-App $minerProject $minerPublishDir "miner" "MinecraftHelper.Miner.exe"
 
 $isccPath = Resolve-IsccPath
-[Console]::WriteLine("Budowanie instalatora przez ISCC: $isccPath")
-
+[Console]::WriteLine("Building the combined installer with: $isccPath")
 & $isccPath `
     "/DAppVersion=$Version" `
-    "/DPublishDir=$publishDir" `
+    "/DAutoClickerPublishDir=$autoClickerPublishDir" `
+    "/DMinerPublishDir=$minerPublishDir" `
     "/DInstallerOutputDir=$installerOutputDir" `
     $issPath
 if ($LASTEXITCODE -ne 0) {
-    throw "ISCC zakonczyl sie kodem $LASTEXITCODE."
+    throw "ISCC failed with exit code $LASTEXITCODE."
 }
 
-$installerFile = [IO.Path]::Combine($installerOutputDir, "MinecraftHelper-Setup-" + $Version + ".exe")
-if ([IO.File]::Exists($installerFile)) {
-    [Console]::WriteLine("Gotowe: $installerFile")
-} else {
-    throw "ISCC zakonczyl prace bez oczekiwanego pliku: $installerFile"
+$installerFile = [IO.Path]::Combine($installerOutputDir, "MinecraftHelper-Setup-$Version.exe")
+if (-not [IO.File]::Exists($installerFile)) {
+    throw "ISCC did not create the expected file: $installerFile"
 }
+
+$stream = [IO.File]::OpenRead($installerFile)
+try {
+    $sha256 = [Security.Cryptography.SHA256]::Create()
+    try {
+        $hashBytes = $sha256.ComputeHash($stream)
+    }
+    finally {
+        $sha256.Dispose()
+    }
+}
+finally {
+    $stream.Dispose()
+}
+$hash = [BitConverter]::ToString($hashBytes).Replace("-", "").ToLowerInvariant()
+[Console]::WriteLine("Gotowe: $installerFile")
+[Console]::WriteLine("SHA-256: $hash")

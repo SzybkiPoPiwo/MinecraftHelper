@@ -9,7 +9,9 @@ dotnet run --project tests/MouseHookLifecycle/MouseHookLifecycle.csproj -c Relea
 Test sprawdza brak globalnego przechwytywania po starcie i w spoczynku,
 rejestrację przed pracą makra, zachowanie rejestracji podczas aktywnych makr,
 ignorowanie syntetycznych naciśnięć/puszczeń LPM i PPM, wielokrotne
-włączanie/wyłączanie oraz sprzątanie wątku przy zamykaniu.
+włączanie/wyłączanie oraz sprzątanie wątku przy zamykaniu. Sprawdza także,
+że pętla GUI używa wolniejszego interwału w spoczynku i wraca do precyzyjnego
+trybu podczas wykonywania automatyzacji.
 
 Test na krótko rejestruje prawdziwy hook Windows, ale nie wysyła ruchów,
 kliknięć ani klawiszy. Nie otwiera GUI i nie czyta ani nie zapisuje ustawień

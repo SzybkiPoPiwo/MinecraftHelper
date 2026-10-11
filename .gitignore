@@ -403,6 +403,7 @@ FodyWeavers.xsd
 
 # Local app/runtime and verification files
 /settings.json
+/.vscode/
 /MinecraftHelper/bin_*/
 /MinecraftHelper/obj_*/
 /.build-check/

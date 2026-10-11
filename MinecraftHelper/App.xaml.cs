@@ -8,7 +8,11 @@ namespace MinecraftHelper
     public partial class App : Application
     {
         private const int SplashMinDurationMs = 1300;
+#if MINER_EDITION
+        private const string SingleInstanceMutexName = @"Local\MinecraftHelper.Miner.SingleInstance";
+#else
         private const string SingleInstanceMutexName = @"Local\MinecraftHelper.SingleInstance";
+#endif
         private Mutex? _singleInstanceMutex;
         private bool _ownsSingleInstanceMutex;
 

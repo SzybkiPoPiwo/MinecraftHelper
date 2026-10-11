@@ -53,9 +53,13 @@ namespace MinecraftHelper.Services
         private long _rightSendMaxMicroseconds;
         private long _rightSendFailures;
 
-        public MacroDiagnosticsService()
+        public MacroDiagnosticsService(bool samplingEnabled = true)
         {
-            _sampleTimer = new Timer(OnSampleTimer, null, 1000, 1000);
+            _sampleTimer = new Timer(
+                OnSampleTimer,
+                null,
+                samplingEnabled ? 1000 : Timeout.Infinite,
+                samplingEnabled ? 1000 : Timeout.Infinite);
         }
 
         public string LogFilePath => Path.Combine(

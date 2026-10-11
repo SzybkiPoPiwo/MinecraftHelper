@@ -15,13 +15,23 @@ namespace MinecraftHelper
         private static readonly AppReleaseNotes[] Releases =
         {
             new AppReleaseNotes(
-                "1.1.8",
-                "AutoWater i rozbudowana ochrona Kopacza",
+                "2.0",
+                "Dwie lżejsze aplikacje i nowe funkcje automatyzacji",
                 new[]
                 {
+                    "Minecraft Helper został rozdzielony na lekki Auto Clicker oraz osobnego Kopacza, które można instalować i uruchamiać niezależnie.",
+                    "Auto Clicker otrzymał szybkie akcje PVP dla bloku, śnieżki, perły i wędki z automatycznym powrotem na slot miecza.",
+                    "Auto Clicker i Kopacz uruchamiają wyłącznie własne moduły, dzięki czemu każda aplikacja jest lżejsza i ma osobny plik ustawień.",
+                    "Obie aplikacje mają własne ikony, podpowiedzi pod przyciskami ?, informacje o zmianach oraz kontrolę dostępności aktualizacji.",
+                    "Instalator pozwala wybrać potrzebne składniki i prowadzi przez migrację ze starszej, połączonej wersji programu."
+                }),
+            new AppReleaseNotes(
+                "1.1.8",
+                "AutoWater, Auto zbroja i rozbudowana ochrona Kopacza",
+                new[]
+                {
+                    "Dodano Auto zbroję, która pod bindem zamienia założony komplet z drugim setem przygotowanym w ekwipunku.",
                     "Dodano eksperymentalny AutoWater z własnym bindem, wyborem slotu wody i slotu powrotnego oraz regulowanym czasem prób PPM i zebrania wody.",
-                    "AutoWater kalibruje wzorzec pustego wiadra, pozwala przetestować rozpoznawanie przed użyciem i pokazuje bieżący etap w HUD.",
-                    "Czas prób PPM można dopasować ręcznie do wysokości, opóźnień i zachowania konkretnego serwera.",
                     "Awaryjna ochrona Kopacza łączy wykrywanie dźwięku obrażeń, wyjście z serwera, reconnect, kontrolę kilofa i bezpieczny powrót do odpowiedniego home.",
                     "Rozbudowano komunikaty, HUD oraz logi przebiegu ochrony awaryjnej i Auto Reconnect."
                 }),
@@ -135,9 +145,12 @@ namespace MinecraftHelper
             {
                 Version? version = typeof(ReleaseNotesCatalog).Assembly.GetName().Version;
                 if (version == null)
-                    return "1.1.8";
+                    return "2.0";
 
-                return $"{version.Major}.{version.Minor}.{Math.Max(0, version.Build)}";
+                int build = Math.Max(0, version.Build);
+                return build == 0
+                    ? $"{version.Major}.{version.Minor}"
+                    : $"{version.Major}.{version.Minor}.{build}";
             }
         }
 

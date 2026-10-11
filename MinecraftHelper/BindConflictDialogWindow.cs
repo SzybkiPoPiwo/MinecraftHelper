@@ -88,7 +88,7 @@ namespace MinecraftHelper
             panel.Children.Add(new TextBlock
             {
                 Text = sharedAutoClickerModeConflict
-                    ? "Nie można wyłączyć tego trybu, ponieważ AUTO LPM i AUTO PPM korzystają z tego samego klawisza. Przejście na tryb klasyczny spowodowałoby konflikt."
+                    ? "Nie można zmienić tego trybu, ponieważ AUTO LPM i AUTO PPM korzystają z tego samego klawisza. Wspólny bind wymaga trybu Trzymanie albo Kombinacja dla LPM oraz trybu Kombinacja dla PPM."
                     : $"Nie mozna zapisac bindu dla: {requestedOwner}.",
                 TextWrapping = TextWrapping.Wrap,
                 Margin = new Thickness(0, 0, 0, 10),
@@ -102,7 +102,7 @@ namespace MinecraftHelper
             panel.Children.Add(new TextBlock
             {
                 Text = sharedAutoClickerModeConflict
-                    ? "Aby wyłączyć „Tryb kombinacji” lub „Trzymanie bindu”, najpierw kliknij „Usuń bind” w AUTO LPM albo AUTO PPM lub przypisz jednemu z nich inny klawisz. Następnie ponownie wyłącz wybrany tryb."
+                    ? "Aby wybrać Przełączanie albo Trzymanie dla PPM, najpierw kliknij „Usuń” w AUTO LPM albo AUTO PPM lub przypisz jednemu z nich inny klawisz. Potem ponownie wybierz żądany tryb."
                     : "Wybierz inny klawisz i kliknij \"Zapisz\" ponownie.",
                 Margin = new Thickness(0, 12, 0, 0),
                 TextWrapping = TextWrapping.Wrap,

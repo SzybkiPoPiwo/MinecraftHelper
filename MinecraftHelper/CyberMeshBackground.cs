@@ -161,7 +161,12 @@ namespace MinecraftHelper
             bool shouldAnimate = IsAnimationEnabled
                 && IsLoaded
                 && IsVisible
-                && (_hostWindow == null || _hostWindow.WindowState != WindowState.Minimized);
+                // Rendering a full-window particle layer while Minecraft owns
+                // the foreground wastes GPU/dispatcher time and can show up as
+                // frame-time spikes in the game. Resume immediately when the
+                // Helper window becomes active again.
+                && (_hostWindow == null
+                    || (_hostWindow.WindowState != WindowState.Minimized && _hostWindow.IsActive));
 
             if (shouldAnimate)
             {
@@ -179,7 +184,8 @@ namespace MinecraftHelper
         {
             if (!IsAnimationEnabled
                 || !IsVisible
-                || _hostWindow?.WindowState == WindowState.Minimized)
+                || (_hostWindow != null
+                    && (_hostWindow.WindowState == WindowState.Minimized || !_hostWindow.IsActive)))
             {
                 RefreshAnimationState();
                 return;

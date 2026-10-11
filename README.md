@@ -5,25 +5,27 @@
 <h1 align="center">Minecraft Helper</h1>
 
 <p align="center">
-  Clickery, automatyczne kopanie, Auto EQ, Auto zbroja, CobbleX, ochrona awaryjna, Auto Reconnect, logi i HUD dla Minecraft 1.8.8.
+  Dwie niezależne aplikacje: lekki Auto Clicker do PVP oraz osobny Kopacz z Auto EQ i automatyzacją dla Minecraft 1.8.8.
 </p>
 
 <p align="center">
-  <strong>Windows 10/11</strong> · <strong>Minecraft 1.8.8</strong> · <strong>bez Forge i modów</strong> · <strong>wersja 1.1.8</strong>
+  <strong>Windows 10/11</strong> · <strong>Minecraft 1.8.8</strong> · <strong>bez Forge i modów</strong> · <strong>wersja 2.0</strong>
 </p>
 
 <p align="center">
   <a href="#szybki-start">Szybki start</a> ·
-  <a href="#pvp">PVP</a> ·
+  <a href="#auto-clicker--pvp-auto-lpm-i-auto-ppm">Auto Clicker</a> ·
   <a href="#kopacz-auto-eq-i-cobblex">Kopacz</a> ·
-  <a href="#bindy">BINDY</a> ·
-  <a href="#experimental">Experimental</a> ·
+  <a href="#bindy-auto-clicker">BINDY</a> ·
+  <a href="#funkcje-dodatkowe">Funkcje dodatkowe</a> ·
   <a href="#ustawienia-i-hud">Ustawienia</a> ·
   <a href="#instalacja">Instalacja</a> ·
   <a href="#to-do">TO DO</a>
 </p>
 
-Minecraft Helper to aplikacja dla Windows wspomagająca grę w Minecraft 1.8.8. Pozwala uruchamiać clickery, automatyzować kopanie, wykonywać komendy pod własnymi bindami oraz porządkować ekwipunek przy użyciu przygotowanej paczki zasobów. Program nie wymaga Forge ani instalowania moda w grze.
+Minecraft Helper jest teraz podzielony na dwa osobne programy dla Windows. `Minecraft Helper Auto Clicker` zawiera AUTO LPM, AUTO PPM, BINDY, Auto zbroję i AutoWater. `Minecraft Helper Kopacz` zawiera kopanie 5/3/3 i 6/3/3, Auto EQ, CobbleX, Auto Reconnect, ochronę awaryjną, autołowienie i logi. Programy nie wymagają Forge ani instalowania moda w grze.
+
+Rozdzielenie ogranicza liczbę uruchomionych modułów. Auto Clicker nie ładuje OCR, obsługi dźwięku ani mechanizmów Kopacza, a Kopacz nie uruchamia clickerów, BINDY, Auto zbroi, AutoWater ani globalnego hooka myszy. Oba programy mogą być zainstalowane razem albo osobno.
 
 > Program wysyła wejście z klawiatury i myszy do wybranego okna gry. Przed uruchomieniem funkcji upewnij się, że wskazany jest właściwy proces Minecrafta, a okno gry ma fokus.
 
@@ -31,47 +33,39 @@ Minecraft Helper to aplikacja dla Windows wspomagająca grę w Minecraft 1.8.8. 
 
 Jeżeli korzystasz z programu pierwszy raz:
 
-1. [Zainstaluj aplikację](#instalacja) albo [uruchom ją ze źródeł](docs/BUILDING.md).
+1. [Uruchom instalator](#instalacja) i wybierz `Auto Clicker`, `Kopacz` albo oba składniki. Możesz też [uruchomić projekty ze źródeł](docs/BUILDING.md).
 2. Uruchom Minecraft lub BlazingPack w wersji 1.8.8 i wejdź do gry.
-3. W Minecraft Helper otwórz zakładkę `Ustawienia`.
-4. Kliknij `Odśwież`, wybierz właściwy proces gry i kliknij `Zapisz program`. Nie wybieraj launchera.
-5. Jeżeli chcesz używać Auto EQ, ochrony awaryjnej lub Auto Reconnect, zainstaluj [paczkę zasobów Minecraft Helper](#wymagana-paczka-zasobów).
-6. Otwórz interesującą Cię zakładkę, zaznacz moduł i skonfiguruj jego ustawienia.
-7. Ustaw bind, zapisz ustawienia i przejdź do Minecrafta.
+3. W Auto Clickerze wybierz proces w górnej części małego okna. W Kopaczu zrób to w zakładce `Ustawienia`. Nie wybieraj launchera.
+4. Kliknij `Odśwież`, wskaż właściwe okno gry i zapisz wybór.
+5. Do Auto EQ, ochrony awaryjnej i Auto Reconnect zainstaluj [paczkę zasobów Minecraft Helper](#wymagana-paczka-zasobów).
+6. Włącz tylko potrzebne moduły, ustaw ich bindy i sprawdź działanie w bezpiecznym miejscu.
 
-Zaznaczenie głównego pola modułu rozwija jego konfigurację. Samo zaznaczenie nie zawsze uruchamia funkcję — clickery, Kopacz i pozostałe moduły włącza się ustawionym bindem. Szczegółowe podpowiedzi są dostępne pod przyciskami `?`.
+Obie aplikacje mają własne ustawienia i mogą działać niezależnie. Samo zaznaczenie modułu udostępnia jego konfigurację; działanie uruchamia się przypisanym bindem. Szczegółowe podpowiedzi obu programów są dostępne pod przyciskami `?`.
 
-Przy pierwszym uruchomieniu pojawi się okno powitalne. Po aktualizacji programu to samo okno pokaże listę zmian i ostrzeże o ewentualnej różnicy wersji zapisanych ustawień.
+Przy pierwszym uruchomieniu każdej aplikacji pojawi się jej własne okno powitalne. Po aktualizacji Auto Clicker i Kopacz pokażą listę zmian tylko raz dla nowej wersji; potwierdzenie jest zapisywane niezależnie w ustawieniach danego programu.
 
-Przy uruchomieniu program sprawdza także najnowsze publiczne wydanie na GitHubie. Jeśli dostępna jest nowsza wersja, wyświetli numer obecnej i najnowszej wersji oraz bezpieczny link do oficjalnego instalatora. Instalator nie jest pobierany ani uruchamiany automatycznie, a brak internetu nie blokuje startu programu.
+Przy uruchomieniu obie aplikacje sprawdzają także najnowsze publiczne wydanie na GitHubie. Jeśli dostępna jest nowsza wersja, wyświetlą numer obecnej i najnowszej wersji oraz bezpieczny link do oficjalnego instalatora. Instalator nie jest pobierany ani uruchamiany automatycznie, a brak internetu nie blokuje startu programu.
 
 <p align="center">
-  <a href="docs/images/app-first-run.png">
-    <img src="docs/images/app-first-run.png" alt="Przewodnik pierwszego uruchomienia Minecraft Helper" width="100%">
+  <a href="docs/images/v2-autoclicker-pvp.png">
+    <img src="docs/images/v2-autoclicker-pvp.png" alt="Minecraft Helper Auto Clicker 2.0" width="38%">
+  </a>
+  <a href="docs/images/v2-miner-main.png">
+    <img src="docs/images/v2-miner-main.png" alt="Minecraft Helper Kopacz 2.0" width="60%">
   </a><br>
-  <sub>Przewodnik pierwszego uruchomienia prowadzi przez podstawową konfigurację programu.</sub>
+  <sub>Dwie niezależne aplikacje w Minecraft Helper 2.0 — Auto Clicker oraz Kopacz.</sub>
 </p>
 
 ## Przegląd funkcji
 
-| Zakładka | Do czego służy |
+| Aplikacja | Zawartość |
 | --- | --- |
-| `PVP` | Automatyczne klikanie LPM i PPM, obsługa bindów oraz pauza po otwarciu GUI. |
-| `Kopacz` | Automatyczne kopanie, harmonogram komend, czyszczenie ekwipunku i tworzenie CobbleX. |
-| `BINDY` | Własne skróty, które wpisują i wysyłają przygotowane komendy na czacie. |
-| `Experimental` | Auto zbroja, AutoWater, awaryjna ochrona Kopacza, profile Auto Reconnect oraz automatyczne łowienie. |
-| `Ustawienia` | Wybór procesu Minecrafta, konfiguracja HUD, import i eksport ustawień oraz działanie aplikacji w tle. |
+| `Minecraft Helper Auto Clicker` | AUTO LPM, AUTO PPM, szybkie akcje PVP, BINDY, Auto zbroja, AutoWater i mały overlay. |
+| `Minecraft Helper Kopacz` | Kopacz 5/3/3 i 6/3/3, Auto EQ, CobbleX, komendy, autołowienie, ochrona awaryjna, Auto Reconnect, HUD i logi. |
 
-## PVP
+## Auto Clicker — PVP, AUTO LPM i AUTO PPM
 
-<p align="center">
-  <a href="docs/images/app-pvp.png">
-    <img src="docs/images/app-pvp.png" alt="Zakładka PVP w Minecraft Helper" width="100%">
-  </a><br>
-  <sub>Kliknij obraz, aby otworzyć go w pełnym rozmiarze.</sub>
-</p>
-
-W tej zakładce znajdują się funkcje związane z klikaniem oraz ich zabezpieczenie przed działaniem w otwartym ekwipunku.
+To osobna, niewielka aplikacja z pionowym oknem. Zawiera wyłącznie funkcje PVP i nie uruchamia cięższych usług Kopacza, OCR ani nasłuchu audio.
 
 ### AUTO LPM i AUTO PPM
 
@@ -81,34 +75,40 @@ W tej zakładce znajdują się funkcje związane z klikaniem oraz ich zabezpiecz
 - Tryb pełnoekranowy jest obsługiwany: przezroczysty kursor używany przez grę nie jest mylony z kursorem otwartego GUI.
 - Zakres minimalnego i maksymalnego CPS określa szybkość klikania.
 - W trybie klasycznym ustawiony bind włącza clicker, a kolejne naciśnięcie go wyłącza.
-- Tryb kombinacji uruchamia odpowiedni clicker podczas trzymania przypisanego bindu razem z fizycznym LPM albo PPM. AUTO LPM i AUTO PPM mogą korzystać z jednego wspólnego bindu, jeżeli AUTO PPM działa w trybie kombinacji, a AUTO LPM w trybie kombinacji albo `Trzymanie bindu`. Tryb `Trzymanie bindu` dla AUTO PPM zawsze wymaga osobnego klawisza.
+- Tryb kombinacji uruchamia odpowiedni clicker po naciśnięciu przypisanego bindu razem z fizycznym LPM albo PPM i zatrzymuje go natychmiast po puszczeniu właściwego przycisku myszy. Jeden wspólny bind jest dozwolony, gdy AUTO LPM działa w trybie `Trzymanie bindu` lub kombinacji, a AUTO PPM w trybie kombinacji. Dzięki temu jeden klawisz może uruchamiać LPM, a po dołożeniu fizycznego PPM również prawy clicker. Tryb `Trzymanie bindu` dla AUTO PPM zawsze wymaga osobnego klawisza.
 - Opcjonalny tryb `DAB (O)` przytrzymuje klawisz `O` podczas działania AUTO LPM.
 
 Najpierw zaznacz wybrany moduł, rozwiń ustawienia, przypisz bind i zapisz konfigurację. Clicker działa tylko wtedy, gdy zapisane okno Minecrafta ma fokus.
 
-Podczas pracy clickera program zapisuje lekki log diagnostyczny z czasami wysyłania kliknięć, opóźnieniem obsługi myszy i przerwami pracy interfejsu. Zapis odbywa się w tle i nie wykonuje operacji dyskowych bezpośrednio w hooku myszy. Plik znajduje się w:
+Clickery korzystają z osobnego, uśpionego harmonogramu. Pierwsze kliknięcie jest wykonywane od razu, a puszczenie wymaganego bindu w trybie trzymania lub fizycznego przycisku myszy w trybie kombinacji zatrzymuje kanał bez oczekiwania na odświeżenie interfejsu. Dokładniejsza rozdzielczość zegara Windows jest włączana tylko podczas faktycznego klikania. Lekki tracker fizycznego LPM/PPM uruchamia się wyłącznie podczas pracy trybu kombinacji, ignoruje kliknięcia wstrzyknięte przez aplikację i nie przetwarza ruchów myszy.
 
-```text
-%APPDATA%\Minecraft Helper\macro-diagnostics.log
-```
+### Szybkie akcje PVP
 
-Po przekroczeniu 4 MB poprzedni plik jest przenoszony do `macro-diagnostics.previous.log`. Te dane pomagają sprawdzić zgłoszenia o przycinaniu kursora bez zapisywania naciskanych klawiszy ani treści wpisywanych w grze.
+- Zakładka `Akcje PVP` udostępnia osobne bindy dla Auto bloku, śnieżki, perły i wędki.
+- Ustawiasz slot miecza oraz sloty bloku, śnieżki, perły i wędki w zakresie `1–9`.
+- Jedno naciśnięcie binda podczas aktywnego AUTO LPM wybiera przedmiot, wykonuje jedno użycie PPM i wraca na slot miecza. AUTO LPM i DAB działają w tym czasie bez przerwy; chwilowo pauzowane jest tylko AUTO PPM. Samo AUTO PPM nie uruchamia szybkich akcji.
+- Dla wędki można ustawić czas trzymania PPM od `20` do `1000 ms`. Auto blok wybiera skonfigurowany slot bloku, stawia jeden blok i wraca na slot miecza — tak samo jak śnieżka i perła.
+- Utrata fokusu, otwarte GUI albo wyłączenie clickera przerywają akcję i bezpiecznie zwalniają PPM. Aktualny etap jest widoczny w overlayu.
+- Wszystkie komunikaty overlayu Auto Clickera mają jednolitą szerokość, odstępy i rozmiar tekstu; stan aktywny lub ostrzeżenie rozróżnia kolor.
+
+<p align="center">
+  <a href="docs/images/v2-autoclicker-actions.png">
+    <img src="docs/images/v2-autoclicker-actions.png" alt="Szybkie akcje PVP w Auto Clickerze 2.0" width="420">
+  </a><br>
+  <sub>Sloty i osobne bindy Auto bloku, śnieżki, perły oraz wędki.</sub>
+</p>
 
 ### Pozostałe opcje
 
-- `Jabłka z liści` wykonują przygotowany cykl z wybranym bindem i komendą.
 - `Pauza gdy kursor widoczny (ekwipunek/GUI)` zatrzymuje klikanie, kiedy gra pokazuje kursor. Zalecamy pozostawić tę opcję włączoną.
 
 ## Kopacz, Auto EQ i CobbleX
 
 <p align="center">
-  <a href="docs/images/app-kopacz.png">
-    <img src="docs/images/app-kopacz.png" alt="Kanał Kopacz 5/3/3 w Minecraft Helper" width="49%">
-  </a>
-  <a href="docs/images/app-kopacz-633.png">
-    <img src="docs/images/app-kopacz-633.png" alt="Kanał Kopacz 6/3/3 w Minecraft Helper" width="49%">
+  <a href="docs/images/v2-miner-main.png">
+    <img src="docs/images/v2-miner-main.png" alt="Osobna aplikacja Minecraft Helper Kopacz 2.0" width="100%">
   </a><br>
-  <sub>Kopacz 5/3/3 i 6/3/3 — kliknij wybrany obraz, aby otworzyć go w pełnym rozmiarze.</sub>
+  <sub>Odchudzona aplikacja Kopacz z kanałami 5/3/3 i 6/3/3, Auto EQ oraz logami.</sub>
 </p>
 
 Zakładka `Kopacz` łączy automatyczne kopanie z wykonywaniem komend oraz opcjonalnym czyszczeniem ekwipunku.
@@ -201,14 +201,7 @@ Logi są przechowywane niezależnie od ustawień aplikacji w:
 
 Wpisy utworzone przez starszą wersję mechanizmu pozostają dostępne jako samodzielne rekordy i mogą zawierać tylko liczbę stosów. Program oznacza je jako stare dane zamiast przedstawiać niedokładną liczbę sztuk.
 
-## BINDY
-
-<p align="center">
-  <a href="docs/images/app-bindy.png">
-    <img src="docs/images/app-bindy.png" alt="Zakładka BINDY w Minecraft Helper" width="100%">
-  </a><br>
-  <sub>Kliknij obraz, aby otworzyć go w pełnym rozmiarze.</sub>
-</p>
+## BINDY (Auto Clicker)
 
 Moduł pozwala przypisać własne komendy do klawiszy. Każdy wpis może mieć osobną nazwę, bind i treść komendy. Po naciśnięciu binda program otwiera czat, wpisuje przygotowaną komendę i zatwierdza ją klawiszem `Enter`.
 
@@ -217,21 +210,32 @@ Moduł pozwala przypisać własne komendy do klawiszy. Każdy wpis może mieć o
 3. Ustaw klawisz aktywujący.
 4. Zapisz ustawienia i wróć do aktywnego okna gry.
 
-## Experimental
-
 <p align="center">
-  <a href="docs/images/app-experimental.png">
-    <img src="docs/images/app-experimental.png" alt="Awaryjna ochrona i Auto Reconnect w zakładce Experimental" width="49%">
-  </a>
-  <a href="docs/images/app-experimental-fishing.png">
-    <img src="docs/images/app-experimental-fishing.png" alt="Auto łowienie w zakładce Experimental" width="49%">
+  <a href="docs/images/v2-autoclicker-binds.png">
+    <img src="docs/images/v2-autoclicker-binds.png" alt="Moduł BINDY w Auto Clickerze 2.0" width="420">
   </a><br>
-  <sub>Awaryjna ochrona, Auto Reconnect i autołowienie — kliknij wybrany obraz, aby otworzyć go w pełnym rozmiarze.</sub>
+  <sub>Własne komendy pod bindami z ochroną przed uruchomieniem podczas pisania na chacie.</sub>
 </p>
 
-Zakładka zawiera funkcje będące nadal w fazie testów. Mogą wymagać dokładniejszego ustawienia i nie zawsze zachowywać się identycznie na każdym kliencie.
+## Funkcje dodatkowe
+
+<p align="center">
+  <a href="docs/images/v2-miner-experimental.png">
+    <img src="docs/images/v2-miner-experimental.png" alt="Funkcje Experimental w aplikacji Kopacz 2.0" width="100%">
+  </a><br>
+  <sub>Eksperymentalna ochrona awaryjna i automatyczne łowienie w osobnej aplikacji Kopacz.</sub>
+</p>
+
+Auto zbroja i AutoWater znajdują się w osobnej aplikacji Auto Clicker. Autołowienie, ochrona awaryjna i profile Auto Reconnect należą do aplikacji Kopacz. Są to funkcje eksperymentalne — mogą wymagać dokładniejszego ustawienia i nie zawsze zachowywać się identycznie na każdym kliencie.
 
 ### Auto zbroja
+
+<p align="center">
+  <a href="docs/images/v2-autoclicker-armor.png">
+    <img src="docs/images/v2-autoclicker-armor.png" alt="Auto zbroja w Auto Clickerze 2.0" width="420">
+  </a><br>
+  <sub>Osobna kalibracja założonego kompletu i drugiego zestawu w ekwipunku.</sub>
+</p>
 
 `Auto zbroja` podmienia aktualnie założony komplet pancerza z drugim setem przygotowanym w ekwipunku. Każdy element ma dwa niezależnie kalibrowane miejsca: slot założonej części zbroi oraz slot odpowiadającej jej części drugiego zestawu. Stary element trafia dokładnie w miejsce nowego, dzięki czemu po zakończeniu oba komplety są zamienione miejscami.
 
@@ -253,6 +257,13 @@ Kalibracja jest zapisywana względem środka wybranego okna Minecrafta, dlatego 
 Podmiana działa wyłącznie w widocznym i aktywnym oknie gry. Ponowne naciśnięcie binda zleca przerwanie, ale dla bezpieczeństwa program najpierw kończy trzy kliknięcia bieżącego elementu, aby nie pozostawić zbroi na kursorze. Overlay pokazuje kalibrowane pole, aktualny etap podmiany, następne kliknięcie oraz bezpieczne anulowanie.
 
 ### AutoWater
+
+<p align="center">
+  <a href="docs/images/v2-autoclicker-autowater.png">
+    <img src="docs/images/v2-autoclicker-autowater.png" alt="AutoWater w Auto Clickerze 2.0" width="420">
+  </a><br>
+  <sub>Bind, wybór slotów, ręczne czasy serwera oraz kalibracja pustego wiadra.</sub>
+</p>
 
 `AutoWater` pomaga wykonać water clutch podczas spadania. Po naciśnięciu ustawionego bindu program wybiera slot z wiadrem wody, wykonuje próby PPM, rozpoznaje zmianę ikony na puste wiadro, po określonym czasie próbuje zebrać wodę i wraca na wybrany slot. Ponowne naciśnięcie bindu natychmiast anuluje sekwencję.
 
@@ -326,13 +337,15 @@ Zalecana kolejność testów profilu:
 ## Ustawienia i HUD
 
 <p align="center">
-  <a href="docs/images/app-settings.png">
-    <img src="docs/images/app-settings.png" alt="Zakładka Ustawienia w Minecraft Helper" width="100%">
+  <a href="docs/images/v2-miner-settings.png">
+    <img src="docs/images/v2-miner-settings.png" alt="Ustawienia aplikacji Minecraft Helper Kopacz 2.0" width="100%">
   </a><br>
-  <sub>Kliknij obraz, aby otworzyć go w pełnym rozmiarze.</sub>
+  <sub>Wybór procesu gry, sterowanie Minecraftem, HUD oraz import i eksport ustawień Kopacza.</sub>
 </p>
 
-To tutaj należy rozpocząć konfigurację programu:
+Zakładka `Ustawienia` należy do Kopacza. Auto Clicker ma wybór procesu Minecrafta bezpośrednio u góry swojego małego okna.
+
+W ustawieniach Kopacza dostępne są:
 
 - `Program gry` wskazuje proces Minecrafta, do którego mają trafiać klawisze i kliknięcia.
 - `Odśwież` ponownie pobiera listę uruchomionych okien.
@@ -340,30 +353,43 @@ To tutaj należy rozpocząć konfigurację programu:
 - `Animowane tło gwiazd` włącza lub wyłącza lekki efekt tła w głównym oknie.
 - `Panel HUD (overlay)` pokazuje stan uruchomionych funkcji na ekranie.
 - HUD pozwala wybrać monitor, narożnik oraz wyłączyć animacje.
-- Podczas kalibracji i działania Auto zbroi HUD pokazuje wybrany element, etap podmiany oraz następną wykonywaną akcję.
 - Podczas kopania HUD aktualizuje etap pracy, godzinę startu, czas działania, bieżący skan EQ oraz łączne wyniki wyrzucania i tworzenia CobbleX.
 - Podczas ochrony awaryjnej HUD pokazuje pola `Teraz` i `Następnie`, używany profil i tryb Kopacza, odliczanie do reconnectu lub końca teleportacji oraz informację, czy automat wznowi kopanie, czy zakończy program.
 - `Eksportuj` zapisuje kopię konfiguracji, a `Importuj` przywraca ją z pliku JSON.
 
-Główne okno uruchamia się wyśrodkowane i w rozmiarze dostosowanym do monitorów 1080p. Program pozwala uruchomić tylko jedną kopię Minecraft Helper jednocześnie, aby dwa procesy nie nadpisywały wspólnego pliku ustawień.
+Główne okno Kopacza uruchamia się wyśrodkowane i w rozmiarze dostosowanym do monitorów 1080p. Każda aplikacja pilnuje tylko własnej pojedynczej instancji, dlatego Auto Clicker i Kopacz mogą działać równocześnie bez nadpisywania swoich ustawień.
 
-Ustawienia zapisują się automatycznie w:
+Ustawienia zapisują się automatycznie w osobnych plikach:
 
 ```text
-%APPDATA%\Minecraft Helper\settings.json
+%APPDATA%\Minecraft Helper\
+├── AutoClicker\settings.json
+└── Kopacz\settings.json
 ```
+
+Przy pierwszym uruchomieniu po aktualizacji dotychczasowy plik Kopacza z katalogu głównego zostanie automatycznie skopiowany do podfolderu `Kopacz`. Stary plik pozostaje na miejscu jako kopia zgodna ze starszymi wydaniami.
 
 Nie wybieraj procesu launchera. Wskaż właściwe okno Minecrafta lub używanego klienta po wejściu do gry.
 
 ### Minimalizacja i ikona w zasobniku
 
-- Przycisk minimalizacji pozostawia aplikację widoczną na pasku zadań.
-- Przycisk `X` nie kończy programu — ukrywa okno w zasobniku systemowym obok zegara i pokazuje krótkie powiadomienie.
+- W obu aplikacjach przycisk `X` nie kończy programu — ukrywa okno w zasobniku systemowym obok zegara.
+- Minimalizacja Auto Clickera również chowa go do zasobnika; minimalizacja Kopacza pozostawia jego okno na pasku zadań.
 - Dwukrotne kliknięcie ikony przywraca główne okno.
-- Menu pod prawym przyciskiem myszy pozwala wybrać `Pokaż aplikację` albo `Zakończ aplikację`.
+- Menu pod prawym przyciskiem myszy pozwala przywrócić albo całkowicie zamknąć wybraną aplikację.
 - Menu zasobnika korzysta z ciemnego motywu zgodnego z pozostałą częścią interfejsu.
 
-Jeżeli działają makra lub Kopacz, zamknięcie okna przyciskiem `X` pozostawia aplikację uruchomioną w tle. Aby całkowicie ją wyłączyć, użyj opcji `Zakończ aplikację` z menu ikony.
+Jeżeli działa Auto Clicker albo Kopacz, zamknięcie okna przyciskiem `X` pozostawia aktywne funkcje w tle. Aby całkowicie wyłączyć program, użyj opcji zamknięcia z menu jego ikony.
+
+## Zmiany w wersji 2.0
+
+- Rozdzielono program na dwie niezależne aplikacje: lekki `Minecraft Helper Auto Clicker` oraz `Minecraft Helper Kopacz`.
+- Auto Clicker nie ładuje modułów OCR, audio ani Kopacza i nie instaluje globalnego hooka myszy. Dokładny zegar kliknięć działa tylko podczas aktywnego clickera.
+- Kopacz nie zawiera widoków ani aktywnych modułów AUTO LPM/PPM, BINDY, Auto zbroi i AutoWater.
+- Dodano szybkie akcje PVP dla Auto bloku, śnieżki, perły i wędki, z wyborem slotów oraz automatycznym powrotem do miecza.
+- Obie aplikacje otrzymały osobne ustawienia, ikony, skróty, podpowiedzi `?`, informacje o zmianach i kontrolę aktualizacji.
+- Instalator pozwala wybrać Auto Clicker, Kopacza albo oba programy. Wykrywa również starą, połączoną instalację i prowadzi użytkownika przez bezpieczną migrację.
+- Zaktualizowano dokumentację i wszystkie główne zrzuty interfejsu.
 
 ## Zmiany w wersji 1.1.8
 
@@ -477,15 +503,25 @@ Jeżeli zauważysz błąd, problem z konfiguracją albo masz propozycję nowej f
 Najprościej uruchomić instalator:
 
 ```text
-MinecraftHelper-Setup-1.1.8.exe
+MinecraftHelper-Setup-2.0.exe
 ```
 
-Instalator działa dla bieżącego użytkownika, nie wymaga osobnej instalacji .NET 8, może utworzyć skrót na pulpicie i dodaje standardowy deinstalator Windows.
+Na ekranie `Wybierz składniki` instalator pozwala zaznaczyć:
 
-Kontrola oficjalnego pliku instalatora wersji 1.1.8:
+- `1. Auto Clicker` — lekki program z AUTO LPM/PPM, BINDY, Auto zbroją i AutoWater,
+- `2. Kopacz` — kopanie, Auto EQ, CobbleX, reconnect, ochrona awaryjna, autołowienie i logi,
+- obie aplikacje jednocześnie — opcja zalecana, jeżeli korzystasz z całego zestawu.
 
-```text
-SHA-256: b8e878b116baf1634169cb2f7e472e363e4222e48ff7b898e6ad5cb026caafde
+Programy trafiają do osobnych podkatalogów i otrzymują oddzielne skróty. Instalator działa dla bieżącego użytkownika, nie wymaga osobnej instalacji .NET 8 i dodaje standardowy deinstalator Windows.
+
+Jeżeli instalator wykryje starszą, połączoną wersję z plikiem `MinecraftHelper.exe`, przed rozpoczęciem pokaże jasny komunikat o wymaganej migracji. Po potwierdzeniu uruchomi deinstalator starej wersji, zachowa ustawienia z `AppData`, a następnie przejdzie do zwykłego kreatora z wyborem `Auto Clicker`, `Kopacz` albo obu składników. Anulowanie komunikatu nie usuwa starej instalacji.
+
+Na komputerze bez wcześniejszej instalacji od razu pojawia się ekran wyboru składników. Kolejne aktualizacje już rozdzielonego wydania są instalowane w tym samym katalogu bez ponownego usuwania obu aplikacji; zaznaczenie składników określa, które programy mają pozostać zainstalowane.
+
+Sumę oficjalnego pliku sprawdź w opisie konkretnego wydania na GitHubie. Dla instalatora zbudowanego lokalnie oblicz ją poleceniem:
+
+```powershell
+Get-FileHash .\artifacts\installer\MinecraftHelper-Setup-2.0.exe -Algorithm SHA256
 ```
 
 ### Windows SmartScreen i Smart App Control
@@ -519,18 +555,24 @@ Wymagane są Windows 10 lub 11, .NET 8 SDK oraz Visual Studio 2022, Rider albo V
 ```powershell
 git clone https://github.com/SzybkiPoPiwo/MinecraftHelper.git
 cd MinecraftHelper
-dotnet restore .\MinecraftHelper\MinecraftHelper.csproj
-dotnet build .\MinecraftHelper\MinecraftHelper.csproj -c Release
-dotnet run --project MinecraftHelper/MinecraftHelper.csproj
+dotnet restore .\MinecraftHelper.slnx
+dotnet build .\MinecraftHelper.slnx -c Release
+```
+
+Uruchom wybrany program:
+
+```powershell
+dotnet run --project .\MinecraftHelper.Pvp\MinecraftHelper.Pvp.csproj -c Release
+dotnet run --project .\MinecraftHelper\MinecraftHelper.csproj -c Release
 ```
 
 ### Budowanie instalatora
 
 ```powershell
-.\scripts\build-installer.ps1 -Version 1.1.8 -Rid win-x64 -SelfContained:$true -Clean
+.\scripts\build-installer.ps1 -Version 2.0 -Rid win-x64 -SelfContained:$true -Clean
 ```
 
-Wynik zostanie zapisany w `artifacts/installer/MinecraftHelper-Setup-1.1.8.exe`.
+Wynik zostanie zapisany w `artifacts/installer/MinecraftHelper-Setup-2.0.exe`.
 
 ### Odtworzenie paczki zasobów
 

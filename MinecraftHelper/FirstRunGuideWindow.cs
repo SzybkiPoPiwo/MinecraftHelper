@@ -31,8 +31,8 @@ namespace MinecraftHelper
             string safePreviousVersion = previousVersion?.Trim() ?? string.Empty;
 
             Title = isFirstRun
-                ? "Pierwsze uruchomienie — Minecraft Helper"
-                : $"Informacje o wersji {safeCurrentVersion} — Minecraft Helper";
+                ? "Pierwsze uruchomienie — Minecraft Helper Kopacz"
+                : $"Informacje o wersji {safeCurrentVersion} — Minecraft Helper Kopacz";
             Width = 700;
             Height = Math.Min(650, Math.Max(540, SystemParameters.WorkArea.Height - 70));
             MinWidth = 620;
@@ -85,7 +85,7 @@ namespace MinecraftHelper
             header.Children.Add(new TextBlock
             {
                 Text = isFirstRun
-                    ? "Witaj w Minecraft Helper"
+                    ? "Witaj w Minecraft Helper Kopacz"
                     : $"Wykryto zmianę wersji — {safeCurrentVersion}",
                 Margin = new Thickness(12, 0, 0, 0),
                 VerticalAlignment = VerticalAlignment.Center,
@@ -119,16 +119,15 @@ namespace MinecraftHelper
                     "Najpierw przygotuj program",
                     "1. Uruchom Minecrafta lub BlazingPacka i wejdź do gry.\n" +
                     "2. W zakładce Ustawienia kliknij Odśwież, wybierz właściwy proces gry — nie launcher — i kliknij Zapisz program.\n" +
-                    "3. Rozwiń funkcje, których chcesz używać, i przeczytaj ich pełne opisy pod przyciskami ?.\n" +
-                    "4. Ustaw bindy tak, aby nie kolidowały ze sobą ani ze sterowaniem Minecrafta."));
+                    "3. Włącz dołączoną paczkę zasobów, jeżeli chcesz korzystać z Auto EQ, kontroli kilofa lub ochrony awaryjnej.\n" +
+                    "4. Rozwiń używany tryb Kopacza i przeczytaj jego pełny opis pod przyciskiem ?."));
                 guidePanel.Children.Add(BuildInfoCard(
-                    "AUTO LPM i AUTO PPM — najważniejsze",
-                    "• Zaznaczenie sekcji włącza moduł i pokazuje ustawienia, ale samo nie uruchamia klikania.\n" +
-                    "• Kliknij pole Klawisz, naciśnij wybrany bind, a potem kliknij Zapisz.\n" +
-                    "• Ustaw minimalny i maksymalny CPS. Na początek użyj spokojnych wartości i sprawdź działanie.\n" +
-                    "• W trybie klasycznym zapisany bind włącza clicker, a ponowne naciśnięcie go wyłącza.\n" +
-                    "• W trybie kombinacji użyj binda razem z fizycznym LPM lub PPM i trzymaj odpowiedni przycisk myszy.\n" +
-                    "• Clickery działają tylko wtedy, gdy zapisane okno Minecrafta ma fokus."));
+                    "Kopacz i Auto EQ — najważniejsze",
+                    "• Wybierz Kopacz 5/3/3 albo 6/3/3 i przypisz osobny bind uruchamiania.\n" +
+                    "• Auto EQ działa wyłącznie podczas aktywnego Kopacza i wymaga aktualnej paczki zasobów oraz GUI Scale: Large.\n" +
+                    "• Najpierw użyj testu wykrywania EQ, a profile reconnectu sprawdzaj etapami.\n" +
+                    "• Ten sam bind zatrzymuje Kopacza także podczas skanowania, wyrzucania, komendy i reconnectu.\n" +
+                    "• Automatyzacja działa tylko przy widocznym, aktywnym oknie Minecrafta."));
             }
             else
             {
@@ -227,7 +226,7 @@ namespace MinecraftHelper
         {
             if (isFirstRun)
             {
-                return "Nie znaleziono zapisanego pliku ustawień, dlatego wygląda na to, że uruchamiasz program po raz pierwszy. Zanim włączysz makra, zapoznaj się z interfejsem, changelogiem i instrukcjami pod przyciskami ?.";
+                return "Nie znaleziono zapisanego pliku ustawień, dlatego wygląda na to, że uruchamiasz Kopacza po raz pierwszy. Zanim włączysz automatyzację, zapoznaj się z interfejsem i instrukcjami pod przyciskami ?.";
             }
 
             if (string.IsNullOrWhiteSpace(previousVersion))
@@ -248,7 +247,11 @@ namespace MinecraftHelper
         {
             if (string.IsNullOrWhiteSpace(previousVersion))
             {
+#if MINER_EDITION
+                return "Starszy plik ustawień zostanie automatycznie uzupełniony o brakujące pola. Ustawienia Kopacza, Auto EQ, komend, reconnectu i HUD pozostaną zachowane.";
+#else
                 return "Starszy plik ustawień zostanie automatycznie uzupełniony o brakujące pola. Dotychczasowe bindy, CPS, komendy i pozostałe obsługiwane ustawienia pozostaną zachowane.";
+#endif
             }
 
             int comparison = ReleaseNotesCatalog.CompareVersions(previousVersion, currentVersion);
@@ -257,7 +260,11 @@ namespace MinecraftHelper
                 return "Uruchomiono starszy program z zapisem utworzonym przez nowszą wersję. Rozpoznane ustawienia zostaną wczytane, ale opcje dodane później mogą być niedostępne. Przed większymi zmianami wykonaj eksport ustawień.";
             }
 
+#if MINER_EDITION
+            return "Program automatycznie uzupełni brakujące pola nowej wersji. Ustawienia Kopacza, Auto EQ, komend, reconnectu i HUD pozostaną zachowane.";
+#else
             return "Program automatycznie uzupełni brakujące pola nowej wersji. Dotychczasowe bindy, CPS, komendy i pozostałe obsługiwane ustawienia pozostaną zachowane.";
+#endif
         }
 
         private static void AddReleaseNotesCards(
@@ -266,6 +273,14 @@ namespace MinecraftHelper
             string previousVersion,
             string currentVersion)
         {
+#if MINER_EDITION
+            target.Children.Add(BuildInfoCard(
+                "Osobne wydanie Kopacz",
+                "• To wydanie zawiera Kopacza 5/3/3 i 6/3/3, Auto EQ, CobbleX, logi, Auto Reconnect, ochronę awaryjną i automatyzację pomocniczą.\n" +
+                "• Clickery LPM/PPM, BINDY, Auto zbroja i AutoWater zostały przeniesione do osobnej, lekkiej aplikacji Auto Clicker.\n" +
+                "• Kopacz nie uruchamia globalnego nasłuchu myszy używanego wcześniej przez clickery."));
+            return;
+#else
             IReadOnlyList<AppReleaseNotes> notes = ReleaseNotesCatalog.GetNotesForStartup(
                 previousVersion,
                 currentVersion,
@@ -278,6 +293,7 @@ namespace MinecraftHelper
                     $"Wersja {release.Version} — {release.Title}",
                     changes));
             }
+#endif
         }
 
         private static Border BuildInfoCard(string title, string text)
