@@ -122,6 +122,7 @@ public partial class MainWindow : Window
         PvpSnowball,
         PvpPearl,
         PvpRod,
+        AppleCutter,
         AutoArmor,
         AutoWater,
         ChatOpen
@@ -419,10 +420,24 @@ public partial class MainWindow : Window
         _settings.AutoLeftButton.MaxCps = NormalizeCps(_settings.AutoLeftButton.MaxCps, 12);
         _settings.AutoRightButton.MinCps = NormalizeCps(_settings.AutoRightButton.MinCps, 10);
         _settings.AutoRightButton.MaxCps = NormalizeCps(_settings.AutoRightButton.MaxCps, 12);
-        if (!_settings.AutoLeftComboMode && !_settings.AutoLeftHoldBindMode)
+        if (_settings.AutoLeftPhysicalToggleMode)
+        {
             _settings.AutoLeftComboMode = false;
-        if (!_settings.AutoRightComboMode && !_settings.AutoRightHoldBindMode)
+            _settings.AutoLeftHoldBindMode = false;
+        }
+        else if (_settings.AutoLeftComboMode)
+        {
+            _settings.AutoLeftHoldBindMode = false;
+        }
+        if (_settings.AutoRightPhysicalToggleMode)
+        {
             _settings.AutoRightComboMode = false;
+            _settings.AutoRightHoldBindMode = false;
+        }
+        else if (_settings.AutoRightComboMode)
+        {
+            _settings.AutoRightHoldBindMode = false;
+        }
         if (!string.IsNullOrWhiteSpace(_settings.AutoLeftButton.Key)
             && string.Equals(
                 _settings.AutoLeftButton.Key.Trim(),
@@ -436,6 +451,7 @@ public partial class MainWindow : Window
             _settings.AutoRightButton.Key = string.Empty;
         }
         NormalizePvpQuickActionSettings();
+        NormalizeAppleCutterSettings();
         NormalizeAutoArmorSettings();
         NormalizeAutoWaterSettings();
     }
@@ -449,13 +465,19 @@ public partial class MainWindow : Window
         TxtAutoLeftMinCps.Text = _settings.AutoLeftButton.MinCps.ToString(CultureInfo.InvariantCulture);
         TxtAutoLeftMaxCps.Text = _settings.AutoLeftButton.MaxCps.ToString(CultureInfo.InvariantCulture);
         ChkAutoLeftDabMode.IsChecked = _settings.AutoLeftDabMode;
-        CbAutoLeftMode.SelectedIndex = _settings.AutoLeftComboMode ? 2 : _settings.AutoLeftHoldBindMode ? 1 : 0;
+        CbAutoLeftMode.SelectedIndex = GetSavedClickerModeIndex(
+            _settings.AutoLeftPhysicalToggleMode,
+            _settings.AutoLeftComboMode,
+            _settings.AutoLeftHoldBindMode);
 
         ChkAutoRightEnabled.IsChecked = _settings.AutoRightButton.Enabled;
         TxtAutoRightKey.Text = _settings.AutoRightButton.Key;
         TxtAutoRightMinCps.Text = _settings.AutoRightButton.MinCps.ToString(CultureInfo.InvariantCulture);
         TxtAutoRightMaxCps.Text = _settings.AutoRightButton.MaxCps.ToString(CultureInfo.InvariantCulture);
-        CbAutoRightMode.SelectedIndex = _settings.AutoRightComboMode ? 2 : _settings.AutoRightHoldBindMode ? 1 : 0;
+        CbAutoRightMode.SelectedIndex = GetSavedClickerModeIndex(
+            _settings.AutoRightPhysicalToggleMode,
+            _settings.AutoRightComboMode,
+            _settings.AutoRightHoldBindMode);
 
         ChkPauseWhenCursorVisible.IsChecked = _settings.PauseWhenCursorVisible;
         _schedulerCursorGuardEnabled = _settings.PauseWhenCursorVisible;
@@ -463,6 +485,7 @@ public partial class MainWindow : Window
         ChkBindyEnabled.IsChecked = _settings.BindyEnabled;
         TxtChatOpenKey.Text = _settings.ChatOpenKey;
         LoadPvpQuickActionsToUi();
+        LoadAppleCutterToUi();
         LoadAutoArmorToUi();
         LoadAutoWaterToUi();
     }
@@ -475,6 +498,7 @@ public partial class MainWindow : Window
         _settings.AutoLeftButton.MaxCps = ReadCps(TxtAutoLeftMaxCps.Text, 12);
         _settings.AutoLeftComboMode = GetSelectedMode(CbAutoLeftMode) == "Combo";
         _settings.AutoLeftHoldBindMode = GetSelectedMode(CbAutoLeftMode) == "Hold";
+        _settings.AutoLeftPhysicalToggleMode = GetSelectedMode(CbAutoLeftMode) == "PhysicalToggle";
         _settings.AutoLeftDabMode = ChkAutoLeftDabMode.IsChecked == true;
 
         _settings.AutoRightButton.Enabled = ChkAutoRightEnabled.IsChecked == true;
@@ -483,11 +507,13 @@ public partial class MainWindow : Window
         _settings.AutoRightButton.MaxCps = ReadCps(TxtAutoRightMaxCps.Text, 12);
         _settings.AutoRightComboMode = GetSelectedMode(CbAutoRightMode) == "Combo";
         _settings.AutoRightHoldBindMode = GetSelectedMode(CbAutoRightMode) == "Hold";
+        _settings.AutoRightPhysicalToggleMode = GetSelectedMode(CbAutoRightMode) == "PhysicalToggle";
         _settings.PauseWhenCursorVisible = ChkPauseWhenCursorVisible.IsChecked == true;
         _settings.OverlayHudEnabled = ChkOverlayEnabled.IsChecked == true;
         _settings.BindyEnabled = ChkBindyEnabled.IsChecked == true;
         _settings.ChatOpenKey = NormalizeControlKey(TxtChatOpenKey.Text, "T");
         ReadPvpQuickActionsFromUi();
+        ReadAppleCutterFromUi();
         ReadAutoArmorFromUi();
         ReadAutoWaterFromUi();
     }
@@ -502,6 +528,16 @@ public partial class MainWindow : Window
     private static string GetSelectedMode(ComboBox comboBox)
     {
         return (comboBox.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "Toggle";
+    }
+
+    private static int GetSavedClickerModeIndex(bool physicalToggleMode, bool comboMode, bool holdMode)
+    {
+        return physicalToggleMode ? 3 : comboMode ? 2 : holdMode ? 1 : 0;
+    }
+
+    private static bool UsesPhysicalPointerGate(string mode)
+    {
+        return mode is "Combo" or "PhysicalToggle";
     }
 
     private static bool CanShareAutoClickerBind(bool leftComboMode, bool leftHoldMode, bool rightComboMode)
@@ -563,8 +599,14 @@ public partial class MainWindow : Window
             _isLoadingUi = true;
             try
             {
-                CbAutoLeftMode.SelectedIndex = _settings.AutoLeftComboMode ? 2 : _settings.AutoLeftHoldBindMode ? 1 : 0;
-                CbAutoRightMode.SelectedIndex = _settings.AutoRightComboMode ? 2 : _settings.AutoRightHoldBindMode ? 1 : 0;
+                CbAutoLeftMode.SelectedIndex = GetSavedClickerModeIndex(
+                    _settings.AutoLeftPhysicalToggleMode,
+                    _settings.AutoLeftComboMode,
+                    _settings.AutoLeftHoldBindMode);
+                CbAutoRightMode.SelectedIndex = GetSavedClickerModeIndex(
+                    _settings.AutoRightPhysicalToggleMode,
+                    _settings.AutoRightComboMode,
+                    _settings.AutoRightHoldBindMode);
             }
             finally
             {
@@ -657,6 +699,7 @@ public partial class MainWindow : Window
             PanelAutoRightContent.Visibility = ChkAutoRightEnabled.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
         UpdateAutoArmorEnabledState();
         UpdateAutoWaterEnabledState();
+        UpdateAppleCutterEnabledState();
     }
 
     private static void SetExpandableSectionState(FrameworkElement panel, bool enabled)
@@ -908,6 +951,8 @@ public partial class MainWindow : Window
             RequestCancelAutoArmor("Usunięto bind — bezpiecznie kończę bieżący element.");
         if (target == "AutoWater" && _autoWaterStage != AutoWaterStage.None)
             CancelAutoWater("Usunięto bind AutoWater.", Brushes.Orange, restoreSlot: true);
+        if (target == "AppleCutter" && IsAppleCutterRunning)
+            CancelAppleCutter("Usunięto bind — ścinanie jabłek zatrzymane.", Brushes.Orange);
         MarkDirty();
         UpdateStatusBar("Usunięto bind.", "Orange");
     }
@@ -927,6 +972,7 @@ public partial class MainWindow : Window
             "PvpSnowball" => TxtPvpSnowballBind.Text,
             "PvpPearl" => TxtPvpPearlBind.Text,
             "PvpRod" => TxtPvpRodBind.Text,
+            "AppleCutter" => TxtAppleCutterBind.Text,
             "AutoArmor" => TxtAutoArmorBind.Text,
             "AutoWater" => TxtAutoWaterBind.Text,
             "ChatOpen" => TxtChatOpenKey.Text,
@@ -946,6 +992,7 @@ public partial class MainWindow : Window
             case "PvpSnowball": TxtPvpSnowballBind.Text = keyText; break;
             case "PvpPearl": TxtPvpPearlBind.Text = keyText; break;
             case "PvpRod": TxtPvpRodBind.Text = keyText; break;
+            case "AppleCutter": TxtAppleCutterBind.Text = keyText; break;
             case "AutoArmor": TxtAutoArmorBind.Text = keyText; break;
             case "AutoWater": TxtAutoWaterBind.Text = keyText; break;
             case "ChatOpen": TxtChatOpenKey.Text = keyText; break;
@@ -967,6 +1014,7 @@ public partial class MainWindow : Window
             ("PvpSnowball", TxtPvpSnowballBind.Text, "Śnieżka"),
             ("PvpPearl", TxtPvpPearlBind.Text, "Perła"),
             ("PvpRod", TxtPvpRodBind.Text, "Wędka"),
+            ("AppleCutter", TxtAppleCutterBind.Text, "Ścinanie jabłek"),
             ("AutoArmor", TxtAutoArmorBind.Text, "Auto zbroja"),
             ("AutoWater", TxtAutoWaterBind.Text, "AutoWater"),
             ("ChatOpen", TxtChatOpenKey.Text, "otwieranie chatu")
@@ -1167,7 +1215,9 @@ public partial class MainWindow : Window
         _schedulerCursorGuardEnabled = cursorGuardEnabled;
         bool quickActionCursorGuardRequired = IsPvpQuickActionRunning
             || (IsAutoLeftClickerRuntimeActive() && HasAnyConfiguredPvpQuickActionBind());
-        bool shouldProbeCursor = targetFocused && (cursorGuardEnabled || quickActionCursorGuardRequired);
+        bool appleCutterCursorGuardRequired = IsAppleCutterRunning;
+        bool shouldProbeCursor = targetFocused
+            && (cursorGuardEnabled || quickActionCursorGuardRequired || appleCutterCursorGuardRequired);
         if (!shouldProbeCursor)
         {
             _cachedCursorVisible = false;
@@ -1194,6 +1244,8 @@ public partial class MainWindow : Window
 
         if (TryHandleAutoArmorCalibration(now) || TryHandleAutoWaterCalibrationOrTest(now))
         {
+            if (IsAppleCutterRunning)
+                CancelAppleCutter("Ścinanie jabłek przerwane przez kalibrację innej funkcji.", Brushes.OrangeRed);
             UpdateClickScheduler(false, false, 0, 0);
             UpdatePhysicalMouseTracking(now);
             RefreshOverlayHud(now);
@@ -1217,6 +1269,8 @@ public partial class MainWindow : Window
                 CancelAutoWater("AutoWater przerwany po utracie fokusu.", Brushes.OrangeRed, restoreSlot: false);
             if (IsPvpQuickActionRunning)
                 CancelPvpQuickAction("Akcja PVP przerwana po utracie fokusu Minecrafta.", Brushes.OrangeRed, restoreSword: false);
+            if (IsAppleCutterRunning)
+                CancelAppleCutter("Ścinanie jabłek przerwane po utracie fokusu — zwolniono LPM i PPM.", Brushes.OrangeRed);
             RefreshClickerStateUi(now, blockedByCursor: false, targetFocused: false);
             RefreshOverlayHud(now);
             return;
@@ -1231,12 +1285,28 @@ public partial class MainWindow : Window
                 || IsConfiguredBindKeyDown(TxtPvpSnowballBind.Text)
                 || IsConfiguredBindKeyDown(TxtPvpPearlBind.Text)
                 || IsConfiguredBindKeyDown(TxtPvpRodBind.Text)
+                || IsConfiguredBindKeyDown(TxtAppleCutterBind.Text)
                 || IsConfiguredBindKeyDown(TxtAutoArmorBind.Text)
                 || IsConfiguredBindKeyDown(TxtAutoWaterBind.Text)
                 || IsVirtualKeyDown(VK_LCONTROL);
             if (anyBindDown)
                 return;
             _suppressBindToggleUntilRelease = false;
+        }
+
+        HandleAppleCutterBind(now, cursorVisible);
+        if (IsAppleCutterRunning)
+        {
+            UpdateClickScheduler(false, false, 0, 0);
+            SetAutoLeftDabHold(false);
+            UpdatePhysicalMouseTracking(now);
+            if (cursorVisible && !IsAppleCutterRepairStage)
+                CancelAppleCutter("Ścinanie jabłek przerwane: wykryto otwarty chat, ekwipunek lub inne GUI.", Brushes.OrangeRed);
+            else
+                RunAppleCutterTick(now);
+            RefreshClickerStateUi(now, blockedByCursor, targetFocused: true);
+            RefreshOverlayHud(now);
+            return;
         }
 
         HandleClickerRuntime(blockedByCursor);
@@ -1270,18 +1340,27 @@ public partial class MainWindow : Window
             string rightMode = GetSelectedMode(CbAutoRightMode);
             int leftHoldKey = leftMode == "Hold" && TryGetVirtualKey(TxtAutoLeftKey.Text, out int leftKey) ? leftKey : 0;
             int rightHoldKey = rightMode == "Hold" && TryGetVirtualKey(TxtAutoRightKey.Text, out int rightKey) ? rightKey : 0;
-            int leftPointerKey = leftMode == "Combo" ? VkLeftButton : 0;
-            int rightPointerKey = rightMode == "Combo" ? VkRightButton : 0;
+            int leftPointerKey = UsesPhysicalPointerGate(leftMode) ? VkLeftButton : 0;
+            int rightPointerKey = UsesPhysicalPointerGate(rightMode) ? VkRightButton : 0;
+            bool leftPointerReady = leftPointerKey == 0 || _physicalMouseTracker.IsButtonDown(leftPointerKey);
+            bool rightPointerReady = rightPointerKey == 0 || _physicalMouseTracker.IsButtonDown(rightPointerKey);
             UpdateClickScheduler(
-                !blockedByCursor && _autoLeftRuntimeEnabled && ChkAutoLeftEnabled.IsChecked == true,
-                !blockedByCursor && _autoRightRuntimeEnabled && ChkAutoRightEnabled.IsChecked == true,
+                !blockedByCursor && leftPointerReady && _autoLeftRuntimeEnabled && ChkAutoLeftEnabled.IsChecked == true,
+                !blockedByCursor && rightPointerReady && _autoRightRuntimeEnabled && ChkAutoRightEnabled.IsChecked == true,
                 leftHoldKey,
                 rightHoldKey,
                 leftPointerKey,
                 rightPointerKey);
         }
 
-        SetAutoLeftDabHold(!blockedByCursor && _autoLeftRuntimeEnabled && ChkAutoLeftDabMode.IsChecked == true);
+        string currentLeftMode = GetSelectedMode(CbAutoLeftMode);
+        bool leftDabPointerReady = !UsesPhysicalPointerGate(currentLeftMode)
+            || _physicalMouseTracker.IsButtonDown(VkLeftButton);
+        SetAutoLeftDabHold(
+            !blockedByCursor
+            && leftDabPointerReady
+            && _autoLeftRuntimeEnabled
+            && ChkAutoLeftDabMode.IsChecked == true);
         RefreshClickerStateUi(now, blockedByCursor, targetFocused: true);
         RefreshOverlayHud(now);
     }
@@ -1293,12 +1372,14 @@ public partial class MainWindow : Window
             || _autoWaterStage != AutoWaterStage.None
             || _autoWaterCalibrationPending
             || _autoWaterRecognitionTestPending
+            || IsAppleCutterRunning
             || IsPvpQuickActionRunning
             || _bindyStage != BindyStage.None;
         bool inputPollingRequired = _isTargetFocused
             && (ChkAutoLeftEnabled.IsChecked == true
                 || ChkAutoRightEnabled.IsChecked == true
                 || ChkBindyEnabled.IsChecked == true
+                || ChkAppleCutterEnabled.IsChecked == true
                 || ChkAutoArmorEnabled.IsChecked == true
                 || ChkAutoWaterEnabled.IsChecked == true);
         TimeSpan interval = workflowActive
@@ -1326,11 +1407,12 @@ public partial class MainWindow : Window
             ref _autoRightComboStopWasDown);
         _autoArmorBindWasDown = IsConfiguredBindKeyDown(TxtAutoArmorBind.Text);
         _autoWaterBindWasDown = IsConfiguredBindKeyDown(TxtAutoWaterBind.Text);
+        _appleCutterBindWasDown = IsConfiguredBindKeyDown(TxtAppleCutterBind.Text);
         SynchronizePvpQuickActionBindStates();
 
-        if (GetSelectedMode(CbAutoLeftMode) != "Toggle")
+        if (GetSelectedMode(CbAutoLeftMode) is not ("Toggle" or "PhysicalToggle"))
             _autoLeftRuntimeEnabled = false;
-        if (GetSelectedMode(CbAutoRightMode) != "Toggle")
+        if (GetSelectedMode(CbAutoRightMode) is not ("Toggle" or "PhysicalToggle"))
             _autoRightRuntimeEnabled = false;
 
         foreach (BindyEntry entry in _settings.BindyEntries)
@@ -1343,6 +1425,12 @@ public partial class MainWindow : Window
             return;
         _nextRuntimeUiRefreshUtc = now.AddMilliseconds(100);
         bool rightPausedByAction = IsPvpQuickActionRunning;
+        bool leftWaitingForPointer = _autoLeftRuntimeEnabled
+            && GetSelectedMode(CbAutoLeftMode) == "PhysicalToggle"
+            && !_physicalMouseTracker.IsButtonDown(VkLeftButton);
+        bool rightWaitingForPointer = _autoRightRuntimeEnabled
+            && GetSelectedMode(CbAutoRightMode) == "PhysicalToggle"
+            && !_physicalMouseTracker.IsButtonDown(VkRightButton);
 
         string leftState = !_autoLeftRuntimeEnabled
             ? "OFF"
@@ -1350,23 +1438,31 @@ public partial class MainWindow : Window
                 ? "BRAK FOKUSU"
                 : blockedByCursor
                     ? "PAUZA"
-                    : "ON";
+                    : leftWaitingForPointer
+                        ? "GOTOWY"
+                        : "ON";
         string rightState = !_autoRightRuntimeEnabled
             ? "OFF"
             : !targetFocused
                 ? "BRAK FOKUSU"
                 : blockedByCursor || rightPausedByAction
                     ? "PAUZA"
-                    : "ON";
+                    : rightWaitingForPointer
+                        ? "GOTOWY"
+                        : "ON";
         TxtAutoLeftState.Text = leftState;
         TxtAutoLeftState.Foreground = leftState == "ON"
             ? Brushes.MediumSpringGreen
+            : leftState == "GOTOWY"
+                ? Brushes.DeepSkyBlue
             : leftState == "OFF"
                 ? Brushes.OrangeRed
                 : Brushes.Orange;
         TxtAutoRightState.Text = rightState;
         TxtAutoRightState.Foreground = rightState == "ON"
             ? Brushes.MediumSpringGreen
+            : rightState == "GOTOWY"
+                ? Brushes.DeepSkyBlue
             : rightState == "OFF"
                 ? Brushes.OrangeRed
                 : Brushes.Orange;
@@ -1458,6 +1554,26 @@ public partial class MainWindow : Window
                 comboWasDown = comboDown;
                 comboStopWasDown = stopDown;
                 break;
+            case "PhysicalToggle":
+                comboWasDown = false;
+                comboStopWasDown = false;
+                if (pressed && !blockedByCursor)
+                {
+                    runtime = !runtime;
+                    if (!runtime)
+                    {
+                        if (isLeft) _autoClickScheduler.StopLeftImmediately();
+                        else _autoClickScheduler.StopRightImmediately();
+                    }
+
+                    string physicalButton = isLeft ? "LPM" : "PPM";
+                    UpdateStatusBar(
+                        runtime
+                            ? $"{(isLeft ? "AUTO LPM" : "AUTO PPM")}: gotowy — trzymaj {physicalButton}."
+                            : $"{(isLeft ? "AUTO LPM" : "AUTO PPM")}: wyłączony.",
+                        runtime ? "Green" : "Orange");
+                }
+                break;
             default:
                 comboWasDown = false;
                 comboStopWasDown = false;
@@ -1486,12 +1602,19 @@ public partial class MainWindow : Window
 
     private void UpdatePhysicalMouseTracking(DateTime now)
     {
-        bool needed = (_autoLeftRuntimeEnabled
+        string leftMode = GetSelectedMode(CbAutoLeftMode);
+        string rightMode = GetSelectedMode(CbAutoRightMode);
+        bool leftPointerDown = UsesPhysicalPointerGate(leftMode)
+            && _physicalMouseTracker.IsButtonDown(VkLeftButton);
+        bool rightPointerDown = UsesPhysicalPointerGate(rightMode)
+            && _physicalMouseTracker.IsButtonDown(VkRightButton);
+        bool needed = _isTargetFocused
+            && ((_autoLeftRuntimeEnabled
                 && ChkAutoLeftEnabled.IsChecked == true
-                && GetSelectedMode(CbAutoLeftMode) == "Combo")
+                && leftPointerDown)
             || (_autoRightRuntimeEnabled
                 && ChkAutoRightEnabled.IsChecked == true
-                && GetSelectedMode(CbAutoRightMode) == "Combo");
+                && rightPointerDown));
 
         if (!needed)
         {
@@ -1512,12 +1635,12 @@ public partial class MainWindow : Window
         }
 
         _nextPhysicalMouseTrackerRetryUtc = now.AddSeconds(2);
-        if (GetSelectedMode(CbAutoLeftMode) == "Combo")
+        if (UsesPhysicalPointerGate(leftMode))
         {
             _autoLeftRuntimeEnabled = false;
             _autoClickScheduler.StopLeftImmediately();
         }
-        if (GetSelectedMode(CbAutoRightMode) == "Combo")
+        if (UsesPhysicalPointerGate(rightMode))
         {
             _autoRightRuntimeEnabled = false;
             _autoClickScheduler.StopRightImmediately();
@@ -1526,7 +1649,7 @@ public partial class MainWindow : Window
         {
             _physicalMouseTrackerWarningShown = true;
             UpdateStatusBar(
-                $"Nie uruchomiono trybu kombinacji: błąd trackera myszy Win32 {_physicalMouseTracker.LastError}.",
+                $"Nie uruchomiono trybu fizycznego LPM/PPM: błąd trackera myszy Win32 {_physicalMouseTracker.LastError}.",
                 "Red");
         }
     }
@@ -1661,6 +1784,8 @@ public partial class MainWindow : Window
 
     private void StopOtherExclusivePointerMacros()
     {
+        if (IsAppleCutterRunning)
+            CancelAppleCutter("Ścinanie jabłek zatrzymane przez inną automatyzację.", Brushes.Orange);
     }
 
     private void ResetTestAutoFishingRuntimeState(DateTime now)
@@ -1862,6 +1987,10 @@ public partial class MainWindow : Window
             || (ChkPauseWhenCursorVisible.IsChecked == true && _cachedCursorVisible);
         bool leftClickerPaused = baseClickerPause;
         bool rightClickerPaused = baseClickerPause || IsPvpQuickActionRunning;
+        bool leftWaitingForPointer = GetSelectedMode(CbAutoLeftMode) == "PhysicalToggle"
+            && !_physicalMouseTracker.IsButtonDown(VkLeftButton);
+        bool rightWaitingForPointer = GetSelectedMode(CbAutoRightMode) == "PhysicalToggle"
+            && !_physicalMouseTracker.IsButtonDown(VkRightButton);
         string rightClickerPauseMessage = IsPvpQuickActionRunning
             ? "PAUZA • szybka akcja PVP"
             : "PAUZA • brak fokusu albo otwarte GUI";
@@ -1870,17 +1999,23 @@ public partial class MainWindow : Window
                 "AUTO LPM",
                 leftClickerPaused
                     ? "PAUZA • brak fokusu albo otwarte GUI"
-                    : $"ON • {ReadCps(TxtAutoLeftMinCps.Text, 10)}–{ReadCps(TxtAutoLeftMaxCps.Text, 12)} CPS",
+                    : leftWaitingForPointer
+                        ? "GOTOWY • trzymaj LPM"
+                        : $"ON • {ReadCps(TxtAutoLeftMinCps.Text, 10)}–{ReadCps(TxtAutoLeftMaxCps.Text, 12)} CPS",
                 leftClickerPaused ? OverlayHudTone.Warning : OverlayHudTone.Active));
         if (_autoRightRuntimeEnabled)
             entries.Add(new OverlayHudEntry(
                 "AUTO PPM",
                 rightClickerPaused
                     ? rightClickerPauseMessage
-                    : $"ON • {ReadCps(TxtAutoRightMinCps.Text, 10)}–{ReadCps(TxtAutoRightMaxCps.Text, 12)} CPS",
+                    : rightWaitingForPointer
+                        ? "GOTOWY • trzymaj PPM"
+                        : $"ON • {ReadCps(TxtAutoRightMinCps.Text, 10)}–{ReadCps(TxtAutoRightMaxCps.Text, 12)} CPS",
                 rightClickerPaused ? OverlayHudTone.Warning : OverlayHudTone.Active));
         if (IsPvpQuickActionRunning)
             entries.Add(BuildPvpQuickActionOverlayEntry());
+        if (IsAppleCutterRunning)
+            entries.Add(BuildAppleCutterOverlayEntry());
         if (IsAutoArmorRunning || _autoArmorCalibrationPending)
             entries.Add(BuildAutoArmorOverlayEntry());
         if (_autoWaterStage != AutoWaterStage.None || _autoWaterCalibrationPending || _autoWaterRecognitionTestPending)
@@ -1951,6 +2086,8 @@ public partial class MainWindow : Window
             CbPvpSnowballSlot.Items.Add(new ComboBoxItem { Content = slotText });
             CbPvpPearlSlot.Items.Add(new ComboBoxItem { Content = slotText });
             CbPvpRodSlot.Items.Add(new ComboBoxItem { Content = slotText });
+            CbAppleCutterShearsSlot.Items.Add(new ComboBoxItem { Content = slotText });
+            CbAppleCutterLeavesSlot.Items.Add(new ComboBoxItem { Content = slotText });
             CbAutoWaterWaterSlot.Items.Add(new ComboBoxItem { Content = slot.ToString(CultureInfo.InvariantCulture) });
             CbAutoWaterReturnSlot.Items.Add(new ComboBoxItem { Content = slot.ToString(CultureInfo.InvariantCulture) });
         }
@@ -1972,6 +2109,10 @@ public partial class MainWindow : Window
         _physicalMouseTracker.Dispose();
         SetAutoLeftDabHold(false);
         CancelPvpQuickAction(string.Empty, Brushes.Orange, restoreSword: false, updateStatus: false);
+        if (IsAppleCutterRunning)
+            CancelAppleCutter(string.Empty, Brushes.Orange, updateStatus: false);
+        else
+            ReleaseAppleCutterInjectedButtons();
         ResetBindyStage();
         if (IsAutoArmorRunning)
             CancelAutoArmor(string.Empty, Brushes.Orange, closeInventory: false);

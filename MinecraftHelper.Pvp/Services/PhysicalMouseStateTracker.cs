@@ -5,7 +5,7 @@ using System.Threading;
 namespace MinecraftHelper.Services;
 
 /// <summary>
-/// Tracks only physical LPM/PPM transitions while a combination clicker is active.
+/// Tracks only physical LPM/PPM transitions while a mouse-gated clicker is active.
 /// Injected clicks are ignored, and mouse-move messages return immediately without
 /// marshalling or logging so the hook stays out of the hot cursor path.
 /// </summary>

@@ -33,9 +33,11 @@ internal sealed class PvpSettings
     public MacroButton AutoRightButton { get; set; } = new();
     public bool AutoLeftComboMode { get; set; }
     public bool AutoLeftHoldBindMode { get; set; }
+    public bool AutoLeftPhysicalToggleMode { get; set; }
     public bool AutoLeftDabMode { get; set; }
     public bool AutoRightComboMode { get; set; }
     public bool AutoRightHoldBindMode { get; set; }
+    public bool AutoRightPhysicalToggleMode { get; set; }
     public bool BindyEnabled { get; set; }
     public List<BindyEntry> BindyEntries { get; set; } = new();
     public bool PauseWhenCursorVisible { get; set; } = true;
@@ -52,6 +54,19 @@ internal sealed class PvpSettings
     public int PvpPearlSlot { get; set; } = 3;
     public int PvpRodSlot { get; set; } = 4;
     public int PvpRodRightClickHoldMs { get; set; } = 80;
+
+    public bool AppleCutterEnabled { get; set; }
+    public string AppleCutterBind { get; set; } = string.Empty;
+    public int AppleCutterShearsSlot { get; set; } = 1;
+    public int AppleCutterLeavesSlot { get; set; } = 2;
+    public int AppleCutterSwitchMinMs { get; set; } = 35;
+    public int AppleCutterSwitchMaxMs { get; set; } = 55;
+    public int AppleCutterBreakMinMs { get; set; } = 90;
+    public int AppleCutterBreakMaxMs { get; set; } = 140;
+    public int AppleCutterPlaceMinMs { get; set; } = 50;
+    public int AppleCutterPlaceMaxMs { get; set; } = 90;
+    public int AppleCutterRepairEveryCycles { get; set; } = 40;
+    public string AppleCutterRepairCommand { get; set; } = "/repair";
 
     public bool AutoWaterEnabled { get; set; }
     public string AutoWaterBind { get; set; } = string.Empty;

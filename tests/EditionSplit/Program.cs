@@ -14,6 +14,7 @@ internal static class Program
             string autoClickerView = Read(root, "MinecraftHelper.Pvp", "MainWindow.xaml");
             string autoClickerWindow = Read(root, "MinecraftHelper.Pvp", "MainWindow.xaml.cs");
             string autoClickerQuickActions = Read(root, "MinecraftHelper.Pvp", "MainWindow.PvpQuickActions.cs");
+            string autoClickerAppleCutter = Read(root, "MinecraftHelper.Pvp", "MainWindow.AppleCutter.cs");
             string autoClickerModels = Read(root, "MinecraftHelper.Pvp", "Models", "PvpSettings.cs");
             string autoClickerScheduler = Read(root, "MinecraftHelper.Pvp", "Services", "LightweightClickScheduler.cs");
             string autoClickerMouseTracker = Read(root, "MinecraftHelper.Pvp", "Services", "PhysicalMouseStateTracker.cs");
@@ -38,8 +39,9 @@ internal static class Program
                 && autoClickerProject.Contains("ScrollBarStyles.xaml", StringComparison.Ordinal),
                 "Auto Clicker uses the shared dark scrollbar theme");
             Check(autoClickerWindow.Contains("UpdatePhysicalMouseTracking(now)", StringComparison.Ordinal)
-                && autoClickerWindow.Contains("GetSelectedMode(CbAutoLeftMode) == \"Combo\"", StringComparison.Ordinal),
-                "physical mouse tracking is armed only for an active combination clicker");
+                && autoClickerWindow.Contains("UsesPhysicalPointerGate", StringComparison.Ordinal)
+                && autoClickerWindow.Contains("&& leftPointerDown", StringComparison.Ordinal),
+                "physical mouse tracking runs only while a mouse-gated clicker is physically held");
             Check(autoClickerMouseTracker.Contains("InjectedMouseFlags", StringComparison.Ordinal)
                 && !autoClickerMouseTracker.Contains("WmMouseMove", StringComparison.Ordinal)
                 && autoClickerMouseTracker.Contains("message is WmLeftButtonDown or WmLeftButtonUp", StringComparison.Ordinal),
@@ -53,6 +55,14 @@ internal static class Program
             Check(autoClickerScheduler.Contains("_isPhysicalPointerDown(requiredPointerKey)", StringComparison.Ordinal)
                 && autoClickerScheduler.Contains("SendMouseClick(leftButton, holdPulseMode: false)", StringComparison.Ordinal),
                 "combination scheduler separates physical state from injected clicks");
+            Check(autoClickerView.Contains("Aktywacja bindem + trzymanie LPM", StringComparison.Ordinal)
+                && autoClickerView.Contains("Aktywacja bindem + trzymanie PPM", StringComparison.Ordinal)
+                && autoClickerModels.Contains("AutoLeftPhysicalToggleMode", StringComparison.Ordinal)
+                && autoClickerModels.Contains("AutoRightPhysicalToggleMode", StringComparison.Ordinal)
+                && autoClickerWindow.Contains("case \"PhysicalToggle\":", StringComparison.Ordinal)
+                && autoClickerWindow.Contains("GOTOWY • trzymaj LPM", StringComparison.Ordinal)
+                && autoClickerWindow.Contains("GOTOWY • trzymaj PPM", StringComparison.Ordinal),
+                "LPM and PPM expose persistent physical-button activation with independent saved modes and HUD state");
             int cursorGuardCheck = autoClickerScheduler.IndexOf("suppressClick = _shouldSuppressClick();", StringComparison.Ordinal);
             int injectedClick = autoClickerScheduler.IndexOf("NativeInput.SendMouseClick(leftButton, holdPulseMode: false)", StringComparison.Ordinal);
             Check(cursorGuardCheck >= 0
@@ -94,6 +104,27 @@ internal static class Program
                 && autoClickerQuickActions.Contains("ReleasePvpQuickActionRightButton();", StringComparison.Ordinal)
                 && autoClickerQuickActions.Contains("IsPvpQuickActionGuiVisible()", StringComparison.Ordinal),
                 "PVP actions keep AUTO LPM running, pause only AUTO PPM and safely release the action PPM");
+            Check(autoClickerView.Contains("Header=\"Jabłka\"", StringComparison.Ordinal)
+                && autoClickerView.Contains("Tag=\"AppleCutter\"", StringComparison.Ordinal)
+                && autoClickerView.Contains("TxtAppleCutterSwitchMinMs", StringComparison.Ordinal)
+                && autoClickerView.Contains("TxtAppleCutterBreakMinMs", StringComparison.Ordinal)
+                && autoClickerView.Contains("TxtAppleCutterPlaceMinMs", StringComparison.Ordinal),
+                "Apple cutter has a separate tab, bind and three configurable timing ranges");
+            Check(autoClickerModels.Contains("AppleCutterShearsSlot", StringComparison.Ordinal)
+                && autoClickerModels.Contains("AppleCutterLeavesSlot", StringComparison.Ordinal)
+                && autoClickerModels.Contains("AppleCutterRepairEveryCycles", StringComparison.Ordinal)
+                && autoClickerModels.Contains("AppleCutterRepairCommand", StringComparison.Ordinal),
+                "Apple cutter slots, repair interval and command are persisted");
+            Check(autoClickerAppleCutter.Contains("AppleCutterPlacementCps = 40", StringComparison.Ordinal)
+                && autoClickerAppleCutter.Contains("1000 / AppleCutterPlacementCps", StringComparison.Ordinal)
+                && autoClickerAppleCutter.Contains("SendTextByKeyboard(NormalizeAppleCutterCommand", StringComparison.Ordinal)
+                && autoClickerAppleCutter.Contains("_appleCutterCyclesCompleted % GetAppleCutterRepairEveryCycles() == 0", StringComparison.Ordinal),
+                "Apple cutter places at 40 CPS and repairs on the configured cycle using the shears stage");
+            Check(autoClickerAppleCutter.Contains("ReleaseAppleCutterInjectedButtons();", StringComparison.Ordinal)
+                && autoClickerAppleCutter.Contains("ReleaseAppleCutterLeftButton();", StringComparison.Ordinal)
+                && autoClickerWindow.Contains("Ścinanie jabłek przerwane po utracie fokusu", StringComparison.Ordinal)
+                && autoClickerWindow.Contains("cursorVisible && !IsAppleCutterRepairStage", StringComparison.Ordinal),
+                "Apple cutter releases held input immediately on stop, focus loss and unexpected GUI detection");
 
             Check(minerProject.Contains("<AssemblyName>MinecraftHelper.Miner</AssemblyName>"),
                 "Kopacz has its own executable name");

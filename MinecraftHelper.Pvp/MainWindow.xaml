@@ -22,7 +22,7 @@
                     <TextBlock DockPanel.Dock="Left" Text="MINECRAFT HELPER" Foreground="#61CBFF" FontSize="15" FontWeight="Bold"/>
                     <TextBlock DockPanel.Dock="Right" Text="AUTO CLICKER" Foreground="#38D6B4" FontSize="15" FontWeight="Bold" HorizontalAlignment="Right"/>
                 </DockPanel>
-                <TextBlock Text="Lekki profil: LPM, PPM, akcje PVP, bindy, Auto zbroja i AutoWater" Style="{StaticResource MutedStyle}" Margin="0,3,0,0"/>
+                <TextBlock Text="Lekki profil: LPM, PPM, akcje PVP, ścinanie jabłek, bindy, Auto zbroja i AutoWater" Style="{StaticResource MutedStyle}" Margin="0,3,0,0"/>
             </StackPanel>
         </Border>
 
@@ -34,7 +34,7 @@
                             ToolTipService.InitialShowDelay="100" ToolTipService.ShowDuration="120000">
                         <Button.ToolTip>
                             <ToolTip Style="{StaticResource InfoToolTipStyle}"
-                                     Content="Kliknij Odśwież, wybierz właściwe okno uruchomionego Minecrafta lub BlazingPacka i kliknij Zapisz. Nie wybieraj launchera. Clicker wysyła wejście tylko wtedy, gdy zapisane okno gry jest aktywne. Zapisany wybór jest używany również przez BINDY, szybkie akcje, Auto zbroję i AutoWater."/>
+                                     Content="Kliknij Odśwież, wybierz właściwe okno uruchomionego Minecrafta lub BlazingPacka i kliknij Zapisz. Nie wybieraj launchera. Clicker wysyła wejście tylko wtedy, gdy zapisane okno gry jest aktywne. Zapisany wybór jest używany również przez BINDY, szybkie akcje, ścinanie jabłek, Auto zbroję i AutoWater."/>
                         </Button.ToolTip>
                     </Button>
                 </StackPanel>
@@ -65,7 +65,7 @@
                                             ToolTipService.InitialShowDelay="100" ToolTipService.ShowDuration="120000">
                                         <Button.ToolTip>
                                             <ToolTip Style="{StaticResource InfoToolTipStyle}"
-                                                     Content="AUTO LPM automatycznie klika lewym przyciskiem myszy w ustawionym zakresie CPS.&#10;&#10;PRZEŁĄCZANIE BINDEM: jedno naciśnięcie włącza, następne wyłącza.&#10;TRZYMANIE BINDU: klika wyłącznie podczas fizycznego trzymania przypisanego klawisza.&#10;BIND + FIZYCZNY LPM: bind uzbraja tryb, a clicker działa podczas trzymania LPM i zatrzymuje się natychmiast po jego puszczeniu.&#10;&#10;CPS „od–do” ustawia losowany zakres; wpisanie tej samej wartości daje stały CPS. Tryb DAB dodatkowo przytrzymuje klawisz O podczas pracy AUTO LPM. Moduł działa tylko w zapisanym, aktywnym oknie Minecrafta."/>
+                                                     Content="AUTO LPM automatycznie klika lewym przyciskiem myszy w ustawionym zakresie CPS.&#10;&#10;PRZEŁĄCZANIE BINDEM: jedno naciśnięcie włącza, następne wyłącza.&#10;TRZYMANIE BINDU: klika wyłącznie podczas fizycznego trzymania przypisanego klawisza.&#10;BIND + FIZYCZNY LPM: bind i LPM trzeba nacisnąć razem; puszczenie LPM wyłącza clicker.&#10;AKTYWACJA BINDEM + TRZYMANIE LPM: bind przełącza gotowość, a każde późniejsze trzymanie LPM uruchamia ustawione CPS. Puszczenie LPM zatrzymuje kliknięcia, ale tryb pozostaje gotowy aż do ponownego naciśnięcia binda.&#10;&#10;CPS „od–do” ustawia losowany zakres; wpisanie tej samej wartości daje stały CPS. Tryb DAB dodatkowo przytrzymuje klawisz O wyłącznie podczas faktycznego klikania AUTO LPM. Moduł działa tylko w zapisanym, aktywnym oknie Minecrafta."/>
                                         </Button.ToolTip>
                                     </Button>
                                     <TextBlock Name="TxtAutoLeftState" Text="OFF" Foreground="#FF6B6B" FontWeight="Bold" HorizontalAlignment="Right"/>
@@ -87,10 +87,11 @@
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="70"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                         <TextBlock Text="Tryb:" VerticalAlignment="Center"/>
                                         <ComboBox Name="CbAutoLeftMode" Grid.Column="1" SelectionChanged="RuntimeSetting_Changed"
-                                                  ToolTip="Przełączanie: bind włącza/wyłącza. Trzymanie: działa podczas trzymania bindu i może współdzielić go z PPM w trybie kombinacji. Kombinacja: uruchom bindem + fizycznym LPM i zatrzymaj puszczeniem LPM.">
+                                                  ToolTip="Przełączanie: bind włącza/wyłącza ciągłe klikanie. Trzymanie: działa podczas trzymania bindu. Kombinacja: bind i LPM uruchamiają jedną sesję do puszczenia LPM. Aktywacja + LPM: bind uzbraja tryb, a fizyczny LPM uruchamia i zatrzymuje kliknięcia bez rozbrajania.">
                                             <ComboBoxItem Content="Przełączanie bindem" Tag="Toggle"/>
                                             <ComboBoxItem Content="Działa podczas trzymania bindu" Tag="Hold"/>
                                             <ComboBoxItem Content="Bind + fizyczny LPM" Tag="Combo"/>
+                                            <ComboBoxItem Content="Aktywacja bindem + trzymanie LPM" Tag="PhysicalToggle"/>
                                         </ComboBox>
                                     </Grid>
                                     <Grid Margin="0,0,0,8">
@@ -114,7 +115,7 @@
                                             ToolTipService.InitialShowDelay="100" ToolTipService.ShowDuration="120000">
                                         <Button.ToolTip>
                                             <ToolTip Style="{StaticResource InfoToolTipStyle}"
-                                                     Content="AUTO PPM automatycznie klika prawym przyciskiem myszy w ustawionym zakresie CPS.&#10;&#10;PRZEŁĄCZANIE BINDEM: jedno naciśnięcie włącza, następne wyłącza.&#10;TRZYMANIE BINDU: działa tylko podczas trzymania osobnego binda.&#10;BIND + FIZYCZNY PPM: bind uzbraja tryb, a clicker działa podczas trzymania PPM i zatrzymuje się po jego puszczeniu.&#10;&#10;Wspólny bind jest możliwy, gdy LPM ma tryb Trzymanie lub Kombinacja, a PPM tryb Kombinacja. CPS „od–do” oznacza losowany zakres; równe wartości dają stały CPS."/>
+                                                     Content="AUTO PPM automatycznie klika prawym przyciskiem myszy w ustawionym zakresie CPS.&#10;&#10;PRZEŁĄCZANIE BINDEM: jedno naciśnięcie włącza, następne wyłącza.&#10;TRZYMANIE BINDU: działa tylko podczas trzymania osobnego binda.&#10;BIND + FIZYCZNY PPM: bind i PPM trzeba nacisnąć razem; puszczenie PPM wyłącza clicker.&#10;AKTYWACJA BINDEM + TRZYMANIE PPM: osobny bind przełącza gotowość, a każde późniejsze trzymanie PPM uruchamia ustawione CPS do blokowania/używania przedmiotu. Puszczenie PPM zatrzymuje kliknięcia bez rozbrajania trybu.&#10;&#10;Wspólny bind jest możliwy, gdy LPM ma tryb Trzymanie lub Kombinacja, a PPM tryb Kombinacja. Nowy tryb aktywacji fizycznym przyciskiem wymaga osobnego binda dla LPM i PPM. CPS „od–do” oznacza losowany zakres; równe wartości dają stały CPS."/>
                                         </Button.ToolTip>
                                     </Button>
                                     <TextBlock Name="TxtAutoRightState" Text="OFF" Foreground="#FF6B6B" FontWeight="Bold" HorizontalAlignment="Right"/>
@@ -136,10 +137,11 @@
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="70"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                         <TextBlock Text="Tryb:" VerticalAlignment="Center"/>
                                         <ComboBox Name="CbAutoRightMode" Grid.Column="1" SelectionChanged="RuntimeSetting_Changed"
-                                                  ToolTip="Przełączanie: bind włącza/wyłącza. Trzymanie: działa tylko podczas trzymania osobnego bindu. Kombinacja: uruchom bindem + fizycznym PPM, zatrzymaj puszczeniem PPM; bind może być wspólny z LPM w trybie trzymania lub kombinacji.">
+                                                  ToolTip="Przełączanie: bind włącza/wyłącza ciągłe klikanie. Trzymanie: działa podczas trzymania osobnego bindu. Kombinacja: bind i PPM uruchamiają jedną sesję do puszczenia PPM. Aktywacja + PPM: osobny bind uzbraja tryb, a fizyczny PPM uruchamia i zatrzymuje kliknięcia bez rozbrajania.">
                                             <ComboBoxItem Content="Przełączanie bindem" Tag="Toggle"/>
                                             <ComboBoxItem Content="Działa podczas trzymania osobnego bindu" Tag="Hold"/>
                                             <ComboBoxItem Content="Bind + fizyczny PPM" Tag="Combo"/>
+                                            <ComboBoxItem Content="Aktywacja bindem + trzymanie PPM" Tag="PhysicalToggle"/>
                                         </ComboBox>
                                     </Grid>
                                     <Grid>
@@ -161,14 +163,14 @@
                                             ToolTipService.InitialShowDelay="100" ToolTipService.ShowDuration="120000">
                                         <Button.ToolTip>
                                             <ToolTip Style="{StaticResource InfoToolTipStyle}"
-                                                     Content="BLOKADA KURSORA zatrzymuje clickery i nie uruchamia bindów, gdy Minecraft pokazuje zwykły kursor — np. w ekwipunku, chacie lub menu. Chroni to przed przypadkowym kliknięciem albo wyrzuceniem przedmiotu.&#10;&#10;MAŁY OVERLAY pokazuje nad grą aktualny stan AUTO LPM, AUTO PPM, szybkich akcji, BINDÓW, Auto zbroi i AutoWater.&#10;&#10;Po zminimalizowaniu lub zamknięciu przyciskiem X program chowa się do zasobnika i nadal obsługuje aktywne funkcje. Pełne zamknięcie znajduje się pod prawym przyciskiem na ikonie zasobnika."/>
+                                                     Content="BLOKADA KURSORA zatrzymuje clickery i nie uruchamia bindów, gdy Minecraft pokazuje zwykły kursor — np. w ekwipunku, chacie lub menu. Chroni to przed przypadkowym kliknięciem albo wyrzuceniem przedmiotu.&#10;&#10;MAŁY OVERLAY pokazuje nad grą aktualny stan AUTO LPM, AUTO PPM, szybkich akcji, ścinania jabłek, BINDÓW, Auto zbroi i AutoWater.&#10;&#10;Po zminimalizowaniu lub zamknięciu przyciskiem X program chowa się do zasobnika i nadal obsługuje aktywne funkcje. Pełne zamknięcie znajduje się pod prawym przyciskiem na ikonie zasobnika."/>
                                         </Button.ToolTip>
                                     </Button>
                                 </StackPanel>
                                 <CheckBox Name="ChkPauseWhenCursorVisible" Content="Blokuj clickery i bindy przy widocznym kursorze Minecrafta" Checked="RuntimeCheck_Changed" Unchecked="RuntimeCheck_Changed"/>
                                 <CheckBox Name="ChkOverlayEnabled" Content="Pokazuj mały overlay aktywnych funkcji" Margin="0,8,0,0" Checked="RuntimeCheck_Changed" Unchecked="RuntimeCheck_Changed"/>
                                 <TextBlock Text="Clickery działają wyłącznie w zapisanym i aktywnym oknie Minecrafta." Style="{StaticResource MutedStyle}" Margin="0,8,0,0"/>
-                                <TextBlock Text="Wspólny bind: LPM ustaw na Trzymanie lub Kombinację, a PPM na Kombinację. Trzymanie PPM wymaga osobnego klawisza." Style="{StaticResource MutedStyle}" Foreground="#FFD34D" Margin="0,5,0,0"/>
+                                <TextBlock Text="Wspólny bind: LPM ustaw na Trzymanie lub Kombinację, a PPM na Kombinację. Tryby „Aktywacja bindem + trzymanie LPM/PPM” wymagają osobnych klawiszy." Style="{StaticResource MutedStyle}" Foreground="#FFD34D" Margin="0,5,0,0"/>
                             </StackPanel>
                         </Border>
                     </StackPanel>
@@ -280,6 +282,89 @@
                                                Style="{StaticResource MutedStyle}"
                                                Foreground="#38D6B4"/>
                                 </Border>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="Jabłka">
+                <ScrollViewer Background="{StaticResource WindowBrush}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="5,10,5,4">
+                        <Border Style="{StaticResource CardStyle}">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal">
+                                    <CheckBox Name="ChkAppleCutterEnabled" Checked="ChkAppleCutterEnabled_Changed" Unchecked="ChkAppleCutterEnabled_Changed"/>
+                                    <TextBlock Text="ŚCINANIE JABŁEK" Style="{StaticResource HeaderStyle}" Margin="9,0,0,0"/>
+                                    <Button Content="?" Style="{StaticResource InfoButtonStyle}"
+                                            ToolTipService.InitialShowDelay="100" ToolTipService.ShowDuration="120000">
+                                        <Button.ToolTip>
+                                            <ToolTip Style="{StaticResource InfoToolTipStyle}"
+                                                     Content="Funkcja pracuje w pętli po uruchomieniu osobnym bindem. Wybiera nożyce, trzyma LPM przez losowy czas z podanego zakresu, przełącza się na liście, klika PPM ze stałą szybkością 40 CPS przez ustawiony czas i wraca do nożyc.&#10;&#10;ZAKRES PRZEŁĄCZENIA określa losową przerwę po zmianie slotu. ZAKRES CIĘCIA ustala czas trzymania LPM, a ZAKRES KŁADZENIA — jak długo wysyłane jest PPM 40 CPS.&#10;&#10;Co ustawioną liczbę pełnych cykli program wybiera slot nożyc i wpisuje komendę naprawy, domyślnie /repair. Ponowne naciśnięcie binda zatrzymuje działanie natychmiast. Utrata fokusu lub wykrycie otwartego GUI także zwalnia oba przyciski myszy i przerywa pętlę."/>
+                                        </Button.ToolTip>
+                                    </Button>
+                                </StackPanel>
+
+                                <StackPanel Name="PanelAppleCutterExpandableContent" Margin="0,12,0,0">
+                                    <Border Background="#0C1623" BorderBrush="#39516E" BorderThickness="1" CornerRadius="4" Padding="10">
+                                        <StackPanel Name="PanelAppleCutterContent">
+                                            <Grid Margin="0,0,0,9">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="60"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                <TextBlock Text="Bind:" VerticalAlignment="Center"/>
+                                                <TextBox Name="TxtAppleCutterBind" Grid.Column="1" IsReadOnly="True" PreviewMouseLeftButtonDown="BindBox_PreviewMouseLeftButtonDown" Tag="AppleCutter"/>
+                                                <Button Grid.Column="2" Content="Zapisz" Margin="7,0,0,0" Click="BtnSaveBind_Click" Tag="AppleCutter"/>
+                                                <Button Grid.Column="3" Content="Usuń" Margin="7,0,0,0" Click="BtnClearBind_Click" Tag="AppleCutter"/>
+                                            </Grid>
+
+                                            <Grid Margin="0,0,0,9">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="100"/><ColumnDefinition Width="80"/><ColumnDefinition Width="90"/><ColumnDefinition Width="80"/></Grid.ColumnDefinitions>
+                                                <TextBlock Text="Nożyce:" VerticalAlignment="Center"/>
+                                                <ComboBox Name="CbAppleCutterShearsSlot" Grid.Column="1" SelectionChanged="AppleCutterConfig_SelectionChanged"/>
+                                                <TextBlock Grid.Column="2" Text="Liście:" VerticalAlignment="Center"/>
+                                                <ComboBox Name="CbAppleCutterLeavesSlot" Grid.Column="3" SelectionChanged="AppleCutterConfig_SelectionChanged"/>
+                                            </Grid>
+
+                                            <TextBlock Text="LOSOWE ZAKRESY CZASÓW" Foreground="#92A6C1" FontWeight="Bold" FontSize="10" Margin="0,3,0,7"/>
+                                            <Grid Margin="0,0,0,7">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="145"/><ColumnDefinition Width="65"/><ColumnDefinition Width="35"/><ColumnDefinition Width="65"/><ColumnDefinition Width="35"/></Grid.ColumnDefinitions>
+                                                <TextBlock Text="Przełączenie slotu:" VerticalAlignment="Center"/>
+                                                <TextBox Name="TxtAppleCutterSwitchMinMs" Grid.Column="1" Text="35" TextChanged="AppleCutterConfig_TextChanged"/>
+                                                <TextBlock Grid.Column="2" Text=" do" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                <TextBox Name="TxtAppleCutterSwitchMaxMs" Grid.Column="3" Text="55" TextChanged="AppleCutterConfig_TextChanged"/>
+                                                <TextBlock Grid.Column="4" Text=" ms" VerticalAlignment="Center"/>
+                                            </Grid>
+                                            <Grid Margin="0,0,0,7">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="145"/><ColumnDefinition Width="65"/><ColumnDefinition Width="35"/><ColumnDefinition Width="65"/><ColumnDefinition Width="35"/></Grid.ColumnDefinitions>
+                                                <TextBlock Text="Cięcie — LPM:" VerticalAlignment="Center"/>
+                                                <TextBox Name="TxtAppleCutterBreakMinMs" Grid.Column="1" Text="90" TextChanged="AppleCutterConfig_TextChanged"/>
+                                                <TextBlock Grid.Column="2" Text=" do" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                <TextBox Name="TxtAppleCutterBreakMaxMs" Grid.Column="3" Text="140" TextChanged="AppleCutterConfig_TextChanged"/>
+                                                <TextBlock Grid.Column="4" Text=" ms" VerticalAlignment="Center"/>
+                                            </Grid>
+                                            <Grid Margin="0,0,0,9">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="145"/><ColumnDefinition Width="65"/><ColumnDefinition Width="35"/><ColumnDefinition Width="65"/><ColumnDefinition Width="35"/></Grid.ColumnDefinitions>
+                                                <TextBlock Text="Kładzenie — PPM:" VerticalAlignment="Center"/>
+                                                <TextBox Name="TxtAppleCutterPlaceMinMs" Grid.Column="1" Text="50" TextChanged="AppleCutterConfig_TextChanged"/>
+                                                <TextBlock Grid.Column="2" Text=" do" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                <TextBox Name="TxtAppleCutterPlaceMaxMs" Grid.Column="3" Text="90" TextChanged="AppleCutterConfig_TextChanged"/>
+                                                <TextBlock Grid.Column="4" Text=" ms" VerticalAlignment="Center"/>
+                                            </Grid>
+                                            <TextBlock Text="Podczas etapu kładzenia program wysyła PPM ze stałą szybkością 40 CPS (jedno kliknięcie co 25 ms)." Style="{StaticResource MutedStyle}" Foreground="#FFD34D" Margin="0,0,0,9" TextWrapping="Wrap"/>
+
+                                            <Grid Margin="0,0,0,9">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="145"/><ColumnDefinition Width="65"/><ColumnDefinition Width="40"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                                <TextBlock Text="Naprawa co:" VerticalAlignment="Center"/>
+                                                <TextBox Name="TxtAppleCutterRepairEvery" Grid.Column="1" Text="40" TextChanged="AppleCutterConfig_TextChanged"/>
+                                                <TextBlock Grid.Column="2" Text=" użyć" VerticalAlignment="Center"/>
+                                                <TextBox Name="TxtAppleCutterRepairCommand" Grid.Column="3" Text="/repair" Margin="7,0,0,0" TextChanged="AppleCutterConfig_TextChanged"/>
+                                            </Grid>
+
+                                            <Border Background="#0A131F" BorderBrush="#39516E" BorderThickness="1" CornerRadius="4" Padding="8">
+                                                <TextBlock Name="TxtAppleCutterStatus" Text="Gotowe. Ustaw sloty, czasy i bind." Style="{StaticResource MutedStyle}" Foreground="#38D6B4" TextWrapping="Wrap"/>
+                                            </Border>
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
                             </StackPanel>
                         </Border>
                     </StackPanel>

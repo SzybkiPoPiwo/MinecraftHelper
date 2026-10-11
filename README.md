@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <strong>Windows 10/11</strong> · <strong>Minecraft 1.8.8</strong> · <strong>bez Forge i modów</strong> · <strong>wersja 2.0</strong>
+  <strong>Windows 10/11</strong> · <strong>Minecraft 1.8.8</strong> · <strong>bez Forge i modów</strong> · <strong>wersja 2.0.1</strong>
 </p>
 
 <p align="center">
@@ -23,7 +23,7 @@
   <a href="#to-do">TO DO</a>
 </p>
 
-Minecraft Helper jest teraz podzielony na dwa osobne programy dla Windows. `Minecraft Helper Auto Clicker` zawiera AUTO LPM, AUTO PPM, BINDY, Auto zbroję i AutoWater. `Minecraft Helper Kopacz` zawiera kopanie 5/3/3 i 6/3/3, Auto EQ, CobbleX, Auto Reconnect, ochronę awaryjną, autołowienie i logi. Programy nie wymagają Forge ani instalowania moda w grze.
+Minecraft Helper jest teraz podzielony na dwa osobne programy dla Windows. `Minecraft Helper Auto Clicker` zawiera AUTO LPM, AUTO PPM, szybkie akcje PVP, ścinanie jabłek, BINDY, Auto zbroję i AutoWater. `Minecraft Helper Kopacz` zawiera kopanie 5/3/3 i 6/3/3, Auto EQ, CobbleX, Auto Reconnect, ochronę awaryjną, autołowienie i logi. Programy nie wymagają Forge ani instalowania moda w grze.
 
 Rozdzielenie ogranicza liczbę uruchomionych modułów. Auto Clicker nie ładuje OCR, obsługi dźwięku ani mechanizmów Kopacza, a Kopacz nie uruchamia clickerów, BINDY, Auto zbroi, AutoWater ani globalnego hooka myszy. Oba programy mogą być zainstalowane razem albo osobno.
 
@@ -53,14 +53,14 @@ Przy uruchomieniu obie aplikacje sprawdzają także najnowsze publiczne wydanie 
   <a href="docs/images/v2-miner-main.png">
     <img src="docs/images/v2-miner-main.png" alt="Minecraft Helper Kopacz 2.0" width="60%">
   </a><br>
-  <sub>Dwie niezależne aplikacje w Minecraft Helper 2.0 — Auto Clicker oraz Kopacz.</sub>
+  <sub>Dwie niezależne aplikacje w Minecraft Helper 2.0.1 — Auto Clicker oraz Kopacz.</sub>
 </p>
 
 ## Przegląd funkcji
 
 | Aplikacja | Zawartość |
 | --- | --- |
-| `Minecraft Helper Auto Clicker` | AUTO LPM, AUTO PPM, szybkie akcje PVP, BINDY, Auto zbroja, AutoWater i mały overlay. |
+| `Minecraft Helper Auto Clicker` | AUTO LPM, AUTO PPM, szybkie akcje PVP, ścinanie jabłek, BINDY, Auto zbroja, AutoWater i mały overlay. |
 | `Minecraft Helper Kopacz` | Kopacz 5/3/3 i 6/3/3, Auto EQ, CobbleX, komendy, autołowienie, ochrona awaryjna, Auto Reconnect, HUD i logi. |
 
 ## Auto Clicker — PVP, AUTO LPM i AUTO PPM
@@ -76,11 +76,12 @@ To osobna, niewielka aplikacja z pionowym oknem. Zawiera wyłącznie funkcje PVP
 - Zakres minimalnego i maksymalnego CPS określa szybkość klikania.
 - W trybie klasycznym ustawiony bind włącza clicker, a kolejne naciśnięcie go wyłącza.
 - Tryb kombinacji uruchamia odpowiedni clicker po naciśnięciu przypisanego bindu razem z fizycznym LPM albo PPM i zatrzymuje go natychmiast po puszczeniu właściwego przycisku myszy. Jeden wspólny bind jest dozwolony, gdy AUTO LPM działa w trybie `Trzymanie bindu` lub kombinacji, a AUTO PPM w trybie kombinacji. Dzięki temu jeden klawisz może uruchamiać LPM, a po dołożeniu fizycznego PPM również prawy clicker. Tryb `Trzymanie bindu` dla AUTO PPM zawsze wymaga osobnego klawisza.
-- Opcjonalny tryb `DAB (O)` przytrzymuje klawisz `O` podczas działania AUTO LPM.
+- Tryb `Aktywacja bindem + trzymanie LPM/PPM` działa jak trwałe uzbrojenie: jedno naciśnięcie osobnego binda włącza gotowość, a każde późniejsze trzymanie fizycznego przycisku myszy uruchamia ustawione CPS. Puszczenie LPM albo PPM natychmiast kończy klikanie bez wyłączania gotowości; ponowne naciśnięcie binda rozbraja moduł. LPM i PPM wymagają w tym trybie różnych bindów.
+- Opcjonalny tryb `DAB (O)` przytrzymuje klawisz `O` tylko podczas faktycznego klikania AUTO LPM.
 
 Najpierw zaznacz wybrany moduł, rozwiń ustawienia, przypisz bind i zapisz konfigurację. Clicker działa tylko wtedy, gdy zapisane okno Minecrafta ma fokus.
 
-Clickery korzystają z osobnego, uśpionego harmonogramu. Pierwsze kliknięcie jest wykonywane od razu, a puszczenie wymaganego bindu w trybie trzymania lub fizycznego przycisku myszy w trybie kombinacji zatrzymuje kanał bez oczekiwania na odświeżenie interfejsu. Dokładniejsza rozdzielczość zegara Windows jest włączana tylko podczas faktycznego klikania. Lekki tracker fizycznego LPM/PPM uruchamia się wyłącznie podczas pracy trybu kombinacji, ignoruje kliknięcia wstrzyknięte przez aplikację i nie przetwarza ruchów myszy.
+Clickery korzystają z osobnego, uśpionego harmonogramu. Pierwsze kliknięcie jest wykonywane od razu, a puszczenie wymaganego bindu lub fizycznego przycisku myszy zatrzymuje kanał przed następnym kliknięciem. Dokładniejsza rozdzielczość zegara Windows jest włączana tylko podczas faktycznego klikania. Lekki tracker fizycznego LPM/PPM uruchamia się tylko na czas trzymania przycisku w trybie kombinacji lub trwałego uzbrojenia, ignoruje kliknięcia wstrzyknięte przez aplikację i nie przetwarza ruchów myszy.
 
 ### Szybkie akcje PVP
 
@@ -97,6 +98,15 @@ Clickery korzystają z osobnego, uśpionego harmonogramu. Pierwsze kliknięcie j
   </a><br>
   <sub>Sloty i osobne bindy Auto bloku, śnieżki, perły oraz wędki.</sub>
 </p>
+
+### Ścinanie jabłek
+
+- Zakładka `Jabłka` ma osobny bind uruchamiający i zatrzymujący całą pętlę.
+- Ustawiasz slot nożyc i slot liści w zakresie `1–9`; domyślnie są to odpowiednio slot `1` i `2`.
+- Program wybiera nożyce, trzyma LPM przez losowy czas z zakresu cięcia, przełącza się na liście i wysyła PPM ze stałą szybkością `40 CPS`, po czym wraca do nożyc.
+- Osobne zakresy `od–do` w milisekundach sterują czasem przełączania slotów, trzymania LPM i kładzenia liści.
+- Domyślnie co `40` pełnych cykli program wybiera slot nożyc i wykonuje komendę `/repair`. Liczbę cykli oraz treść komendy można zmienić.
+- Ponowne użycie binda zatrzymuje automat natychmiast. Utrata fokusu lub nieoczekiwane otwarcie GUI przerywa pętlę i zwalnia trzymany LPM. Aktualny etap i licznik do naprawy są widoczne w overlayu.
 
 ### Pozostałe opcje
 
@@ -381,6 +391,16 @@ Nie wybieraj procesu launchera. Wskaż właściwe okno Minecrafta lub używanego
 
 Jeżeli działa Auto Clicker albo Kopacz, zamknięcie okna przyciskiem `X` pozostawia aktywne funkcje w tle. Aby całkowicie wyłączyć program, użyj opcji zamknięcia z menu jego ikony.
 
+## Zmiany w wersji 2.0.1
+
+- Dodano osobny tryb trwałej aktywacji AUTO LPM i AUTO PPM: bind uzbraja moduł, a ustawione CPS działa tylko podczas fizycznego trzymania odpowiedniego przycisku myszy.
+- Puszczenie LPM albo PPM zatrzymuje kliknięcia bez rozbrajania; ponowne naciśnięcie binda wyłącza moduł.
+- LPM i PPM korzystają w tym trybie z oddzielnych bindów, a GUI i HUD rozróżniają stan `GOTOWY`, `ON` i `PAUZA`.
+- Tracker fizycznej myszy działa wyłącznie podczas trzymania przycisku, aby samo uzbrojenie clickera nie powodowało dodatkowego obciążenia.
+- Dodano osobną zakładkę `Jabłka` z bindem start/stop, wyborem slotu nożyc i liści oraz losowanymi zakresami czasu przełączania, cięcia i kładzenia.
+- Kładzenie liści działa ze stałą szybkością `40 CPS`, a po domyślnie `40` cyklach program wybiera nożyce i wykonuje `/repair`.
+- Zatrzymanie bindem, utrata fokusu i nieoczekiwane GUI natychmiast kończą pętlę ścinania oraz zwalniają LPM.
+
 ## Zmiany w wersji 2.0
 
 - Rozdzielono program na dwie niezależne aplikacje: lekki `Minecraft Helper Auto Clicker` oraz `Minecraft Helper Kopacz`.
@@ -503,7 +523,7 @@ Jeżeli zauważysz błąd, problem z konfiguracją albo masz propozycję nowej f
 Najprościej uruchomić instalator:
 
 ```text
-MinecraftHelper-Setup-2.0.exe
+MinecraftHelper-Setup-2.0.1.exe
 ```
 
 Na ekranie `Wybierz składniki` instalator pozwala zaznaczyć:
@@ -521,7 +541,7 @@ Na komputerze bez wcześniejszej instalacji od razu pojawia się ekran wyboru sk
 Sumę oficjalnego pliku sprawdź w opisie konkretnego wydania na GitHubie. Dla instalatora zbudowanego lokalnie oblicz ją poleceniem:
 
 ```powershell
-Get-FileHash .\artifacts\installer\MinecraftHelper-Setup-2.0.exe -Algorithm SHA256
+Get-FileHash .\artifacts\installer\MinecraftHelper-Setup-2.0.1.exe -Algorithm SHA256
 ```
 
 ### Windows SmartScreen i Smart App Control
@@ -569,10 +589,10 @@ dotnet run --project .\MinecraftHelper\MinecraftHelper.csproj -c Release
 ### Budowanie instalatora
 
 ```powershell
-.\scripts\build-installer.ps1 -Version 2.0 -Rid win-x64 -SelfContained:$true -Clean
+.\scripts\build-installer.ps1 -Version 2.0.1 -Rid win-x64 -SelfContained:$true -Clean
 ```
 
-Wynik zostanie zapisany w `artifacts/installer/MinecraftHelper-Setup-2.0.exe`.
+Wynik zostanie zapisany w `artifacts/installer/MinecraftHelper-Setup-2.0.1.exe`.
 
 ### Odtworzenie paczki zasobów
 

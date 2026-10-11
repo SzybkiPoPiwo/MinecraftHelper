@@ -102,7 +102,7 @@ namespace MinecraftHelper
             panel.Children.Add(new TextBlock
             {
                 Text = sharedAutoClickerModeConflict
-                    ? "Aby wybrać Przełączanie albo Trzymanie dla PPM, najpierw kliknij „Usuń” w AUTO LPM albo AUTO PPM lub przypisz jednemu z nich inny klawisz. Potem ponownie wybierz żądany tryb."
+                    ? "Aby wybrać Przełączanie, Trzymanie PPM albo tryb Aktywacja bindem + fizyczny przycisk, najpierw kliknij „Usuń” w AUTO LPM albo AUTO PPM lub przypisz jednemu z nich inny klawisz. Potem ponownie wybierz żądany tryb."
                     : "Wybierz inny klawisz i kliknij \"Zapisz\" ponownie.",
                 Margin = new Thickness(0, 12, 0, 0),
                 TextWrapping = TextWrapping.Wrap,

@@ -212,8 +212,10 @@ public partial class MainWindow
         int leftHoldKey = leftMode == "Hold" && TryGetVirtualKey(TxtAutoLeftKey.Text, out int leftKey)
             ? leftKey
             : 0;
-        int leftPointerKey = leftMode == "Combo" ? VkLeftButton : 0;
+        int leftPointerKey = UsesPhysicalPointerGate(leftMode) ? VkLeftButton : 0;
+        bool leftPointerReady = leftPointerKey == 0 || _physicalMouseTracker.IsButtonDown(leftPointerKey);
         bool leftEnabled = !blockedByCursor
+            && leftPointerReady
             && _autoLeftRuntimeEnabled
             && ChkAutoLeftEnabled.IsChecked == true;
 

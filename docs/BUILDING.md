@@ -115,7 +115,7 @@ artifacts\publish\miner\win-x64\MinecraftHelper.Miner.exe
 Zainstaluj Inno Setup 6, zamknij działające kopie Minecraft Helper i uruchom:
 
 ```powershell
-.\scripts\build-installer.ps1 -Version 2.0 -Rid win-x64 -SelfContained $true -Clean
+.\scripts\build-installer.ps1 -Version 2.0.1 -Rid win-x64 -SelfContained $true -Clean
 ```
 
 Jeżeli PowerShell blokuje lokalny skrypt, możesz zezwolić na jego wykonanie tylko w bieżącym oknie terminala:

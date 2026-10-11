@@ -15,6 +15,18 @@ namespace MinecraftHelper
         private static readonly AppReleaseNotes[] Releases =
         {
             new AppReleaseNotes(
+                "2.0.1",
+                "Nowe tryby clickera i automatyczne ścinanie jabłek",
+                new[]
+                {
+                    "Auto Clicker otrzymał nowy tryb, w którym osobny bind uzbraja AUTO LPM albo AUTO PPM, a kliknięcia działają wyłącznie podczas fizycznego trzymania właściwego przycisku myszy.",
+                    "Puszczenie LPM lub PPM natychmiast zatrzymuje klikanie bez rozbrajania modułu; ponowne naciśnięcie binda całkowicie go wyłącza.",
+                    "GUI i HUD pokazują osobny stan GOTOWY, a blokada kursora nadal chroni ekwipunek, chat i menu Minecrafta.",
+                    "Lekki tracker fizycznej myszy uruchamia się tylko na czas trzymania LPM albo PPM, dzięki czemu samo uzbrojenie trybu nie zwiększa obciążenia.",
+                    "Dodano osobną zakładkę Ścinanie jabłek: nożyce i liście mają własne sloty, czasy etapów są losowane z ustawianych zakresów, a kładzenie działa ze stałą szybkością 40 CPS.",
+                    "Automat może wykonywać /repair co 40 pełnych cykli; bind zatrzymania, utrata fokusu i nieoczekiwane GUI natychmiast kończą pętlę i zwalniają trzymany LPM."
+                }),
+            new AppReleaseNotes(
                 "2.0",
                 "Dwie lżejsze aplikacje i nowe funkcje automatyzacji",
                 new[]
