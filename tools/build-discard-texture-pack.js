@@ -4,6 +4,15 @@ const fs = require("fs");
 const path = require("path");
 const zlib = require("zlib");
 
+if (process.argv.includes("--help") || process.argv.includes("-h")) {
+    console.log("Uzycie: node tools/build-discard-texture-pack.js [katalog_paczki_zrodlowej]");
+    console.log("Domyslne zrodlo: Old_Default_1.8.8 (lokalny folder, niedolaczony do repozytorium).");
+    console.log("Wynik: MinecraftHelper_AutoEQ_CobbleX_1.8.8. Generator nadpisuje pliki w tym folderze.");
+    console.log("Mozesz rozpakowac dolaczony ZIP do osobnego folderu z pack.mcmeta i assets i podac go jako zrodlo.");
+    console.log("Szczegoly: docs/BUILDING.md. Gotowy ZIP nie wymaga ponownego generowania.");
+    process.exit(0);
+}
+
 const workspace = path.resolve(__dirname, "..");
 const sourceRoot = process.argv[2]
     ? path.resolve(process.argv[2])
@@ -123,7 +132,15 @@ const solidBlockItems = [
 
 function main() {
     if (!fs.existsSync(sourceRoot))
-        throw new Error(`Brak paczki zrodlowej: ${sourceRoot}`);
+        throw new Error(`Brak paczki zrodlowej: ${sourceRoot}. Podaj rozpakowany katalog paczki jako argument. Pomoc: node tools/build-discard-texture-pack.js --help`);
+    if (!fs.statSync(sourceRoot).isDirectory()
+        || !fs.existsSync(path.join(sourceRoot, "pack.mcmeta"))
+        || !fs.existsSync(path.join(sourceRoot, "assets", "minecraft", "textures")))
+        throw new Error("Zrodlo musi byc rozpakowana paczka 1.8.8 zawierajaca pack.mcmeta oraz assets/minecraft/textures.");
+
+    const relativeOutput = path.relative(sourceRoot, outputRoot);
+    if (!relativeOutput || (!relativeOutput.startsWith(`..${path.sep}`) && relativeOutput !== ".." && !path.isAbsolute(relativeOutput)))
+        throw new Error("Folder wynikowy nie moze byc zrodlem ani znajdowac sie wewnatrz zrodla. Wybierz osobny katalog paczki.");
 
     fs.cpSync(sourceRoot, outputRoot, { recursive: true, force: true });
     writeDamageSounds();
@@ -255,8 +272,8 @@ function writeReadme() {
     const lines = [
         "MinecraftHelper AutoEQ + CobbleX - paczka dla 1.8.8",
         "",
-        "Paczka jest generowana z Old_Default_1.8.8 przez:",
-        "  node tools/build-discard-texture-pack.js",
+        "Paczka jest generowana z rozpakowanej paczki 1.8.8 przez:",
+        "  node tools/build-discard-texture-pack.js <katalog_paczki_zrodlowej>",
         "",
         "Oznaczone przedmioty:",
         ...directItemTextures.map(item => `- ${item.label}`),
@@ -270,7 +287,7 @@ function writeReadme() {
         "Wybor typow do wyrzucenia ustawia sie w aplikacji.",
         "Auto EQ skanuje tylko 27 glownych slotow ekwipunku; hotbar jest pomijany przy wyrzucaniu.",
         "Kontrola smierci podczas cyklu Auto EQ szuka diamentowego kilofa w 27 glownych slotach oraz na hotbarze.",
-        "Wymagane sa domyslne klawisze Minecrafta: E (ekwipunek), Q (wyrzucanie) i T (czat).",
+        "Ekwipunek musi otwierac sie klawiszem E. Klawisze wyrzucania i czatu ustaw zgodnie z gra w aplikacji (domyslnie Q i T).",
         "Dla jezyka polskiego i angielskiego paczka ustawia stale etykiety [MH] na ekranach laczenia, rozlaczenia, smierci i wyboru serwera."
     ];
     fs.writeFileSync(path.join(outputRoot, "MINECRAFT_HELPER.txt"), `${lines.join("\r\n")}\r\n`, "utf8");

@@ -1,5 +1,5 @@
 param(
-    [string]$Version = "2.0.1",
+    [string]$Version = "2.0.2",
     [ValidateSet("win-x64")]
     [string]$Rid = "win-x64",
     [bool]$SelfContained = $true,
@@ -73,6 +73,16 @@ function Publish-App(
         -o $OutputDirectory
     if ($LASTEXITCODE -ne 0) {
         throw "dotnet publish $ExpectedExe failed with exit code $LASTEXITCODE."
+    }
+
+    # dotnet publish does not delete files left by an older publish. Remove
+    # only the obsolete x86 OCR directory, never the required x64 libraries.
+    if ($Rid -eq "win-x64" -and $ExpectedExe -eq "MinecraftHelper.Miner.exe") {
+        $obsoleteOcrDirectory = [IO.Path]::GetFullPath([IO.Path]::Combine($OutputDirectory, "x86"))
+        Assert-ChildPath $OutputDirectory $obsoleteOcrDirectory
+        if ([IO.Directory]::Exists($obsoleteOcrDirectory)) {
+            [IO.Directory]::Delete($obsoleteOcrDirectory, $true)
+        }
     }
 
     $exePath = [IO.Path]::Combine($OutputDirectory, $ExpectedExe)

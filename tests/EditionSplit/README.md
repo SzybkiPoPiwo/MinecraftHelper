@@ -6,4 +6,4 @@ Lekki test regresji sprawdzający rozdzielenie wydania na dwa programy. Nie uruc
 dotnet run --project .\tests\EditionSplit\EditionSplit.csproj -c Release
 ```
 
-Test pilnuje między innymi, że Auto Clicker nie ładuje OCR/audio ani globalnego hooka myszy, Kopacz nie zawiera widoków PvP oraz że instalator udostępnia oba składniki.
+Test pilnuje między innymi, że Auto Clicker nie ładuje OCR/audio, a jego minimalny tracker fizycznych przycisków nie przetwarza ruchów myszy. Kopacz nie zawiera widoków PvP ani globalnego hooka myszy, starego harmonogramu clickera i diagnostyki. Sprawdzane są też oba składniki instalatora.

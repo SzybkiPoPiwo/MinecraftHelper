@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <strong>Windows 10/11</strong> · <strong>Minecraft 1.8.8</strong> · <strong>bez Forge i modów</strong> · <strong>wersja 2.0.1</strong>
+  <strong>Windows 10/11</strong> · <strong>Minecraft 1.8.8</strong> · <strong>bez Forge i modów</strong> · <strong>wersja 2.0.2</strong>
 </p>
 
 <p align="center">
@@ -17,6 +17,7 @@
   <a href="#auto-clicker--pvp-auto-lpm-i-auto-ppm">Auto Clicker</a> ·
   <a href="#kopacz-auto-eq-i-cobblex">Kopacz</a> ·
   <a href="#bindy-auto-clicker">BINDY</a> ·
+  <a href="#autowater">AutoWater</a> ·
   <a href="#funkcje-dodatkowe">Funkcje dodatkowe</a> ·
   <a href="#ustawienia-i-hud">Ustawienia</a> ·
   <a href="#instalacja">Instalacja</a> ·
@@ -40,11 +41,31 @@ Jeżeli korzystasz z programu pierwszy raz:
 5. Do Auto EQ, ochrony awaryjnej i Auto Reconnect zainstaluj [paczkę zasobów Minecraft Helper](#wymagana-paczka-zasobów).
 6. Włącz tylko potrzebne moduły, ustaw ich bindy i sprawdź działanie w bezpiecznym miejscu.
 
-Obie aplikacje mają własne ustawienia i mogą działać niezależnie. Samo zaznaczenie modułu udostępnia jego konfigurację; działanie uruchamia się przypisanym bindem. Szczegółowe podpowiedzi obu programów są dostępne pod przyciskami `?`.
+Obie aplikacje mają własne ustawienia i mogą działać niezależnie. Zaznaczenie clickera, Kopacza lub akcji pod bindem udostępnia konfigurację; samą pracę uruchamiasz zapisanym bindem. Auto EQ i ochrona awaryjna działają razem z aktywnym Kopaczem, zgodnie ze swoimi ustawieniami. Szczegółowe podpowiedzi obu programów są dostępne pod przyciskami `?`.
 
 Przy pierwszym uruchomieniu każdej aplikacji pojawi się jej własne okno powitalne. Po aktualizacji Auto Clicker i Kopacz pokażą listę zmian tylko raz dla nowej wersji; potwierdzenie jest zapisywane niezależnie w ustawieniach danego programu.
 
 Przy uruchomieniu obie aplikacje sprawdzają także najnowsze publiczne wydanie na GitHubie. Jeśli dostępna jest nowsza wersja, wyświetlą numer obecnej i najnowszej wersji oraz bezpieczny link do oficjalnego instalatora. Instalator nie jest pobierany ani uruchamiany automatycznie, a brak internetu nie blokuje startu programu.
+
+### Uruchamianie ze źródeł
+
+Polecenia wykonuj w PowerShellu w głównym katalogu repozytorium, obok `MinecraftHelper.slnx`. Wymagane narzędzia opisano w [instrukcji budowania](docs/BUILDING.md#wymagane-narzędzia).
+
+**Auto Clicker — makra LPM/PPM i funkcje PVP:**
+
+```powershell
+dotnet run --project ".\MinecraftHelper.Pvp\MinecraftHelper.Pvp.csproj" -c Release
+```
+
+**Kopacz — kopanie i automatyzacja:**
+
+```powershell
+dotnet run --project ".\MinecraftHelper\MinecraftHelper.csproj" -c Release
+```
+
+To aplikacje okienkowe — po uruchomieniu nie pokazują zwykłego panelu tekstowego w terminalu. Jeśli program już działa, sprawdź jego ikonę w zasobniku obok zegara. Ukrycie Helpera nie oznacza, że Minecraft może stracić fokus; gra nadal musi być aktywna.
+
+> Opis obejmuje [zmiany w wersji 2.0.2](#zmiany-w-wersji-202). Po aktualizacji AutoWater wymaga ponownej kalibracji obu wiader.
 
 <p align="center">
   <a href="docs/images/v2-autoclicker-pvp.png">
@@ -53,7 +74,7 @@ Przy uruchomieniu obie aplikacje sprawdzają także najnowsze publiczne wydanie 
   <a href="docs/images/v2-miner-main.png">
     <img src="docs/images/v2-miner-main.png" alt="Minecraft Helper Kopacz 2.0" width="60%">
   </a><br>
-  <sub>Dwie niezależne aplikacje w Minecraft Helper 2.0.1 — Auto Clicker oraz Kopacz.</sub>
+  <sub>Dwie niezależne aplikacje w Minecraft Helper 2.0.2 — Auto Clicker oraz Kopacz.</sub>
 </p>
 
 ## Przegląd funkcji
@@ -88,6 +109,7 @@ Clickery korzystają z osobnego, uśpionego harmonogramu. Pierwsze kliknięcie j
 - Zakładka `Akcje PVP` udostępnia osobne bindy dla Auto bloku, śnieżki, perły i wędki.
 - Ustawiasz slot miecza oraz sloty bloku, śnieżki, perły i wędki w zakresie `1–9`.
 - Jedno naciśnięcie binda podczas aktywnego AUTO LPM wybiera przedmiot, wykonuje jedno użycie PPM i wraca na slot miecza. AUTO LPM i DAB działają w tym czasie bez przerwy; chwilowo pauzowane jest tylko AUTO PPM. Samo AUTO PPM nie uruchamia szybkich akcji.
+- Auto blok, śnieżka i perła wysyłają pojedyncze pełne kliknięcie PPM, bez przytrzymywania prawego przycisku między etapami. Harmonogram LPM zachowuje ustawiony CPS i termin następnego kliknięcia przez całą akcję.
 - Dla wędki można ustawić czas trzymania PPM od `20` do `1000 ms`. Auto blok wybiera skonfigurowany slot bloku, stawia jeden blok i wraca na slot miecza — tak samo jak śnieżka i perła.
 - Utrata fokusu, otwarte GUI albo wyłączenie clickera przerywają akcję i bezpiecznie zwalniają PPM. Aktualny etap jest widoczny w overlayu.
 - Wszystkie komunikaty overlayu Auto Clickera mają jednolitą szerokość, odstępy i rozmiar tekstu; stan aktywny lub ostrzeżenie rozróżnia kolor.
@@ -272,16 +294,42 @@ Podmiana działa wyłącznie w widocznym i aktywnym oknie gry. Ponowne naciśni�
   <a href="docs/images/v2-autoclicker-autowater.png">
     <img src="docs/images/v2-autoclicker-autowater.png" alt="AutoWater w Auto Clickerze 2.0" width="420">
   </a><br>
-  <sub>Bind, wybór slotów, ręczne czasy serwera oraz kalibracja pustego wiadra.</sub>
+  <sub>Zrzut z wersji 2.0. Bieżący kod ma dwa przyciski kalibracji: „Kalibruj puste” i „Kalibruj wodę”.</sub>
 </p>
 
-`AutoWater` pomaga wykonać water clutch podczas spadania. Po naciśnięciu ustawionego bindu program wybiera slot z wiadrem wody, wykonuje próby PPM, rozpoznaje zmianę ikony na puste wiadro, po określonym czasie próbuje zebrać wodę i wraca na wybrany slot. Ponowne naciśnięcie bindu natychmiast anuluje sekwencję.
+`AutoWater` pomaga wykonać water clutch podczas spadania. Po naciśnięciu bindu wybiera slot i sprawdza wzorzec **wiadra z wodą**. Przed każdą próbą PPM odczytuje ikonę. Pierwsze rozpoznanie pustego wiadra wstrzymuje PPM; dalsze potwierdzanie nie wykonuje kliknięć. Opóźnienie `Zebranie po` liczy się od pierwszego rozpoznania pustego wiadra. Po próbie zebrania program wymaga stabilnego rozpoznania wzorca wody i dopiero wtedy wraca na ustawiony slot. Ponowne naciśnięcie bindu anuluje sekwencję.
 
-Przed pierwszym użyciem trzeba skalibrować pustą ikonę wiadra. Umieść puste wiadro w wybranym slocie, otwórz chat Minecrafta, najedź kursorem na charakterystyczny jasnoniebieski lub szary fragment ikony i naciśnij lewy `Ctrl`. Następnie użyj przycisku `Testuj rozpoznawanie`, aby sprawdzić wynik.
+#### Przygotowanie i kalibracja
 
-Ustawienie `Próba PPM co` trzeba dobrać ręcznie i przetestować na konkretnym serwerze. Przykładowo przy spadaniu z około 150 kratek dobrze może działać `40 ms`, natomiast przy mniejszych wysokościach około `50–65 ms`. Właściwa wartość zależy od serwera, opóźnień połączenia i używanego klienta.
+Wymagana jest **nowa, dwuetapowa kalibracja** — stary pojedynczy wzorzec nie wystarcza. AutoWater korzysta z wyglądu Twojej paczki; nie wymaga znaczników paczki Auto EQ.
 
-AutoWater działa tylko przy widocznym i aktywnym oknie Minecrafta. Otwarty chat, ekwipunek, inne GUI albo utrata fokusu bezpiecznie przerywają działanie. Bieżący etap jest widoczny w HUD.
+1. Wybierz i zapisz okno Minecrafta. W zakładce `AutoWater` włącz moduł, zapisz bind oraz wybierz slot wody i slot powrotu.
+2. Kliknij `Kalibruj puste`, umieść puste wiadro w wybranym slocie **hotbara**, otwórz **czat, nie EQ**, najedź na charakterystyczny fragment ikony widoczny **nad polem czatu** i naciśnij lewy `Ctrl`. Cała próbka `9×9 px` musi mieścić się na ikonie. W razie braku miejsca użyj `GUI Scale: Medium` lub `Large`.
+3. Kliknij `Kalibruj wodę`, umieść wiadro **z wodą** w tym samym slocie, wróć do gry, otwórz czat i naciśnij lewy `Ctrl`. Nie musisz ponownie celować kursorem — program odczytuje zapisany punkt. Jeśli wzorce są zbyt podobne, wybierz inny fragment ikony i powtórz kroki 2–3.
+4. Przez `Testuj` sprawdź osobno puste wiadro, wiadro z wodą i inny przedmiot. Po każdym uruchomieniu testu wróć do gry i zamknij GUI. Odliczanie pełnych `2 s` rozpoczyna się dopiero w aktywnym Minecrafcie; ponowne otwarcie GUI albo utrata fokusu je resetują. Wynik dla obcego przedmiotu powinien być nieznany, a nie oznaczać zebrania wody.
+5. Włóż wodę do wybranego slotu, zamknij czat i przetestuj bind w bezpiecznym świecie. Celuj w blok — program sam nie ustawia kamery.
+
+Po zmianie **slotu wody**, GUI Scale, paczki lub rozmiaru okna powtórz obie kalibracje. Samo przesunięcie okna nie wymaga ponownej kalibracji. Bindy i czasy ze starszych ustawień pozostają zachowane; `Resetuj` usuwa oba wzorce.
+
+#### Ustawienia AutoWater
+
+| Opcja | Znaczenie |
+| --- | --- |
+| `Slot z wodą` | Slot hotbara `1–9` używany podczas sekwencji; domyślnie `9`. Kalibruj oba wiadra właśnie w tym slocie. |
+| `Slot powrotu` | Slot wybierany po potwierdzeniu zebrania wody; domyślnie `1`. |
+| `Próba PPM co` | Minimalny odstęp między próbami postawienia wody: `25–500 ms`, domyślnie `65 ms`. Niepewny odczyt wstrzymuje próby. |
+| `Zebranie po` | Minimalne oczekiwanie od pierwszego rozpoznania pustego wiadra do próby zebrania: `100–1500 ms`, domyślnie `340 ms`. |
+| `Podobieństwo` | Próg rozpoznawania wzorców: `70–99%`, domyślnie `84%`. Wzorzec musi też wyraźnie lepiej pasować niż drugi; niejednoznaczny wynik jest nieznany. |
+
+`Próba PPM co` wymaga ręcznego dopasowania do konkretnego serwera. Przykłady do sprawdzenia: `40 ms` przy spadaniu z około 150 kratek albo `50–65 ms` z mniejszej wysokości. Nie są to gwarantowane wartości — wpływ mają klient, serwer i opóźnienia połączenia. Zbyt wysoki próg podobieństwa może uniemożliwić rozpoznanie; przy błędnych wynikach najpierw sprawdź punkt kalibracji.
+
+#### Bezpieczeństwo i ograniczenia
+
+AutoWater działa tylko przy widocznym i aktywnym oknie Minecrafta. Otwarty czat, ekwipunek, inne GUI albo utrata fokusu przerywają sekwencję. Bieżący etap jest widoczny w HUD. Kalibrację lub test można anulować przez wyłączenie modułu, bez usuwania zapisanych wzorców.
+
+Kalibracja, test i uruchomienie AutoWater zatrzymują aktywne clickery oraz DAB. Po zakończeniu włącz potrzebne makro ponownie. Podczas sekwencji pozostałe bindy nie ingerują w sloty ani PPM; nie jest to tryb ciągłego AUTO LPM używany przez szybkie akcje PVP. Używaj standardowych klawiszy hotbara `1–9` i nie zmieniaj ręcznie slotu. Funkcja nie wykrywa spadania, nie obraca kamery i nie wznawia prób bez końca — cała sekwencja ma limit `10 s`, a zbieranie maksymalnie `6` prób.
+
+To funkcja eksperymentalna: rozpoznana ikona jest informacją klienta, nie potwierdzeniem serwera. Jeśli odświeżenie ikony trwa dłużej niż odstęp prób PPM, dodatkowa próba przed rozpoznaniem zmiany nadal jest możliwa. Najpierw testuj w bezpiecznym świecie. [Testy i próba ręczna AutoWater](tests/AutoWater/README.md).
 
 ### Auto łowienie
 
@@ -391,6 +439,17 @@ Nie wybieraj procesu launchera. Wskaż właściwe okno Minecrafta lub używanego
 
 Jeżeli działa Auto Clicker albo Kopacz, zamknięcie okna przyciskiem `X` pozostawia aktywne funkcje w tle. Aby całkowicie wyłączyć program, użyj opcji zamknięcia z menu jego ikony.
 
+## Zmiany w wersji 2.0.2
+
+Wydanie obejmuje obie aplikacje i wspólny instalator z wyborem składników. Ustawienia i bindy pozostają zachowane, ale AutoWater wymaga ponownej kalibracji pustego wiadra oraz wiadra z wodą — szczegóły w [instrukcji AutoWater](#autowater).
+
+- Akcje PVP nie resetują harmonogramu AUTO LPM ani DAB; na czas użycia przedmiotu zatrzymuje się tylko AUTO PPM.
+- Kopacz nie uruchamia globalnego hooka myszy ani starych usług clickera i jego diagnostyki. Publikacja `win-x64` pomija nieużywane biblioteki OCR `x86`.
+- AutoWater rozpoznaje osobno puste wiadro i wiadro z wodą. Wymaga nowej kalibracji na hotbarze przy otwartym czacie, zamiast wskazywania punktu w EQ.
+- AutoWater sprawdza ikonę przed PPM, wstrzymuje klikanie po pierwszym rozpoznaniu pustego wiadra i od tego momentu odlicza czas zebrania. Zakończenie wymaga ponownego rozpoznania wody.
+- Kalibracja i test AutoWater czekają na właściwe okno gry; test odlicza pełne dwie sekundy po zamknięciu GUI. Pozostałe bindy nie przerywają sekwencji.
+- Dodano wspólny skrypt [testów regresji](#testy-regresji), w tym testy ciągłości LPM podczas akcji PVP, izolacji Kopacza oraz sekwencji i kalibracji AutoWater. Testy automatyczne nie zastępują próby w grze.
+
 ## Zmiany w wersji 2.0.1
 
 - Dodano osobny tryb trwałej aktywacji AUTO LPM i AUTO PPM: bind uzbraja moduł, a ustawione CPS działa tylko podczas fizycznego trzymania odpowiedniego przycisku myszy.
@@ -404,7 +463,7 @@ Jeżeli działa Auto Clicker albo Kopacz, zamknięcie okna przyciskiem `X` pozos
 ## Zmiany w wersji 2.0
 
 - Rozdzielono program na dwie niezależne aplikacje: lekki `Minecraft Helper Auto Clicker` oraz `Minecraft Helper Kopacz`.
-- Auto Clicker nie ładuje modułów OCR, audio ani Kopacza i nie instaluje globalnego hooka myszy. Dokładny zegar kliknięć działa tylko podczas aktywnego clickera.
+- Auto Clicker nie ładuje modułów OCR, audio ani Kopacza. Dokładny zegar kliknięć działa tylko podczas aktywnego clickera; w trybach zależnych od fizycznego LPM/PPM minimalny tracker przycisków działa podczas ich trzymania, ignorując kliknięcia syntetyczne i ruch myszy.
 - Kopacz nie zawiera widoków ani aktywnych modułów AUTO LPM/PPM, BINDY, Auto zbroi i AutoWater.
 - Dodano szybkie akcje PVP dla Auto bloku, śnieżki, perły i wędki, z wyborem slotów oraz automatycznym powrotem do miecza.
 - Obie aplikacje otrzymały osobne ustawienia, ikony, skróty, podpowiedzi `?`, informacje o zmianach i kontrolę aktualizacji.
@@ -523,7 +582,7 @@ Jeżeli zauważysz błąd, problem z konfiguracją albo masz propozycję nowej f
 Najprościej uruchomić instalator:
 
 ```text
-MinecraftHelper-Setup-2.0.1.exe
+MinecraftHelper-Setup-2.0.2.exe
 ```
 
 Na ekranie `Wybierz składniki` instalator pozwala zaznaczyć:
@@ -541,7 +600,7 @@ Na komputerze bez wcześniejszej instalacji od razu pojawia się ekran wyboru sk
 Sumę oficjalnego pliku sprawdź w opisie konkretnego wydania na GitHubie. Dla instalatora zbudowanego lokalnie oblicz ją poleceniem:
 
 ```powershell
-Get-FileHash .\artifacts\installer\MinecraftHelper-Setup-2.0.1.exe -Algorithm SHA256
+Get-FileHash .\artifacts\installer\MinecraftHelper-Setup-2.0.2.exe -Algorithm SHA256
 ```
 
 ### Windows SmartScreen i Smart App Control
@@ -570,7 +629,7 @@ Repozytorium zawiera kod C#, interfejs, skrypty budowania instalatora, generator
 
 Pełna instrukcja znajduje się w [docs/BUILDING.md](docs/BUILDING.md).
 
-Wymagane są Windows 10 lub 11, .NET 8 SDK oraz Visual Studio 2022, Rider albo Visual Studio Code. Inno Setup 6 jest potrzebny tylko do tworzenia instalatora.
+Wymagane są Windows 10 lub 11 oraz .NET SDK obsługujący rozwiązania `.slnx` (sprawdzone na SDK `10.0.402`). Aplikacje nadal mają docelowe środowisko `.NET 8`; sam numer docelowego środowiska nie określa wymaganego SDK. Visual Studio, Rider lub Visual Studio Code są opcjonalne — polecenia działają z terminala. Inno Setup 6 jest potrzebny tylko do tworzenia instalatora.
 
 ```powershell
 git clone https://github.com/SzybkiPoPiwo/MinecraftHelper.git
@@ -579,28 +638,40 @@ dotnet restore .\MinecraftHelper.slnx
 dotnet build .\MinecraftHelper.slnx -c Release
 ```
 
-Uruchom wybrany program:
-
-```powershell
-dotnet run --project .\MinecraftHelper.Pvp\MinecraftHelper.Pvp.csproj -c Release
-dotnet run --project .\MinecraftHelper\MinecraftHelper.csproj -c Release
-```
+Następnie [uruchom wybraną aplikację](#uruchamianie-ze-źródeł). Każdy program ma osobną komendę; nie musisz uruchamiać obu.
 
 ### Budowanie instalatora
 
 ```powershell
-.\scripts\build-installer.ps1 -Version 2.0.1 -Rid win-x64 -SelfContained:$true -Clean
+.\scripts\build-installer.ps1 -Version 2.0.2 -Rid win-x64 -SelfContained:$true -Clean
 ```
 
-Wynik zostanie zapisany w `artifacts/installer/MinecraftHelper-Setup-2.0.1.exe`.
+Wynik zostanie zapisany w `artifacts/installer/MinecraftHelper-Setup-2.0.2.exe`.
 
 ### Odtworzenie paczki zasobów
 
-Generator wymaga Node.js:
+Do używania Auto EQ wystarczy dołączony `MinecraftHelper_AutoEQ_CobbleX_1.8.8.zip` — nie trzeba go generować. Generator wymaga Node.js oraz **rozpakowanej paczki źródłowej** z `pack.mcmeta` i folderem `assets`. Domyślny lokalny folder `Old_Default_1.8.8` nie jest częścią repozytorium.
+
+Można rozpakować dołączony ZIP do osobnego katalogu źródłowego i ponownie nanieść znaczniki. Przykład:
 
 ```powershell
-node tools/build-discard-texture-pack.js
+Expand-Archive .\MinecraftHelper_AutoEQ_CobbleX_1.8.8.zip -DestinationPath .\.build-check\texture-source
+node tools/build-discard-texture-pack.js .\.build-check\texture-source
 ```
+
+Wynik trafia do `MinecraftHelper_AutoEQ_CobbleX_1.8.8/`; istniejące pliki w tym katalogu są nadpisywane. Szczegóły: [instrukcja budowania](docs/BUILDING.md).
+
+### Testy regresji
+
+Na Windows uruchom wszystkie zestawy bez otwierania gry:
+
+```powershell
+.\scripts\test.ps1
+```
+
+Jeśli PowerShell blokuje lokalne skrypty, uruchom `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\test.ps1` — dotyczy to tylko tego procesu, bez trwałej zmiany zasad systemowych.
+
+Sprawdzają podział aplikacji, brak globalnego hooka i starej diagnostyki w Kopaczu, zgodność ustawień, zatrzymywanie kopania i liczników podczas Auto EQ, tracker przycisków clickera, ciągłość LPM podczas akcji PVP oraz sekwencję i dwuetapową kalibrację AutoWater. Testy nie wysyłają wejścia do pulpitu ani nie zmieniają ustawień użytkownika. Test trackera na krótko rejestruje jego prawdziwy hook Windows. Zachowanie w samym Minecraft nadal wymaga próby ręcznej.
 
 ## TO DO
 

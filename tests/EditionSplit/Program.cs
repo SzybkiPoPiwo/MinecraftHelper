@@ -136,9 +136,11 @@ internal static class Program
             Check(minerWindow.Contains("Name=\"BorderAutoArmorSection\" Visibility=\"Collapsed\"", StringComparison.Ordinal)
                 && minerWindow.Contains("Name=\"BorderAutoWaterSection\" Visibility=\"Collapsed\"", StringComparison.Ordinal),
                 "Kopacz visual tree excludes Auto zbroja and AutoWater");
-            Check(minerCode.Contains("#if !MINER_EDITION", StringComparison.Ordinal)
-                && minerCode.Contains("InitializeMouseHookThread();", StringComparison.Ordinal),
-                "Kopacz startup does not initialize the mouse hook");
+            Check(!minerCode.Contains("SetWindowsHookEx", StringComparison.Ordinal)
+                && !minerCode.Contains("StartMouseHook", StringComparison.Ordinal)
+                && !minerCode.Contains("MacroDiagnosticsService", StringComparison.Ordinal)
+                && !minerCode.Contains("AutoClickScheduler", StringComparison.Ordinal),
+                "Kopacz has no global mouse hook or retired clicker diagnostics/scheduler");
 
             Check(installer.Contains("Name: \"autoclicker\"", StringComparison.Ordinal)
                 && installer.Contains("Name: \"miner\"", StringComparison.Ordinal),

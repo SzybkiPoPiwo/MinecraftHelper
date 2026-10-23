@@ -83,6 +83,35 @@ internal sealed class LightweightClickScheduler : IDisposable
             OnTimer(_right);
     }
 
+    public void UpdateLeft(
+        bool enabled,
+        int minCps,
+        int maxCps,
+        int requiredHoldKey,
+        int requiredPointerKey,
+        IntPtr targetWindow)
+    {
+        bool startLeft;
+        lock (_sync)
+        {
+            if (_disposed)
+                return;
+
+            startLeft = UpdateChannel(
+                _left,
+                enabled,
+                minCps,
+                maxCps,
+                requiredHoldKey,
+                requiredPointerKey,
+                targetWindow);
+            UpdateTimerResolution();
+        }
+
+        if (startLeft)
+            OnTimer(_left);
+    }
+
     public void Stop()
     {
         Update(false, 1, 1, false, 1, 1, 0, 0, 0, 0, IntPtr.Zero);

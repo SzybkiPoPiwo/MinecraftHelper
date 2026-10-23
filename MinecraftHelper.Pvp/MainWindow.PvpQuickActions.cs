@@ -10,7 +10,6 @@ namespace MinecraftHelper;
 public partial class MainWindow
 {
     private const int PvpActionSlotSettleMs = 40;
-    private const int PvpActionStandardRightClickHoldMs = 45;
     private const int PvpActionReturnDelayMs = 50;
 
     private enum PvpQuickActionKind
@@ -219,13 +218,15 @@ public partial class MainWindow
             && _autoLeftRuntimeEnabled
             && ChkAutoLeftEnabled.IsChecked == true;
 
-        UpdateClickScheduler(
+        // The action owns only PPM. Keep the existing LPM channel and its next
+        // click deadline; updating it must never rearm the paused right channel.
+        _autoClickScheduler.UpdateLeft(
             leftEnabled,
-            rightEnabled: false,
+            ReadCps(TxtAutoLeftMinCps.Text, 10),
+            ReadCps(TxtAutoLeftMaxCps.Text, 12),
             leftHoldKey,
-            rightHoldKey: 0,
             leftPointerKey,
-            rightPointerKey: 0);
+            _targetGameWindowHandle);
         SetAutoLeftDabHold(leftEnabled && ChkAutoLeftDabMode.IsChecked == true);
     }
 
@@ -245,9 +246,32 @@ public partial class MainWindow
                 break;
 
             case PvpQuickActionStage.PressRightButton:
-                _pvpQuickActionRightButtonDown = NativeInput.SendMouseButton(leftButton: false, down: true);
-                _pvpQuickActionStage = PvpQuickActionStage.ReleaseRightButton;
-                _nextPvpQuickActionAtUtc = now.AddMilliseconds(GetPvpQuickActionRightClickHoldMs(_pvpQuickActionKind));
+                if (_pvpQuickActionKind == PvpQuickActionKind.Rod)
+                {
+                    _pvpQuickActionRightButtonDown = NativeInput.SendMouseButton(leftButton: false, down: true);
+                    if (!_pvpQuickActionRightButtonDown)
+                    {
+                        CancelPvpQuickAction("Akcja PVP przerwana — nie udało się nacisnąć PPM.", Brushes.OrangeRed, restoreSword: true);
+                        return;
+                    }
+
+                    _pvpQuickActionStage = PvpQuickActionStage.ReleaseRightButton;
+                    _nextPvpQuickActionAtUtc = now.AddMilliseconds(GetPvpRodRightClickHoldMs());
+                }
+                else
+                {
+                    // A held use button can suppress attacks in Minecraft even
+                    // while the LPM scheduler is still ON. Standard items need
+                    // one complete PPM click, with no held button between ticks.
+                    if (!NativeInput.SendMouseClick(leftButton: false, holdPulseMode: false))
+                    {
+                        CancelPvpQuickAction("Akcja PVP przerwana — nie udało się wykonać PPM.", Brushes.OrangeRed, restoreSword: true);
+                        return;
+                    }
+
+                    _pvpQuickActionStage = PvpQuickActionStage.RestoreSword;
+                    _nextPvpQuickActionAtUtc = now.AddMilliseconds(PvpActionReturnDelayMs);
+                }
                 break;
 
             case PvpQuickActionStage.ReleaseRightButton:
@@ -276,13 +300,9 @@ public partial class MainWindow
         };
     }
 
-    private int GetPvpQuickActionRightClickHoldMs(PvpQuickActionKind kind)
+    private int GetPvpRodRightClickHoldMs()
     {
-        return kind switch
-        {
-            PvpQuickActionKind.Rod => Math.Clamp(ParsePvpQuickActionMilliseconds(TxtPvpRodHoldMs.Text, 80), 20, 1000),
-            _ => PvpActionStandardRightClickHoldMs
-        };
+        return Math.Clamp(ParsePvpQuickActionMilliseconds(TxtPvpRodHoldMs.Text, 80), 20, 1000);
     }
 
     private void CompletePvpQuickAction(int swordSlot, DateTime now)

@@ -4,7 +4,7 @@ Uruchom na Windows z katalogu repozytorium:
 
 ```powershell
 dotnet run --project tests/MiningStop/MiningStop.csproj -c Release
-dotnet run --project tests/MouseHookLifecycle/MouseHookLifecycle.csproj -c Release
+dotnet run --project tests/MinerIsolation/MinerIsolation.csproj -c Release
 ```
 
 Testy sprawdzają zatrzymanie stanu Kopacza 5/3/3 i 6/3/3 dla każdego etapu

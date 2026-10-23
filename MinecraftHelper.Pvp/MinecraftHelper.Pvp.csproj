@@ -11,10 +11,10 @@
     <RootNamespace>MinecraftHelper</RootNamespace>
     <Product>Minecraft Helper Auto Clicker</Product>
     <ApplicationIcon>..\MinecraftHelper\Assets\autoclicker.ico</ApplicationIcon>
-    <Version>2.0.1</Version>
-    <AssemblyVersion>2.0.1.0</AssemblyVersion>
-    <FileVersion>2.0.1.0</FileVersion>
-    <InformationalVersion>2.0.1-autoclicker</InformationalVersion>
+    <Version>2.0.2</Version>
+    <AssemblyVersion>2.0.2.0</AssemblyVersion>
+    <FileVersion>2.0.2.0</FileVersion>
+    <InformationalVersion>2.0.2-autoclicker</InformationalVersion>
   </PropertyGroup>
 
   <ItemGroup>

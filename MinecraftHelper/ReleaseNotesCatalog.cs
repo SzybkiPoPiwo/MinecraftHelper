@@ -15,6 +15,19 @@ namespace MinecraftHelper
         private static readonly AppReleaseNotes[] Releases =
         {
             new AppReleaseNotes(
+                "2.0.2",
+                "Poprawiony AutoWater, ciągłość LPM i lżejszy Kopacz",
+                new[]
+                {
+                    "AUTO LPM i DAB działają bez przerwy podczas szybkich akcji PVP. Zmiana slotu, użycie przedmiotu i powrót na miecz nie resetują rytmu kliknięć; chwilowo pauzowane jest tylko AUTO PPM.",
+                    "Auto blok, śnieżka i perła wysyłają pojedyncze pełne kliknięcie PPM; wędka zachowuje ustawiany czas przytrzymania.",
+                    "AutoWater wymaga nowej kalibracji dwóch wzorców: pustego wiadra oraz wiadra z wodą w tym samym slocie HOTBARA, przy otwartym CZACIE, nie EQ. Użyj kolejno Kalibruj puste i Kalibruj wodę.",
+                    "AutoWater odczytuje ikonę przed PPM, wstrzymuje klikanie po pierwszym rozpoznaniu pustego wiadra i od tego momentu liczy czas zebrania. Zakończenie wymaga potwierdzenia wzorca wiadra z wodą.",
+                    "Kalibracja i test AutoWater czekają na aktywnego Minecrafta; test odlicza pełne dwie sekundy po zamknięciu GUI. Zmiana slotu wody, GUI Scale, paczki lub rozmiaru okna wymaga ponownej kalibracji.",
+                    "Kopacz nie uruchamia globalnego hooka myszy ani nieużywanych usług clickera i diagnostyki. Instalacja x64 pomija zbędne biblioteki OCR x86.",
+                    "Rozbudowano testy regresji obu aplikacji oraz instrukcje, opisy ustawień i ograniczeń AutoWater. Przed użyciem AutoWater sprawdź oba wzorce i wykonaj próbę w bezpiecznym świecie."
+                }),
+            new AppReleaseNotes(
                 "2.0.1",
                 "Nowe tryby clickera i automatyczne ścinanie jabłek",
                 new[]

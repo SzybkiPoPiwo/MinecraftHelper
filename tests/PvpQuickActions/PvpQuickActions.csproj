@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../MinecraftHelper.Pvp/MainWindow.PvpQuickActions.cs" Link="MainWindow.PvpQuickActions.cs" />
+    <Compile Include="../../MinecraftHelper.Pvp/Services/LightweightClickScheduler.cs" Link="LightweightClickScheduler.cs" />
+    <Compile Include="../../MinecraftHelper.Pvp/Models/PvpSettings.cs" Link="PvpSettings.cs" />
+  </ItemGroup>
+</Project>

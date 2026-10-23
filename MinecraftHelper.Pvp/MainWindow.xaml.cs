@@ -1294,6 +1294,24 @@ public partial class MainWindow : Window
             _suppressBindToggleUntilRelease = false;
         }
 
+        if (_autoWaterStage != AutoWaterStage.None)
+        {
+            // Water owns slot selection and PPM until it finishes. Do not allow
+            // clickers, item binds or chat commands to interrupt its timing.
+            bool cancelWater = IsBindPressed(TxtAutoWaterBind.Text, ref _autoWaterBindWasDown);
+            UpdateClickScheduler(false, false, 0, 0);
+            SetAutoLeftDabHold(false);
+            SynchronizeBindStatesWhileGameIsInactive();
+            UpdatePhysicalMouseTracking(now);
+            if (cancelWater)
+                CancelAutoWater("AutoWater anulowany bindem.", Brushes.Orange, restoreSlot: true);
+            else
+                RunAutoWaterTick(now);
+            RefreshClickerStateUi(now, blockedByCursor, targetFocused: true);
+            RefreshOverlayHud(now);
+            return;
+        }
+
         HandleAppleCutterBind(now, cursorVisible);
         if (IsAppleCutterRunning)
         {
@@ -1322,7 +1340,8 @@ public partial class MainWindow : Window
         }
 
         HandleExperimentalBinds(now, blockedByCursor);
-        HandleBindyRuntime(now, blockedByCursor);
+        if (_autoWaterStage == AutoWaterStage.None && !IsAutoArmorRunning)
+            HandleBindyRuntime(now, blockedByCursor);
 
         if (IsAutoArmorRunning)
         {
@@ -1367,14 +1386,14 @@ public partial class MainWindow : Window
 
     private void UpdateRuntimeTimerCadence()
     {
-        bool workflowActive = IsAutoArmorRunning
+        bool workflowActive = _isTargetFocused && (IsAutoArmorRunning
             || _autoArmorCalibrationPending
             || _autoWaterStage != AutoWaterStage.None
             || _autoWaterCalibrationPending
             || _autoWaterRecognitionTestPending
             || IsAppleCutterRunning
             || IsPvpQuickActionRunning
-            || _bindyStage != BindyStage.None;
+            || _bindyStage != BindyStage.None);
         bool inputPollingRequired = _isTargetFocused
             && (ChkAutoLeftEnabled.IsChecked == true
                 || ChkAutoRightEnabled.IsChecked == true
@@ -1668,6 +1687,8 @@ public partial class MainWindow : Window
         {
             if (_autoWaterStage != AutoWaterStage.None)
                 CancelAutoWater("AutoWater anulowany bindem.", Brushes.Orange, restoreSlot: true);
+            else if (_bindyStage != BindyStage.None)
+                SetAutoWaterStatus("Nie uruchomiono AutoWater: trwa wysyłanie komendy BINDY.", Brushes.Orange);
             else if (!blockedByCursor)
                 TryStartAutoWater(now);
         }

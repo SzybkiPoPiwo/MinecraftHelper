@@ -228,7 +228,9 @@ namespace MinecraftHelper
             if (!_autoArmorCalibrationPending)
                 return false;
 
+#if !MINER_EDITION
             _autoClickScheduler.Stop();
+#endif
             SetAutoLeftDabHold(false);
             ReleaseHoldRightInjectedButton();
 
@@ -396,7 +398,9 @@ namespace MinecraftHelper
                 return false;
             }
 
+#if !MINER_EDITION
             _autoClickScheduler.Stop();
+#endif
             SetAutoLeftDabHold(false);
             ReleaseHoldRightInjectedButton();
             _autoArmorClickPlan.Clear();

@@ -8,8 +8,9 @@ Ten poradnik pozwala zbudować aplikację bez uruchamiania gotowego instalatora.
 - `MinecraftHelper.Pvp/` — kod lekkiej aplikacji `Minecraft Helper Auto Clicker`,
 - `MinecraftHelper/Assets/` — ikona i zasoby programu,
 - `Installer/` — definicja instalatora Inno Setup,
-- `scripts/` — skrypt publikowania i budowania instalatora,
-- `MinecraftHelper_AutoEQ_CobbleX_1.8.8/` — paczka zasobów do Auto EQ i CobbleX,
+- `scripts/` — skrypty testowania, publikowania i budowania instalatora,
+- `MinecraftHelper_AutoEQ_CobbleX_1.8.8.zip` — gotowa paczka zasobów do Auto EQ i CobbleX,
+- `tests/` — testy regresji obu aplikacji,
 - `tools/` — generator paczki zasobów.
 
 ## Wymagane narzędzia
@@ -17,7 +18,7 @@ Ten poradnik pozwala zbudować aplikację bez uruchamiania gotowego instalatora.
 Do zbudowania samej aplikacji potrzebujesz:
 
 1. Windows 10 lub Windows 11.
-2. [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0).
+2. [.NET SDK](https://dotnet.microsoft.com/download/dotnet) obsługujący rozwiązania `.slnx` (sprawdzone na SDK `10.0.402`). Obie aplikacje nadal mają docelowe środowisko `.NET 8`.
 3. Edytora, np. [Visual Studio Code](https://code.visualstudio.com/) z rozszerzeniem C# Dev Kit, Visual Studio 2022 z pakietem `.NET desktop development` albo Ridera.
 4. [Git](https://git-scm.com/download/win) — opcjonalnie, jeśli zamiast `git clone` pobierzesz repozytorium jako ZIP.
 
@@ -50,7 +51,7 @@ dotnet list .\MinecraftHelper\MinecraftHelper.csproj package --vulnerable --incl
 dotnet list .\MinecraftHelper.Pvp\MinecraftHelper.Pvp.csproj package --vulnerable --include-transitive
 ```
 
-Ostatnie polecenie sprawdza znane podatności pakietów NuGet i wymaga połączenia z internetem.
+Dwa ostatnie polecenia sprawdzają znane podatności pakietów NuGet i wymagają połączenia z internetem.
 
 ## 3. Kompilacja bez instalatora
 
@@ -110,12 +111,14 @@ artifacts\publish\autoclicker\win-x64\MinecraftHelper.AutoClicker.exe
 artifacts\publish\miner\win-x64\MinecraftHelper.Miner.exe
 ```
 
+Publikacja Kopacza `win-x64` pomija nieużywane biblioteki OCR `x86/`. Folder `x64/` i `tessdata/` muszą pozostać przy aplikacji — nie usuwaj ich z wersji przenośnej. Do publikacji użyj nowego katalogu albo skryptu instalatora, który usuwa pozostałości `x86/` po starszym publikowaniu.
+
 ## 5. Zbudowanie własnego instalatora
 
 Zainstaluj Inno Setup 6, zamknij działające kopie Minecraft Helper i uruchom:
 
 ```powershell
-.\scripts\build-installer.ps1 -Version 2.0.1 -Rid win-x64 -SelfContained $true -Clean
+.\scripts\build-installer.ps1 -Version 2.0.2 -Rid win-x64 -SelfContained $true -Clean
 ```
 
 Jeżeli PowerShell blokuje lokalny skrypt, możesz zezwolić na jego wykonanie tylko w bieżącym oknie terminala:
@@ -127,7 +130,7 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 Następnie ponownie uruchom skrypt budowania. Wynik znajdzie się w:
 
 ```text
-artifacts\installer\MinecraftHelper-Setup-2.0.exe
+artifacts\installer\MinecraftHelper-Setup-2.0.2.exe
 ```
 
 Jeden instalator zawiera dwa niezależne składniki. Użytkownik może wybrać Auto Clicker, Kopacza albo oba programy.
@@ -139,7 +142,7 @@ Parametr `-Clean` usuwa wyłącznie wcześniejsze wyniki z `artifacts/publish` i
 Oblicz sumę SHA-256 własnego pliku:
 
 ```powershell
-Get-FileHash .\artifacts\installer\MinecraftHelper-Setup-2.0.exe -Algorithm SHA256
+Get-FileHash .\artifacts\installer\MinecraftHelper-Setup-2.0.2.exe -Algorithm SHA256
 ```
 
 Przed udostępnieniem programu warto również:
@@ -148,10 +151,25 @@ Przed udostępnieniem programu warto również:
 git status --short
 git diff --check
 dotnet build .\MinecraftHelper.slnx -c Release
-dotnet run --project .\tests\EditionSplit\EditionSplit.csproj -c Release
+.\scripts\test.ps1
 ```
 
 Sprawdź ręcznie uruchamianie obu aplikacji, wybór procesu Minecrafta, zapis ustawień, bindy, overlay oraz zamykanie programów. W instalatorze wykonaj po jednej próbie instalacji każdego składnika osobno i obu razem. Sam fakt, że kod się kompiluje, nie potwierdza jeszcze poprawności wszystkich funkcji.
+
+Skrypt testów zatrzyma się na pierwszym błędzie. Parametr `-NoRestore` pomija przywracanie pakietów, jeśli wszystkie projekty testowe zostały już zbudowane. Testy nie wysyłają wejścia ani nie modyfikują ustawień użytkownika; `PvpMouseTracker` na krótko rejestruje prawdziwy hook Windows. `MinerIsolation` sprawdza brak hooków i starych usług clickera w skompilowanym Kopaczu oraz migrację ustawień. `AutoWater` testuje rzeczywisty kod sekwencji z symulowanymi pikselami/wejściem: dwa wzorce, opóźnienia ikony, oczekiwanie przed zebraniem, fokus, kalibrację hotbara i zgodność ustawień; używa też tekstur wiader z dołączonego ZIP-a.
+
+## 7. Opcjonalne odtworzenie paczki zasobów
+
+Gotowy ZIP w repozytorium jest wystarczający do działania programu. Generator wymaga Node.js oraz rozpakowanej paczki 1.8.8. Domyślny lokalny katalog `Old_Default_1.8.8` nie jest dołączony do GitHuba.
+
+Możesz użyć dołączonej paczki jako źródła i ponownie wygenerować znaczniki:
+
+```powershell
+Expand-Archive .\MinecraftHelper_AutoEQ_CobbleX_1.8.8.zip -DestinationPath .\.build-check\texture-source
+node .\tools\build-discard-texture-pack.js .\.build-check\texture-source
+```
+
+Katalog źródłowy powinien bezpośrednio zawierać `pack.mcmeta` i `assets`. Użyj osobnego, nowego katalogu do rozpakowania. Generator zapisuje wynik do `MinecraftHelper_AutoEQ_CobbleX_1.8.8/`, nadpisując pliki o tych samych nazwach. Nie aktualizuje automatycznie ZIP-a. Pomoc: `node .\tools\build-discard-texture-pack.js --help`.
 
 ## Korzystanie z asystenta AI
 

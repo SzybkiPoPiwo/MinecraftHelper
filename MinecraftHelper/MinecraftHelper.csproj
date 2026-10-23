@@ -11,10 +11,10 @@
     <Product>Minecraft Helper Kopacz</Product>
     <DefineConstants>$(DefineConstants);MINER_EDITION</DefineConstants>
     <ApplicationIcon>Assets\miner.ico</ApplicationIcon>
-    <Version>2.0.1</Version>
-    <AssemblyVersion>2.0.1.0</AssemblyVersion>
-    <FileVersion>2.0.1.0</FileVersion>
-    <InformationalVersion>2.0.1-miner</InformationalVersion>
+    <Version>2.0.2</Version>
+    <AssemblyVersion>2.0.2.0</AssemblyVersion>
+    <FileVersion>2.0.2.0</FileVersion>
+    <InformationalVersion>2.0.2-miner</InformationalVersion>
     <DefaultItemExcludes>$(DefaultItemExcludes);**\bin\**;**\obj\**;bin_codex\**;obj_codex\**;bin_tmp\**;obj_codex_verify\**</DefaultItemExcludes>
   </PropertyGroup>
 
@@ -39,5 +39,16 @@
     <PackageReference Include="Tesseract" Version="5.2.0" />
     <PackageReference Include="Tesseract.Data.English" Version="4.0.0" />
   </ItemGroup>
+
+  <!-- Tesseract ships native binaries for both architectures. The x64 build
+       never loads x86 DLLs; exclude them before publishing/bundling. -->
+  <Target Name="ExcludeX86OcrFromX64Publish"
+          AfterTargets="ComputeFilesToPublish"
+          Condition="'$(RuntimeIdentifier)' == 'win-x64'">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)"
+                            Condition="$([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').Replace('\', '/').StartsWith('x86/'))" />
+    </ItemGroup>
+  </Target>
 
 </Project>

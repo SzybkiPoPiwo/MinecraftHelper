@@ -51,10 +51,8 @@ namespace MinecraftHelper
         private readonly DispatcherTimer _transientStatusTimer;
         private readonly DispatcherTimer _bindyHudClearTimer;
 
-        // Bind detection does not need a 5 ms dispatcher wake-up while every
-        // runtime is idle. Precision-sensitive work switches back to 5 ms;
-        // actual AUTO LPM/PPM cadence is handled by AutoClickScheduler on its
-        // own timer and is therefore unaffected by the idle interval.
+        // Use the fast dispatcher cadence only during an active mining or
+        // automation sequence. PvP clickers have their own separate process.
         private static readonly TimeSpan MacroTimerActiveInterval = TimeSpan.FromMilliseconds(5);
 #if MINER_EDITION
         // Kopacz nie musi odpytywać usuniętych modułów PvP co 20 ms. Po użyciu
@@ -65,8 +63,6 @@ namespace MinecraftHelper
 #endif
         private static readonly TimeSpan TargetWindowResolveRetryInterval = TimeSpan.FromSeconds(2);
         private static readonly TimeSpan OverlayLayoutRefreshInterval = TimeSpan.FromSeconds(2);
-        private readonly MacroDiagnosticsService _macroDiagnosticsService;
-        private readonly AutoClickScheduler _autoClickScheduler;
         private readonly DamageSoundDetector _damageSoundDetector;
 
         private bool _isMinecraftFocused;
@@ -271,18 +267,6 @@ namespace MinecraftHelper
         private bool _isExitRequested;
         private bool _isMinimizedToTray;
         private bool _isTestCaptureSelectionInProgress;
-        private readonly object _mouseHookLifecycleSync = new object();
-        private readonly ManualResetEventSlim _mouseHookThreadReady = new ManualResetEventSlim(false);
-        private readonly ManualResetEventSlim _mouseHookStateChanged = new ManualResetEventSlim(false);
-        private volatile bool _mouseHookRequested;
-        private DateTime _nextMouseHookStartAttemptAtUtc;
-        private Thread? _mouseHookThread;
-        private volatile uint _mouseHookThreadId;
-        private int _mouseHookStartError;
-        private IntPtr _mouseHookHandle = IntPtr.Zero;
-        private LowLevelMouseProc? _mouseHookProc;
-        private volatile bool _physicalLeftButtonDown;
-        private volatile bool _physicalRightButtonDown;
         private readonly object _f3TesseractLock = new object();
         private TesseractEngine? _f3TesseractEngine;
         private AutoReconnectStage _autoReconnectStage = AutoReconnectStage.None;
@@ -533,40 +517,6 @@ namespace MinecraftHelper
         [DllImport("user32.dll")]
         private static extern short GetAsyncKeyState(int vKey);
 
-        [DllImport("user32.dll", SetLastError = true)]
-        private static extern IntPtr SetWindowsHookEx(int idHook, LowLevelMouseProc lpfn, IntPtr hMod, uint dwThreadId);
-
-        [DllImport("user32.dll", SetLastError = true)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        private static extern bool UnhookWindowsHookEx(IntPtr hhk);
-
-        [DllImport("user32.dll", SetLastError = true)]
-        private static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
-
-        [DllImport("user32.dll", SetLastError = true)]
-        private static extern int GetMessage(out MSG lpMsg, IntPtr hWnd, uint wMsgFilterMin, uint wMsgFilterMax);
-
-        [DllImport("user32.dll")]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        private static extern bool TranslateMessage([In] ref MSG lpMsg);
-
-        [DllImport("user32.dll")]
-        private static extern IntPtr DispatchMessage([In] ref MSG lpMsg);
-
-        [DllImport("user32.dll", SetLastError = true)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        private static extern bool PostThreadMessage(uint idThread, uint msg, UIntPtr wParam, IntPtr lParam);
-
-        [DllImport("user32.dll")]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        private static extern bool PeekMessage(out MSG lpMsg, IntPtr hWnd, uint wMsgFilterMin, uint wMsgFilterMax, uint wRemoveMsg);
-
-        [DllImport("kernel32.dll")]
-        private static extern uint GetCurrentThreadId();
-
-        [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        private static extern IntPtr GetModuleHandle(string lpModuleName);
-
         [DllImport("user32.dll", CharSet = CharSet.Unicode)]
         private static extern short VkKeyScan(char ch);
 
@@ -612,16 +562,6 @@ namespace MinecraftHelper
         private const int VK_MBUTTON = 0x04;
         private const int VK_XBUTTON1 = 0x05;
         private const int VK_XBUTTON2 = 0x06;
-        private const int WH_MOUSE_LL = 14;
-        private const uint WM_QUIT = 0x0012;
-        private const uint WM_SET_MOUSE_HOOK = 0x8001;
-        private const uint PM_NOREMOVE = 0x0000;
-        private const int WM_MOUSEMOVE = 0x0200;
-        private const int WM_LBUTTONDOWN = 0x0201;
-        private const int WM_LBUTTONUP = 0x0202;
-        private const int WM_RBUTTONDOWN = 0x0204;
-        private const int WM_RBUTTONUP = 0x0205;
-        private const int LLMHF_INJECTED = 0x00000001;
         private const int CURSOR_SHOWING = 0x00000001;
         private const int SM_CXCURSOR = 13;
         private const int SM_CYCURSOR = 14;
@@ -725,30 +665,6 @@ namespace MinecraftHelper
             public POINT ptScreenPos;
         }
 
-        [StructLayout(LayoutKind.Sequential)]
-        private struct MSLLHOOKSTRUCT
-        {
-            public POINT pt;
-            public uint mouseData;
-            public uint flags;
-            public uint time;
-            public UIntPtr dwExtraInfo;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct MSG
-        {
-            public IntPtr hwnd;
-            public uint message;
-            public UIntPtr wParam;
-            public IntPtr lParam;
-            public uint time;
-            public POINT pt;
-            public uint lPrivate;
-        }
-
-        private delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
-
         private void ApplyDarkTitleBar()
         {
             var hwnd = new WindowInteropHelper(this).Handle;
@@ -787,12 +703,6 @@ namespace MinecraftHelper
                     _settings.LastAcknowledgedVersion,
                     _currentAppVersion,
                     StringComparison.OrdinalIgnoreCase);
-#if MINER_EDITION
-            _macroDiagnosticsService = new MacroDiagnosticsService(samplingEnabled: false);
-#else
-            _macroDiagnosticsService = new MacroDiagnosticsService();
-#endif
-            _autoClickScheduler = new AutoClickScheduler(_macroDiagnosticsService);
             _damageSoundDetector = new DamageSoundDetector();
             _damageSoundDetector.ProgressChanged += DamageSoundDetector_ProgressChanged;
             _damageSoundDetector.DamageDetected += DamageSoundDetector_DamageDetected;
@@ -896,16 +806,12 @@ namespace MinecraftHelper
             _autoLeftRuntimeEnabled = false;
             _autoRightRuntimeEnabled = false;
             _bindyCommandStage = BindyCommandStage.None;
-            _autoClickScheduler.Stop();
 #endif
         }
 
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
             ApplyDarkTitleBar();
-#if !MINER_EDITION
-            InitializeMouseHookThread();
-#endif
 
             // If Windows launches the app minimized (e.g. shortcut setting),
             // do not auto-hide it to tray on startup.
@@ -968,210 +874,6 @@ namespace MinecraftHelper
             }
 
             Activate();
-        }
-
-        private void StartMouseHook()
-        {
-            if (GetMouseHookHandle() != IntPtr.Zero || DateTime.UtcNow < _nextMouseHookStartAttemptAtUtc)
-                return;
-
-            // Keep the message thread warm, but register the global hook only
-            // before a macro sends mouse input. Idle GUI must not intercept moves.
-            _nextMouseHookStartAttemptAtUtc = DateTime.UtcNow.AddSeconds(2);
-            InitializeMouseHookThread();
-            if (ChangeMouseHookRegistration(enabled: true))
-                _nextMouseHookStartAttemptAtUtc = DateTime.MinValue;
-            else
-                UpdateStatusBar($"Nie udało się uruchomić obsługi fizycznego LPM/PPM (Win32: {_mouseHookStartError}).", "Red");
-        }
-
-        private bool ChangeMouseHookRegistration(bool enabled)
-        {
-            _mouseHookRequested = enabled;
-            _mouseHookStateChanged.Reset();
-            if (_mouseHookThreadId == 0
-                || !PostThreadMessage(_mouseHookThreadId, WM_SET_MOUSE_HOOK, UIntPtr.Zero, IntPtr.Zero))
-            {
-                _mouseHookStartError = Marshal.GetLastWin32Error();
-                return false;
-            }
-
-            return _mouseHookStateChanged.Wait(TimeSpan.FromSeconds(2))
-                && (GetMouseHookHandle() != IntPtr.Zero) == enabled;
-        }
-
-        private void SuspendMouseHookWhenIdle()
-        {
-            // Keep tracking across pauses/commands inside a running macro. In
-            // particular, never re-seed physical state from an injected HOLD.
-            if (_holdMacroRuntimeEnabled || _autoLeftRuntimeEnabled || _autoRightRuntimeEnabled
-                || _jablkaRuntimeEnabled || _kopacz533RuntimeEnabled || _kopacz633RuntimeEnabled
-                || _testFastUpExitRuntimeEnabled || _testAutoFishingRuntimeEnabled
-                || IsAutoArmorRunning
-                || _inventoryCleanupStage != InventoryCleanupStage.None
-                || _autoReconnectStage != AutoReconnectStage.None
-                || _holdRightInjectedButtonDown || _inventoryCleanupEatingRightButtonDown
-                || _kopacz533Holding || _kopacz633HoldingAttack
-                || _testFastUpExitBreakHoldActive || _testFastUpExitPlaceHoldActive)
-            {
-                return;
-            }
-
-            if (_mouseHookRequested || GetMouseHookHandle() != IntPtr.Zero)
-                ChangeMouseHookRegistration(enabled: false);
-        }
-
-        private void InitializeMouseHookThread()
-        {
-            lock (_mouseHookLifecycleSync)
-            {
-                if (_mouseHookThread?.IsAlive == true)
-                    return;
-
-                _mouseHookProc = MouseHookCallback;
-                _mouseHookStartError = 0;
-                _mouseHookThreadReady.Reset();
-                _mouseHookThread = new Thread(MouseHookThreadMain)
-                {
-                    IsBackground = true,
-                    Name = "Minecraft Helper mouse hook"
-                };
-                _mouseHookThread.Start();
-            }
-
-            if (!_mouseHookThreadReady.Wait(TimeSpan.FromSeconds(2)))
-            {
-                UpdateStatusBar("Nie udało się uruchomić wątku obsługi myszy w wymaganym czasie.", "Red");
-                return;
-            }
-        }
-
-        private void StopMouseHook()
-        {
-            _mouseHookRequested = false;
-            Thread? hookThread;
-            uint hookThreadId;
-            lock (_mouseHookLifecycleSync)
-            {
-                hookThread = _mouseHookThread;
-                hookThreadId = _mouseHookThreadId;
-            }
-
-            if (hookThread == null)
-                return;
-
-            if (hookThreadId != 0)
-                _ = PostThreadMessage(hookThreadId, WM_QUIT, UIntPtr.Zero, IntPtr.Zero);
-
-            if (hookThread != Thread.CurrentThread && !hookThread.Join(TimeSpan.FromSeconds(2)))
-            {
-                IntPtr staleHandle = Interlocked.Exchange(ref _mouseHookHandle, IntPtr.Zero);
-                if (staleHandle != IntPtr.Zero)
-                    _ = UnhookWindowsHookEx(staleHandle);
-            }
-
-            lock (_mouseHookLifecycleSync)
-            {
-                if (_mouseHookThread == hookThread)
-                    _mouseHookThread = null;
-                _mouseHookThreadId = 0;
-                _mouseHookProc = null;
-            }
-        }
-
-        private void MouseHookThreadMain()
-        {
-            IntPtr hookHandle = IntPtr.Zero;
-            try
-            {
-                _mouseHookThreadId = GetCurrentThreadId();
-                // Create the thread's message queue before shutdown can post WM_QUIT.
-                _ = PeekMessage(out _, IntPtr.Zero, 0, 0, PM_NOREMOVE);
-
-                string moduleName = Process.GetCurrentProcess().MainModule?.ModuleName ?? string.Empty;
-                IntPtr moduleHandle = string.IsNullOrWhiteSpace(moduleName)
-                    ? IntPtr.Zero
-                    : GetModuleHandle(moduleName);
-                _macroDiagnosticsService.RecordMouseHookState(enabled: false);
-                _mouseHookThreadReady.Set();
-                while (true)
-                {
-                    int result = GetMessage(out MSG message, IntPtr.Zero, 0, 0);
-                    if (result <= 0)
-                        break;
-                    if (message.message == WM_SET_MOUSE_HOOK)
-                    {
-                        if (_mouseHookRequested && hookHandle == IntPtr.Zero)
-                        {
-                            hookHandle = SetWindowsHookEx(WH_MOUSE_LL, _mouseHookProc!, moduleHandle, 0);
-                            _mouseHookStartError = hookHandle == IntPtr.Zero ? Marshal.GetLastWin32Error() : 0;
-                            // Do this on the hook thread before processing input,
-                            // and before the caller is allowed to inject a click.
-                            _physicalLeftButtonDown = IsVirtualKeyDown(VK_LBUTTON);
-                            _physicalRightButtonDown = IsVirtualKeyDown(VK_RBUTTON);
-                            Interlocked.Exchange(ref _mouseHookHandle, hookHandle);
-                            if (hookHandle != IntPtr.Zero)
-                                _macroDiagnosticsService.RecordMouseHookState(enabled: true);
-                        }
-                        else if (!_mouseHookRequested && hookHandle != IntPtr.Zero)
-                        {
-                            if (UnhookWindowsHookEx(hookHandle))
-                            {
-                                hookHandle = IntPtr.Zero;
-                                Interlocked.Exchange(ref _mouseHookHandle, IntPtr.Zero);
-                                _macroDiagnosticsService.RecordMouseHookState(enabled: false);
-                            }
-                        }
-                        _mouseHookStateChanged.Set();
-                        continue;
-                    }
-                    _ = TranslateMessage(ref message);
-                    _ = DispatchMessage(ref message);
-                }
-            }
-            finally
-            {
-                _mouseHookThreadReady.Set();
-                _mouseHookStateChanged.Set();
-                if (hookHandle != IntPtr.Zero)
-                    _ = UnhookWindowsHookEx(hookHandle);
-                _ = Interlocked.CompareExchange(ref _mouseHookHandle, IntPtr.Zero, hookHandle);
-                _mouseHookThreadId = 0;
-            }
-        }
-
-        private IntPtr GetMouseHookHandle()
-        {
-            return Interlocked.CompareExchange(ref _mouseHookHandle, IntPtr.Zero, IntPtr.Zero);
-        }
-
-        private IntPtr MouseHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
-        {
-            if (nCode >= 0)
-            {
-                int message = unchecked((int)(long)wParam);
-                MSLLHOOKSTRUCT hookData = Marshal.PtrToStructure<MSLLHOOKSTRUCT>(lParam);
-                ProcessPhysicalMouseEvent(message, hookData);
-            }
-
-            return CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
-        }
-
-        private void ProcessPhysicalMouseEvent(int message, MSLLHOOKSTRUCT hookData)
-        {
-            if ((hookData.flags & LLMHF_INJECTED) != 0)
-                return;
-
-            if (message == WM_MOUSEMOVE)
-                _macroDiagnosticsService.RecordMouseMove(hookData.time, hookData.pt.X, hookData.pt.Y);
-            else if (message == WM_LBUTTONDOWN)
-                _physicalLeftButtonDown = true;
-            else if (message == WM_LBUTTONUP)
-                _physicalLeftButtonDown = false;
-            else if (message == WM_RBUTTONDOWN)
-                _physicalRightButtonDown = true;
-            else if (message == WM_RBUTTONUP)
-                _physicalRightButtonDown = false;
         }
 
         private void InitializeTrayIcon()
@@ -1981,7 +1683,6 @@ namespace MinecraftHelper
 
         private void LoadToUi()
         {
-            _autoClickScheduler.Stop();
             UpdateStatusBar("Gotowy", "Green");
 
             _holdMacroRuntimeEnabled = false;
@@ -2818,15 +2519,6 @@ namespace MinecraftHelper
             MarkDirty();
         }
 
-        private string GetSelectedAutoReconnectProfile()
-        {
-            return CbAutoReconnectProfile?.SelectedItem is ComboBoxItem item
-                && item.Tag is string tag
-                && string.Equals(tag, "Standard", StringComparison.OrdinalIgnoreCase)
-                    ? "Standard"
-                    : "Arivi";
-        }
-
         private static string NormalizeChatCommand(string? command)
         {
             string normalized = (command ?? string.Empty).Trim();
@@ -2980,7 +2672,6 @@ namespace MinecraftHelper
             SetKopacz533MiningHold(false);
             SetKopacz633AttackHold(false);
             SetKopacz633StrafeDirection(Kopacz633StrafeDirection.None);
-            _autoClickScheduler.Stop();
         }
 
         private void BeginEmergencyReconnectAfterDisconnect(DateTime now)
@@ -6984,21 +6675,6 @@ namespace MinecraftHelper
             }
         }
 
-        private void BtnMacroManualCapture_Click(object sender, RoutedEventArgs e)
-        {
-            ConfirmPendingBind(BindTarget.HoldToggle);
-        }
-
-        private void BtnAutoLeftCapture_Click(object sender, RoutedEventArgs e)
-        {
-            ConfirmPendingBind(BindTarget.AutoLeft);
-        }
-
-        private void BtnAutoRightCapture_Click(object sender, RoutedEventArgs e)
-        {
-            ConfirmPendingBind(BindTarget.AutoRight);
-        }
-
         private void BtnKopacz533Capture_Click(object sender, RoutedEventArgs e)
         {
             ConfirmPendingBind(BindTarget.Kopacz533);
@@ -7007,11 +6683,6 @@ namespace MinecraftHelper
         private void BtnKopacz633Capture_Click(object sender, RoutedEventArgs e)
         {
             ConfirmPendingBind(BindTarget.Kopacz633);
-        }
-
-        private void BtnJablkaZLisciCapture_Click(object sender, RoutedEventArgs e)
-        {
-            ConfirmPendingBind(BindTarget.JablkaZLisci);
         }
 
         private void BtnTestFastUpExitBind_Click(object sender, RoutedEventArgs e)
@@ -7390,39 +7061,6 @@ namespace MinecraftHelper
             return Drawing.Rectangle.FromLTRB(left, top, right, bottom);
         }
 
-        private void TxtJablkaZLisciCommand_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            if (_isLoadingUi)
-                return;
-
-            UpdateStatusBar("Niezapisana komenda jabłek - kliknij \"Zapisz komendę\"", "Orange");
-        }
-
-        private void BtnSaveJablkaZLisciCommand_Click(object sender, RoutedEventArgs e)
-        {
-            if (_isLoadingUi)
-                return;
-
-            try
-            {
-                ReadFromUi(includeWindowTitle: false);
-                _settings.JablkaZLisciCommand = TxtJablkaZLisciCommand.Text.Trim();
-                _settingsService.Save(_settings);
-
-                _pendingChanges = false;
-                _dirtyTimer.Stop();
-                TxtSettingsSaved.Text = "✓ Tak";
-                TxtSettingsSaved.Foreground = new SolidColorBrush(Color.FromRgb(56, 214, 180));
-                EllSettingsSaved.Fill = new SolidColorBrush(Color.FromRgb(56, 214, 180));
-
-                UpdateStatusBar("Komenda jabłek zapisana", "Green");
-            }
-            catch (Exception ex)
-            {
-                UpdateStatusBar("Błąd zapisu komendy: " + ex.Message, "Red");
-            }
-        }
-
         // DODAWANIE KOMEND
         private void BtnKopacz533AddCommand_Click(object sender, RoutedEventArgs e)
         {
@@ -7435,20 +7073,6 @@ namespace MinecraftHelper
         {
             _settings.Kopacz633Commands.Add(new MinerCommand { Seconds = 3, Command = "/repair" });
             RefreshKopaczCommandsUI(633);
-            MarkDirty();
-        }
-
-        private void BtnBindyAddCommand_Click(object sender, RoutedEventArgs e)
-        {
-            _settings.BindyEntries.Add(new BindyEntry
-            {
-                Id = Guid.NewGuid().ToString("N"),
-                Enabled = true,
-                Name = string.Empty,
-                Key = string.Empty,
-                Command = string.Empty
-            });
-            RefreshBindyCommandsUI();
             MarkDirty();
         }
 
@@ -8462,14 +8086,8 @@ namespace MinecraftHelper
 
         private bool IsPhysicalMouseButtonDown(int mouseVirtualKey)
         {
-            // At rest we inject no mouse buttons, so polling is sufficient to
-            // recognize the first bind+mouse press without a global hook.
-            if (mouseVirtualKey == VK_LBUTTON)
-                return GetMouseHookHandle() != IntPtr.Zero ? _physicalLeftButtonDown : IsVirtualKeyDown(VK_LBUTTON);
-
-            if (mouseVirtualKey == VK_RBUTTON)
-                return GetMouseHookHandle() != IntPtr.Zero ? _physicalRightButtonDown : IsVirtualKeyDown(VK_RBUTTON);
-
+            // Compatibility-only clicker controls are disabled in this edition.
+            // Mining input must never install a global mouse hook.
             return IsVirtualKeyDown(mouseVirtualKey);
         }
 
@@ -8682,7 +8300,6 @@ namespace MinecraftHelper
             finally
             {
                 // Also runs after early returns (focus loss, bind capture, etc.).
-                SuspendMouseHookWhenIdle();
                 UpdateEmergencyDamageSoundMonitoring();
                 UpdateMacroTimerCadence();
             }
@@ -8732,11 +8349,9 @@ namespace MinecraftHelper
 
         private void RunMacroTickCore()
         {
-            _macroDiagnosticsService.RecordUiTick();
 
             if (_isLoadingUi)
             {
-                _autoClickScheduler.Stop();
                 SetAutoLeftDabHold(false);
                 SetInventoryCleanupEatingHold(false);
                 return;
@@ -8744,7 +8359,6 @@ namespace MinecraftHelper
 
             if (_bindCaptureTarget != BindTarget.None || _bindyCaptureEntry != null)
             {
-                _autoClickScheduler.Stop();
                 SetAutoLeftDabHold(false);
                 ReleaseHoldRightInjectedButton();
                 SetInventoryCleanupEatingHold(false);
@@ -8783,7 +8397,6 @@ namespace MinecraftHelper
 
                 if (holdDown || autoLeftDown || autoRightDown || jablkaDown || kop533Down || kop633Down || testCaptureDown || fastUpDown || autoArmorDown || autoWaterDown || autoFishingDown || autoFishingCaptureDown || bindyDown)
                 {
-                    _autoClickScheduler.Stop();
                     SetAutoLeftDabHold(false);
                     ReleaseHoldRightInjectedButton();
                     SetInventoryCleanupEatingHold(false);
@@ -8826,7 +8439,6 @@ namespace MinecraftHelper
                 SyncAutoComboStates();
 
                 SetCursorPauseState(false);
-                _autoClickScheduler.Stop();
                 SetAutoLeftDabHold(false);
                 SetKopacz533MiningHold(false);
                 SetKopacz633AttackHold(false);
@@ -8851,7 +8463,6 @@ namespace MinecraftHelper
 
             if (_autoReconnectStage != AutoReconnectStage.None)
             {
-                _autoClickScheduler.Stop();
                 SetAutoLeftDabHold(false);
                 SetKopacz533MiningHold(false);
                 SetKopacz633AttackHold(false);
@@ -8931,7 +8542,6 @@ namespace MinecraftHelper
 
             if (IsAutoArmorRunning)
             {
-                _autoClickScheduler.Stop();
                 SetAutoLeftDabHold(false);
                 ReleaseHoldRightInjectedButton();
                 RunAutoArmorTick(DateTime.UtcNow);
@@ -8957,7 +8567,6 @@ namespace MinecraftHelper
 
             if (_autoWaterStage != AutoWaterStage.None)
             {
-                _autoClickScheduler.Stop();
                 SetAutoLeftDabHold(false);
                 RunAutoWaterTick(DateTime.UtcNow);
                 RefreshLiveTopTiles(DateTime.UtcNow);
@@ -9047,8 +8656,6 @@ namespace MinecraftHelper
                     {
                         if (_autoLeftRuntimeEnabled)
                             StopExclusivePointerMacrosForClicker();
-                        else
-                            _autoClickScheduler.StopLeftImmediately();
                         changed = true;
                     }
                 }
@@ -9068,8 +8675,6 @@ namespace MinecraftHelper
                     {
                         if (_autoLeftRuntimeEnabled)
                             StopExclusivePointerMacrosForClicker();
-                        else
-                            _autoClickScheduler.StopLeftImmediately();
                         changed = true;
                     }
                 }
@@ -9089,8 +8694,6 @@ namespace MinecraftHelper
                             _autoLeftRuntimeEnabled = enabling;
                             if (_autoLeftRuntimeEnabled)
                                 StopExclusivePointerMacrosForClicker();
-                            else
-                                _autoClickScheduler.StopLeftImmediately();
                             UpdateStatusBar(_autoLeftRuntimeEnabled ? "AUTO LPM aktywowane" : "AUTO LPM wyłączone", "Orange");
                             changed = true;
                         }
@@ -9122,8 +8725,6 @@ namespace MinecraftHelper
                     {
                         if (_autoRightRuntimeEnabled)
                             StopExclusivePointerMacrosForClicker();
-                        else
-                            _autoClickScheduler.StopRightImmediately();
                         changed = true;
                     }
                 }
@@ -9143,8 +8744,6 @@ namespace MinecraftHelper
                     {
                         if (_autoRightRuntimeEnabled)
                             StopExclusivePointerMacrosForClicker();
-                        else
-                            _autoClickScheduler.StopRightImmediately();
                         changed = true;
                     }
                 }
@@ -9164,8 +8763,6 @@ namespace MinecraftHelper
                             _autoRightRuntimeEnabled = enabling;
                             if (_autoRightRuntimeEnabled)
                                 StopExclusivePointerMacrosForClicker();
-                            else
-                                _autoClickScheduler.StopRightImmediately();
                             UpdateStatusBar(_autoRightRuntimeEnabled ? "AUTO PPM aktywowane" : "AUTO PPM wyłączone", "Orange");
                             changed = true;
                         }
@@ -9216,13 +8813,11 @@ namespace MinecraftHelper
             if (!autoLeftModeSelected && _autoLeftRuntimeEnabled)
             {
                 _autoLeftRuntimeEnabled = false;
-                _autoClickScheduler.StopLeftImmediately();
                 changed = true;
             }
             if (!autoRightModeSelected && _autoRightRuntimeEnabled)
             {
                 _autoRightRuntimeEnabled = false;
-                _autoClickScheduler.StopRightImmediately();
                 changed = true;
             }
             if (!jablkaModeSelected && _jablkaRuntimeEnabled)
@@ -9298,7 +8893,6 @@ namespace MinecraftHelper
             SetCursorPauseState(shouldPauseForCursor);
             if (shouldPauseForCursor)
             {
-                _autoClickScheduler.Stop();
                 if (SetAutoLeftDabHold(false))
                     RefreshTopTiles();
                 _nextHoldLeftClickAtUtc = now;
@@ -9346,8 +8940,6 @@ namespace MinecraftHelper
 
                 if (holdRightEnabled && rightHoldActive)
                 {
-                    // HOLD PPM is emitted by AutoClickScheduler together with the
-                    // regular clickers. The UI timer is not precise enough for 20 CPS.
                     _holdRightInjectedButtonDown = true;
                 }
                 else
@@ -9363,8 +8955,6 @@ namespace MinecraftHelper
                 _nextHoldRightClickAtUtc = now;
                 ResetHoldLeftToggleState(clearToggleEnabled: true);
             }
-
-            UpdateAutoClickScheduler(holdModeSelected, autoLeftModeSelected, autoRightModeSelected, internalCommandTyping);
 
             if (kop533ModeSelected && _kopacz533RuntimeEnabled)
                 RunKopacz533Tick(now);
@@ -9414,94 +9004,6 @@ namespace MinecraftHelper
             RefreshLiveTopTiles(now);
         }
 
-        private void UpdateAutoClickScheduler(
-            bool holdModeSelected,
-            bool autoLeftModeSelected,
-            bool autoRightModeSelected,
-            bool internalCommandTyping)
-        {
-            bool leftEnabled = false;
-            int leftMinCps = 1;
-            int leftMaxCps = 1;
-            bool rightEnabled = false;
-            int rightMinCps = 1;
-            int rightMaxCps = 1;
-            bool rightHoldPulseMode = false;
-            int leftRequiredHoldVirtualKey = 0;
-            int rightRequiredHoldVirtualKey = 0;
-
-            if (!internalCommandTyping)
-            {
-                if (holdModeSelected
-                    && _holdMacroRuntimeEnabled
-                    && ChkHoldLeftEnabled.IsChecked == true
-                    && _holdLeftToggleClickingEnabled)
-                {
-                    leftEnabled = TryGetCpsRange(
-                        TxtManualLeftMinCps.Text,
-                        TxtManualLeftMaxCps.Text,
-                        out leftMinCps,
-                        out leftMaxCps);
-                }
-                else if (autoLeftModeSelected && _autoLeftRuntimeEnabled)
-                {
-                    leftEnabled = TryGetCpsRange(
-                        TxtAutoLeftMinCps.Text,
-                        TxtAutoLeftMaxCps.Text,
-                        out leftMinCps,
-                        out leftMaxCps);
-                    if (leftEnabled
-                        && ChkAutoLeftHoldBindMode.IsChecked == true
-                        && TryGetVirtualKey(TxtAutoLeftKey.Text, out int leftHoldKey))
-                    {
-                        leftRequiredHoldVirtualKey = leftHoldKey;
-                    }
-                }
-
-                if (holdModeSelected
-                    && _holdMacroRuntimeEnabled
-                    && ChkHoldRightEnabled.IsChecked == true
-                    && _holdRightRuntimePressActive)
-                {
-                    rightEnabled = TryGetCpsRange(
-                        TxtManualRightMinCps.Text,
-                        TxtManualRightMaxCps.Text,
-                        out rightMinCps,
-                        out rightMaxCps);
-                    rightHoldPulseMode = true;
-                }
-                else if (autoRightModeSelected && _autoRightRuntimeEnabled)
-                {
-                    rightEnabled = TryGetCpsRange(
-                        TxtAutoRightMinCps.Text,
-                        TxtAutoRightMaxCps.Text,
-                        out rightMinCps,
-                        out rightMaxCps);
-                    if (rightEnabled
-                        && ChkAutoRightHoldBindMode.IsChecked == true
-                        && TryGetVirtualKey(TxtAutoRightKey.Text, out int rightHoldKey))
-                    {
-                        rightRequiredHoldVirtualKey = rightHoldKey;
-                    }
-                }
-            }
-
-            if (leftEnabled || rightEnabled)
-                StartMouseHook();
-
-            _autoClickScheduler.Update(
-                leftEnabled,
-                leftMinCps,
-                leftMaxCps,
-                rightEnabled,
-                rightMinCps,
-                rightMaxCps,
-                rightHoldPulseMode,
-                leftRequiredHoldVirtualKey,
-                rightRequiredHoldVirtualKey,
-                _targetGameWindowHandle);
-        }
-
         private void StopExclusivePointerMacrosForClicker()
         {
             StopOtherExclusivePointerMacros();
@@ -9509,7 +9011,6 @@ namespace MinecraftHelper
 
         private void StopClickerRuntimesForExclusivePointerMacro()
         {
-            _autoClickScheduler.Stop();
             _holdMacroRuntimeEnabled = false;
             ResetHoldLeftToggleState(clearToggleEnabled: true);
             _autoLeftRuntimeEnabled = false;
@@ -11964,25 +11465,6 @@ namespace MinecraftHelper
             _kopacz633StrafeDirection = direction;
         }
 
-        private bool TryPerformClick(ref DateTime nextClickAtUtc, string minText, string maxText, bool leftButton, DateTime now, bool holdPulseMode)
-        {
-            if (!TryGetCpsRange(minText, maxText, out int minCps, out int maxCps))
-            {
-                nextClickAtUtc = now.AddMilliseconds(100);
-                return false;
-            }
-
-            if (now < nextClickAtUtc)
-                return false;
-
-            SendMouseClick(leftButton, holdPulseMode);
-
-            int cps = minCps == maxCps ? minCps : _random.Next(minCps, maxCps + 1);
-            double delayMs = 1000.0 / cps;
-            nextClickAtUtc = now.AddMilliseconds(delayMs);
-            return true;
-        }
-
         private void TryPerformJablkaAction(DateTime now)
         {
             if (now < _nextJablkaActionAtUtc)
@@ -12236,29 +11718,6 @@ namespace MinecraftHelper
             ResetInventoryCleanupForOwner(InventoryCleanupOwner.Kopacz633);
         }
 
-        private static bool TryGetCpsRange(string minText, string maxText, out int minCps, out int maxCps)
-        {
-            minCps = 0;
-            maxCps = 0;
-
-            if (!int.TryParse(minText, out int min) || !int.TryParse(maxText, out int max))
-                return false;
-
-            if (min <= 0 && max > 0)
-                min = max;
-            else if (max <= 0 && min > 0)
-                max = min;
-            else if (min <= 0 || max <= 0)
-                return false;
-
-            if (max < min)
-                (min, max) = (max, min);
-
-            minCps = Math.Clamp(min, 1, AutoClickScheduler.MaximumCps);
-            maxCps = Math.Clamp(max, 1, AutoClickScheduler.MaximumCps);
-            return true;
-        }
-
         private static void SendMouseMoveRelative(int deltaX, int deltaY)
         {
             NativeInput.SendMouseMoveRelative(deltaX, deltaY);
@@ -12266,14 +11725,11 @@ namespace MinecraftHelper
 
         private void SendMouseClick(bool leftButton, bool holdPulseMode)
         {
-            StartMouseHook();
             NativeInput.SendMouseClick(leftButton, holdPulseMode);
         }
 
         private void SendMouseButton(bool leftButton, bool down)
         {
-            if (down)
-                StartMouseHook();
             NativeInput.SendMouseButton(leftButton, down);
         }
 
@@ -12312,45 +11768,6 @@ namespace MinecraftHelper
             UpdateStatusBar(message, colorName);
             _transientStatusTimer.Interval = TimeSpan.FromSeconds(Math.Max(1, seconds));
             _transientStatusTimer.Start();
-        }
-
-        private void ChkHoldLeftEnabled_Changed(object sender, RoutedEventArgs e)
-        {
-            if (_isLoadingUi)
-                return;
-
-            if (ChkHoldLeftEnabled.IsChecked != true && ChkHoldRightEnabled.IsChecked != true)
-                ChkHoldRightEnabled.IsChecked = true;
-
-            UpdateEnabledStates();
-            RefreshTopTiles();
-            MarkDirty();
-        }
-
-        private void ChkHoldRightEnabled_Changed(object sender, RoutedEventArgs e)
-        {
-            if (_isLoadingUi)
-                return;
-
-            if (ChkHoldRightEnabled.IsChecked != true && ChkHoldLeftEnabled.IsChecked != true)
-                ChkHoldLeftEnabled.IsChecked = true;
-
-            UpdateEnabledStates();
-            RefreshTopTiles();
-            MarkDirty();
-        }
-
-        private void ChkBindyEnabled_Changed(object sender, RoutedEventArgs e)
-        {
-            if (_isLoadingUi)
-                return;
-
-            if (ChkBindyEnabled.IsChecked != true)
-                ResetBindyRuntimeState();
-
-            UpdateEnabledStates();
-            RefreshTopTiles();
-            MarkDirty();
         }
 
         private void ChkOverlaySettings_Changed(object sender, RoutedEventArgs e)
@@ -12393,23 +11810,6 @@ namespace MinecraftHelper
             MarkDirty();
         }
 
-        private void ChkMacroManualEnabled_Changed(object sender, RoutedEventArgs e)
-        {
-            if (_isLoadingUi)
-                return;
-
-            if (ChkMacroManualEnabled.IsChecked == true)
-            {
-                ChkAutoLeftEnabled.IsChecked = false;
-                ChkAutoRightEnabled.IsChecked = false;
-
-                // NOWE: przy HOLD wyłącz "Jabłka z liści"
-                ChkJablkaZLisciEnabled.IsChecked = false;
-            }
-            UpdateEnabledStates();
-            MarkDirty();
-        }
-
         private void ChkAutoLeftEnabled_Changed(object sender, RoutedEventArgs e)
         {
             if (_isLoadingUi)
@@ -12432,142 +11832,6 @@ namespace MinecraftHelper
             {
                 ChkMacroManualEnabled.IsChecked = false;
             }
-            UpdateEnabledStates();
-            MarkDirty();
-        }
-
-        private void ChkAutoLeftComboMode_Changed(object sender, RoutedEventArgs e)
-        {
-            if (_isLoadingUi)
-                return;
-
-            if (ChkAutoLeftComboMode.IsChecked != true
-                && ChkAutoLeftHoldBindMode.IsChecked != true
-                && AutoClickersUseSharedBind())
-            {
-                ChkAutoLeftComboMode.IsChecked = true;
-                ShowSharedAutoClickerBindModeConflict();
-                return;
-            }
-
-            if (ChkAutoLeftComboMode.IsChecked == true)
-                ChkAutoLeftHoldBindMode.IsChecked = false;
-
-            _autoLeftRuntimeEnabled = false;
-            SetAutoLeftDabHold(false);
-            _autoLeftComboTriggerWasDown = false;
-            _autoLeftComboStopWasDown = false;
-            _nextAutoLeftClickAtUtc = DateTime.UtcNow;
-            RefreshTopTiles();
-            MarkDirty();
-        }
-
-        private void ChkAutoLeftHoldBindMode_Changed(object sender, RoutedEventArgs e)
-        {
-            if (_isLoadingUi)
-                return;
-
-            if (ChkAutoLeftHoldBindMode.IsChecked != true
-                && ChkAutoLeftComboMode.IsChecked != true
-                && AutoClickersUseSharedBind())
-            {
-                ChkAutoLeftHoldBindMode.IsChecked = true;
-                ShowSharedAutoClickerBindModeConflict();
-                return;
-            }
-
-            if (ChkAutoLeftHoldBindMode.IsChecked == true)
-                ChkAutoLeftComboMode.IsChecked = false;
-
-            _autoLeftRuntimeEnabled = false;
-            SetAutoLeftDabHold(false);
-            _autoLeftBindWasDown = IsConfiguredBindKeyDown(TxtAutoLeftKey.Text);
-            _autoLeftComboTriggerWasDown = false;
-            _autoLeftComboStopWasDown = false;
-            _nextAutoLeftClickAtUtc = DateTime.UtcNow;
-            RefreshTopTiles();
-            MarkDirty();
-        }
-
-        private void ChkAutoLeftDabMode_Changed(object sender, RoutedEventArgs e)
-        {
-            if (_isLoadingUi)
-                return;
-
-            bool shouldHold = ChkAutoLeftDabMode.IsChecked == true
-                && ChkAutoLeftEnabled.IsChecked == true
-                && _autoLeftRuntimeEnabled
-                && _isMinecraftFocused
-                && !_isPausedByCursorVisibility;
-            SetAutoLeftDabHold(shouldHold);
-            RefreshTopTiles();
-            MarkDirty();
-        }
-
-        private void ChkAutoRightComboMode_Changed(object sender, RoutedEventArgs e)
-        {
-            if (_isLoadingUi)
-                return;
-
-            if (ChkAutoRightComboMode.IsChecked != true
-                && ChkAutoRightHoldBindMode.IsChecked != true
-                && AutoClickersUseSharedBind())
-            {
-                ChkAutoRightComboMode.IsChecked = true;
-                ShowSharedAutoClickerBindModeConflict();
-                return;
-            }
-
-            if (ChkAutoRightComboMode.IsChecked == true)
-                ChkAutoRightHoldBindMode.IsChecked = false;
-
-            _autoRightRuntimeEnabled = false;
-            _autoRightComboTriggerWasDown = false;
-            _autoRightComboStopWasDown = false;
-            _nextAutoRightClickAtUtc = DateTime.UtcNow;
-            RefreshTopTiles();
-            MarkDirty();
-        }
-
-        private void ChkAutoRightHoldBindMode_Changed(object sender, RoutedEventArgs e)
-        {
-            if (_isLoadingUi)
-                return;
-
-            if (ChkAutoRightHoldBindMode.IsChecked == true && AutoClickersUseSharedBind())
-            {
-                ChkAutoRightHoldBindMode.IsChecked = false;
-                UpdateStatusBar("AUTO PPM — Trzymanie bindu wymaga osobnego klawisza.", "Orange");
-                var dialog = new BindConflictDialogWindow(
-                    "AUTO PPM — Trzymanie bindu",
-                    TxtAutoRightKey.Text,
-                    "AUTO LPM");
-                dialog.Owner = this;
-                dialog.ShowDialog();
-                return;
-            }
-
-            if (ChkAutoRightHoldBindMode.IsChecked == true)
-                ChkAutoRightComboMode.IsChecked = false;
-
-            _autoRightRuntimeEnabled = false;
-            _autoRightBindWasDown = IsConfiguredBindKeyDown(TxtAutoRightKey.Text);
-            _autoRightComboTriggerWasDown = false;
-            _autoRightComboStopWasDown = false;
-            _nextAutoRightClickAtUtc = DateTime.UtcNow;
-            RefreshTopTiles();
-            MarkDirty();
-        }
-
-        private void ChkJablkaZLisciEnabled_Changed(object sender, RoutedEventArgs e)
-        {
-            if (_isLoadingUi)
-                return;
-
-            // może działać z Auto LPM/PPM, ale nie z HOLD:
-            if (ChkJablkaZLisciEnabled.IsChecked == true && ChkMacroManualEnabled.IsChecked == true)
-                ChkMacroManualEnabled.IsChecked = false;
-
             UpdateEnabledStates();
             MarkDirty();
         }
@@ -13452,19 +12716,6 @@ namespace MinecraftHelper
             MarkDirty();
         }
 
-        private void ChkPauseWhenCursorVisible_Changed(object sender, RoutedEventArgs e)
-        {
-            if (_isLoadingUi)
-                return;
-
-            if (ChkPauseWhenCursorVisible.IsChecked != true)
-                SetCursorPauseState(false);
-
-            UpdateEnabledStates();
-            RefreshTopTiles();
-            MarkDirty();
-        }
-
         private void ChkKopacz533Enabled_Changed(object sender, RoutedEventArgs e)
         {
             if (_isLoadingUi)
@@ -13673,12 +12924,9 @@ namespace MinecraftHelper
             _autoReconnectTimer.Stop();
             _transientStatusTimer.Stop();
             _bindyHudClearTimer.Stop();
-            _autoClickScheduler.Dispose();
-            _macroDiagnosticsService.Dispose();
             _damageSoundDetector.Dispose();
 
-            // Release every injected state before removing the physical-mouse hook.
-            // This also covers closing the app while HOLD PPM is active.
+            // Always release injected input when the mining process exits.
             ResetHoldLeftToggleState(clearToggleEnabled: true);
             SetKopacz533MiningHold(false);
             SetKopacz633AttackHold(false);
@@ -13702,7 +12950,6 @@ namespace MinecraftHelper
             _autoWaterRecognitionTestPending = false;
             ResetAutoWaterRuntimeState();
             ResetBindyRuntimeState();
-            StopMouseHook();
 
             if (_overlayHud != null)
             {

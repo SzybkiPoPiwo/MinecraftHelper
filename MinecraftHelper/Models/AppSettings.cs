@@ -157,6 +157,10 @@ namespace MinecraftHelper.Models
         public int AutoWaterSampleOffsetFromBottom { get; set; }
         public int AutoWaterSamplePatchSize { get; set; } = 9;
         public string AutoWaterEmptyBucketTemplateBase64 { get; set; } = "";
+        public string AutoWaterFullBucketTemplateBase64 { get; set; } = "";
+        public int AutoWaterCalibrationClientWidth { get; set; }
+        public int AutoWaterCalibrationClientHeight { get; set; }
+        public int AutoWaterCalibrationSlot { get; set; }
         public bool AutoArmorEnabled { get; set; }
         public string AutoArmorBind { get; set; } = "";
         public int AutoArmorClickDelayMs { get; set; } = 45;
